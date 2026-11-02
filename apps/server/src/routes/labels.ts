@@ -11,9 +11,15 @@ import { attachLabel, removeOwnLabel } from "../lib/own-labels";
 
 export const labels = new Hono<AppEnv>();
 
-/** A scanned code: what it opens (in any of your households). */
+/** A scanned code: what it opens (in any of your households — with an API key, only in the key's). */
 labels.get("/:code{[0-9A-Za-z-]{4,12}}", requireUser, async (c) =>
-  c.json(await svc.resolveLabel({ deps: c.var.deps, db: c.var.db, userId: c.var.user.id, via: c.var.apiKey ? "api" : "web" }, c.req.param("code"))),
+  c.json(
+    await svc.resolveLabel(
+      { deps: c.var.deps, db: c.var.db, userId: c.var.user.id, via: c.var.apiKey ? "api" : "web" },
+      c.req.param("code"),
+      c.var.apiKey?.householdId,
+    ),
+  ),
 );
 
 labels.use("/*", requireUser, requireHousehold);

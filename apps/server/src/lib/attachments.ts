@@ -4,7 +4,7 @@
  * route and the MCP photo tools.
  */
 import { type AttachmentKind, uploadTypes } from "@ferret/shared";
-import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { attachment, item } from "../db/schema";
 import type { Db } from "../ports";
@@ -28,7 +28,7 @@ export const attachmentFields = {
   analysis: attachment.analysis,
   suggestionsDismissedAt: attachment.suggestionsDismissedAt,
   createdAt: attachment.createdAt,
-  hasThumbnail: sql<boolean>`${attachment.thumbnailKey} is not null`.mapWith(Boolean),
+  hasThumbnail: sql<boolean>`coalesce(${attachment.thumbnailKey}, '') <> ''`.mapWith(Boolean),
   originalRemoved: sql<boolean>`${attachment.originalRemovedAt} is not null`.mapWith(Boolean),
   mainAt: attachment.mainAt,
 };
@@ -57,7 +57,7 @@ export async function removeOriginals(deps: { db: Db; files: FileStore }, househ
     const [row] = await deps.db
       .select({ blobKey: attachment.blobKey, size: attachment.size })
       .from(attachment)
-      .where(and(eq(attachment.id, id), eq(attachment.householdId, householdId), isNotNull(attachment.thumbnailKey), isNull(attachment.originalRemovedAt)));
+      .where(and(eq(attachment.id, id), eq(attachment.householdId, householdId), isNotNull(attachment.thumbnailKey), ne(attachment.thumbnailKey, ""), isNull(attachment.originalRemovedAt)));
     if (!row) continue;
     // The row first: if deleting the file then fails, it's an orphan blob, never a row pointing at nothing.
     await deps.db.update(attachment).set({ originalRemovedAt: new Date() }).where(eq(attachment.id, id));

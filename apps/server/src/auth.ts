@@ -24,10 +24,10 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { magicLink, organization, twoFactor } from "better-auth/plugins";
 import { createAccessControl } from "better-auth/plugins/access";
 import { adminAc, defaultStatements, memberAc, ownerAc } from "better-auth/plugins/organization/access";
-import { and, count, eq, gt } from "drizzle-orm";
+import { and, count, eq, gt, isNull } from "drizzle-orm";
 import { type Config, trustedOrigins } from "./config";
 import { isNewPlace, recordSignIn, type SignInMethod } from "./lib/security";
-import { VERIFY_TTL_S } from "./lib/email-verification";
+import { VERIFY_TTL_S, confirmEmail, mayEmailConfirmation, replaceUnconfirmed } from "./lib/email-verification";
 import { RESET_PATHS, RESET_TTL_S, passwordResetFront } from "./lib/password-reset";
 import { clearFailures, type FailureAlert, signInGuard } from "./lib/sign-in-guard";
 import type { Db } from "./ports";
@@ -117,8 +117,8 @@ export function createAuth(db: Db, config: Config, opts: AuthHooks = {}) {
       autoSignInAfterVerification: false,
       expiresIn: VERIFY_TTL_S,
       sendVerificationEmail: async ({ user, url }) => {
-        // The first account is confirmed as it's made: nothing to send.
-        if (!user.emailVerified) await verify?.(user, url);
+        // The first account is confirmed as it's made: nothing to send. Asking again and again doesn't flood an inbox.
+        if (!user.emailVerified && verify && (await mayEmailConfirmation(db, user.id))) await verify(user, url);
       },
     },
     databaseHooks: {
@@ -148,6 +148,7 @@ export function createAuth(db: Db, config: Config, opts: AuthHooks = {}) {
         "/request-password-reset": { window: 60, max: 3 },
         "/reset-password": { window: 60, max: 5 },
         "/send-verification-email": { window: 60, max: 3 },
+        "/confirm-email": { window: 60, max: 5 },
         "/sign-in/magic-link": { window: 60, max: 3 },
         "/passkey/verify-authentication": { window: 10, max: 5 },
       },
@@ -155,11 +156,14 @@ export function createAuth(db: Db, config: Config, opts: AuthHooks = {}) {
     session: {
       expiresIn: 60 * 60 * 24 * 30, // 30 days
       updateAge: 60 * 60 * 24, // refresh daily
+      // Adding a passkey (Better Auth's fresh-session check) needs a sign-in in the last 15 minutes.
+      freshAge: 60 * 15,
     },
     // Keys are created through /api/v1/api-keys, which binds them to a household.
     // Reset links go straight to the web app (#/reset-password/:token), not through Better Auth's redirect;
     // without email, no reset at all.
-    disabledPaths: ["/api-key/create", "/api-key/update", ...(reset ? ["/reset-password/:token"] : RESET_PATHS)],
+    // Confirming an email takes the account's password too (lib/email-verification.ts): not Better Auth's bare link.
+    disabledPaths: ["/api-key/create", "/api-key/update", "/verify-email", ...(reset ? ["/reset-password/:token"] : RESET_PATHS)],
     plugins: [
       apiKey({
         defaultPrefix: "ferret_",
@@ -187,21 +191,33 @@ export function createAuth(db: Db, config: Config, opts: AuthHooks = {}) {
               if (refused) throw new APIError("FORBIDDEN", { message: refused });
             },
           }),
-          // Better Auth checks the membership limit only when an invitation is accepted: say so when it's sent instead,
-          // counting the invitations still pending, so nobody's sent a link that can't work.
-          ...(opts.membershipLimit && {
-            beforeCreateInvitation: async ({ organization: org }) => {
-              const limit = await opts.membershipLimit!(org.id);
-              const [members] = await db.select({ n: count() }).from(schema.member).where(eq(schema.member.organizationId, org.id));
-              const [pending] = await db
-                .select({ n: count() })
-                .from(schema.invitation)
-                .where(and(eq(schema.invitation.organizationId, org.id), eq(schema.invitation.status, "pending")));
-              if ((members?.n ?? 0) + (pending?.n ?? 0) >= limit) {
-                throw new APIError("FORBIDDEN", { message: `This household's plan has room for ${limit} ${limit === 1 ? "person" : "people"} — upgrade to invite more.` });
-              }
-            },
-          }),
+          beforeCreateInvitation: async ({ invitation, organization: org }) => {
+            oneRole(invitation.role);
+            // Better Auth checks the membership limit only when an invitation is accepted: say so when it's sent
+            // instead, counting the invitations still pending, so nobody's sent a link that can't work.
+            if (!opts.membershipLimit) return;
+            const limit = await opts.membershipLimit(org.id);
+            const [members] = await db.select({ n: count() }).from(schema.member).where(eq(schema.member.organizationId, org.id));
+            const [pending] = await db
+              .select({ n: count() })
+              .from(schema.invitation)
+              .where(and(eq(schema.invitation.organizationId, org.id), eq(schema.invitation.status, "pending")));
+            if ((members?.n ?? 0) + (pending?.n ?? 0) >= limit) {
+              throw new APIError("FORBIDDEN", { message: `This household's plan has room for ${limit} ${limit === 1 ? "person" : "people"} — upgrade to invite more.` });
+            }
+          },
+          beforeUpdateMemberRole: async ({ newRole }) => oneRole(newRole),
+          // An invitation is only as good as its sender's place in the household now.
+          beforeAcceptInvitation: async ({ invitation }) => {
+            if (!(await mayStillInvite(db, invitation))) {
+              throw new APIError("FORBIDDEN", { message: "Whoever sent this invitation can't invite people any more — ask for a new one" });
+            }
+          },
+          // Someone who leaves, or is no longer an owner or admin, takes their invitations and share links with them.
+          afterRemoveMember: async ({ member }) => withdrawFrom(db, member.organizationId, member.userId),
+          afterUpdateMemberRole: async ({ member }) => {
+            if (member.role !== "owner" && member.role !== "admin") await withdrawFrom(db, member.organizationId, member.userId);
+          },
         },
         ...(opts.inviteEmail && { sendInvitationEmail: ({ invitation }) => opts.inviteEmail!(invitation) }),
         invitationExpiresIn: 60 * 60 * 24 * 14, // two weeks to get round to it
@@ -215,6 +231,8 @@ export function createAuth(db: Db, config: Config, opts: AuthHooks = {}) {
       signInLog(db, opts.onNewPlace),
       signInGuard({ db, authSecret: config.AUTH_SECRET, onAlert: opts.onFailedSignIns }),
       signUpGate(db, config, Boolean(verify)),
+      confirmEmail(),
+      leavingTakesLinks(db),
       // Single sign-on, self-hosted: OIDC and a forward-auth proxy's headers, when they're set up (lib/sso.ts).
       ...ssoPlugins(db, config, opts.onAccountCreated),
       ...(reset ? [passwordResetFront(reset.enqueue)] : []),
@@ -255,11 +273,39 @@ const SIGN_IN_PATHS: Record<string, SignInMethod> = {
   "/sign-in/trusted-header": "trusted-header",
 };
 
+/** Leaving a household (Better Auth's /organization/leave runs no member hooks): as for being removed. */
+function leavingTakesLinks(db: Db) {
+  return {
+    id: "ferret-leave",
+    hooks: {
+      after: [
+        {
+          matcher: (ctx) => ctx.path === "/organization/leave",
+          handler: createAuthMiddleware(async (ctx) => {
+            const householdId = (ctx.body as { organizationId?: unknown } | undefined)?.organizationId;
+            const userId = ctx.context.session?.user.id;
+            if (typeof householdId === "string" && userId && !(ctx.context.returned instanceof Error)) await withdrawFrom(db, householdId, userId);
+          }),
+        },
+      ],
+    },
+  } satisfies BetterAuthPlugin;
+}
+
 /** After a passkey is registered: tell its owner (a new way into the account should never go unnoticed). */
 function passkeyAdded(notify: AuthHooks["onPasskeyAdded"]) {
   return {
     id: "ferret-passkey-added",
     hooks: {
+      // Adding a passkey is for the account already signed in, never a way to another session.
+      before: [
+        {
+          matcher: (ctx) => ctx.path === "/passkey/verify-registration",
+          handler: createAuthMiddleware(async (ctx) => {
+            if ((ctx.body as { createSession?: unknown } | undefined)?.createSession) throw new APIError("BAD_REQUEST", { message: "Not here" });
+          }),
+        },
+      ],
       after: [
         {
           matcher: (ctx) => ctx.path === "/passkey/verify-registration",
@@ -312,6 +358,36 @@ function signInLog(db: Db, onNewPlace?: AuthHooks["onNewPlace"]) {
   } satisfies BetterAuthPlugin;
 }
 
+/** A household role exactly as Ferret names it: one of owner, admin, member, viewer — never a list. */
+function oneRole(role: unknown) {
+  if (typeof role !== "string" || !Object.hasOwn(roles, role)) throw new APIError("BAD_REQUEST", { message: "Unknown role" });
+}
+
+const RANK: Record<string, number> = { viewer: 0, member: 1, admin: 2, owner: 3 };
+
+/** Whether an invitation's sender is still an owner or admin of its household, ranked at least as high as it invites. */
+export async function mayStillInvite(db: Db, invitation: { organizationId: string; inviterId: string; role: string }) {
+  const [inviter] = await db
+    .select({ role: schema.member.role })
+    .from(schema.member)
+    .where(and(eq(schema.member.organizationId, invitation.organizationId), eq(schema.member.userId, invitation.inviterId)));
+  if (!inviter || (inviter.role !== "owner" && inviter.role !== "admin")) return false;
+  const wanted = RANK[invitation.role];
+  return wanted !== undefined && RANK[inviter.role]! >= wanted;
+}
+
+/** Someone removed from a household, or no longer an owner or admin there: their pending invitations and share links end. */
+export async function withdrawFrom(db: Db, householdId: string, userId: string) {
+  await db
+    .update(schema.invitation)
+    .set({ status: "canceled" })
+    .where(and(eq(schema.invitation.organizationId, householdId), eq(schema.invitation.inviterId, userId), eq(schema.invitation.status, "pending")));
+  await db
+    .update(schema.shareLink)
+    .set({ revokedAt: new Date() })
+    .where(and(eq(schema.shareLink.householdId, householdId), eq(schema.shareLink.createdBy, userId), isNull(schema.shareLink.revokedAt)));
+}
+
 const INVITE_ONLY = "Ferret is invite-only — ask someone in your household for an invitation link";
 const NO_EMAIL = "Ferret can't send email yet, so a new account can't be confirmed — ask whoever runs Ferret to set up email";
 
@@ -345,6 +421,9 @@ function signUpGate(db: Db, config: Config, canEmail: boolean) {
             const email = String((ctx.body as { email?: unknown } | undefined)?.email ?? "").trim().toLowerCase();
             const refused = await signUpRefusal(db, config, email, ctx.request?.headers.get(INVITATION_HEADER) ?? null, canEmail);
             if (refused) throw new APIError("FORBIDDEN", { code: refused === NO_EMAIL ? "EMAIL_NOT_SET_UP" : "INVITE_ONLY", message: refused });
+            // An account for this address nobody confirmed: whoever made it may not be the inbox's owner. This
+            // sign-up takes its place (the confirmation link still needs the new password).
+            if (email) await replaceUnconfirmed(db, email);
           }),
         },
       ],

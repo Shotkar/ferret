@@ -1,7 +1,7 @@
 /** "Email me a sign-in link" and passkeys: only with email (links), never a way past two-step sign-in, always logged. */
 import { and, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { job, signIn, user as userTable } from "../src/db/schema";
+import { job, session as sessionTable, signIn, user as userTable } from "../src/db/schema";
 import { MAGIC_LINK_ANSWER, MAGIC_LINK_JOB, magicLinkJob } from "../src/lib/magic-link";
 import { FakeNotifier, config, setup } from "./helpers";
 
@@ -110,5 +110,17 @@ describe("passkeys", () => {
     expect(options.rp).toEqual({ id: new URL(config.PUBLIC_URL).hostname, name: "Ferret" });
     // Signing in with one starts without an account (the browser picks the passkey).
     expect((await app.request("/api/auth/passkey/generate-authenticate-options")).status).toBe(200);
+  });
+
+  it("need a sign-in in the last 15 minutes to add one, and never make a session of their own", async () => {
+    const { app, db, user } = await setup();
+    const ann = await user("ann");
+    await db.update(sessionTable).set({ createdAt: new Date(Date.now() - 16 * 60_000) });
+    const stale = await ann.as("/api/auth/passkey/generate-register-options");
+    expect([stale.status, ((await stale.json()) as { code: string }).code]).toEqual([403, "SESSION_NOT_FRESH"]);
+    await db.update(sessionTable).set({ createdAt: new Date() });
+    const verify = await ann.as("/api/auth/passkey/verify-registration", { method: "POST", body: JSON.stringify({ response: {}, createSession: true }) });
+    expect(verify.status).toBe(400);
+    void app;
   });
 });

@@ -43,6 +43,18 @@ describe("the person check on sign-up (Turnstile)", () => {
     expect(csp).toMatch(/frame-src https:\/\/challenges\.cloudflare\.com/);
   });
 
+  it("asks for the check before sending a confirmation link again to someone signed out", async () => {
+    const { app } = await setup({ humanCheck: new FakeCheck() });
+    const resend = (token?: string) =>
+      app.request("/api/auth/send-verification-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Origin: config.PUBLIC_URL, ...(token && { "X-Turnstile-Token": token }) },
+        body: JSON.stringify({ email: "a@example.com" }),
+      });
+    expect((await resend()).status).toBe(403);
+    expect((await resend("good")).status).toBe(200);
+  });
+
   it("isn't there without one: a home Ferret signs up as before, and its CSP stays closed", async () => {
     const { app } = await setup();
     expect((await signUp(app, "a@example.com")).status).toBe(200);

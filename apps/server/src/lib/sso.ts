@@ -17,7 +17,7 @@ import { genericOAuth } from "better-auth/plugins";
 import { and, eq } from "drizzle-orm";
 import { maySignUp } from "../auth";
 import type { Config } from "../config";
-import { account, user } from "../db/schema";
+import { account, session, user } from "../db/schema";
 import type { Db } from "../ports";
 
 export const OIDC_PROVIDER = "oidc";
@@ -86,8 +86,17 @@ function trustedHeaderSignIn(db: Db, config: Config, onAccountCreated?: () => vo
           .where(and(eq(account.providerId, TRUSTED_HEADER_PROVIDER), eq(account.accountId, username)));
         let userId = linked?.userId;
         if (!userId) {
-          const [existing] = await db.select({ id: user.id }).from(user).where(eq(user.email, email));
-          if (existing) userId = existing.id;
+          const [existing] = await db.select({ id: user.id, emailVerified: user.emailVerified }).from(user).where(eq(user.email, email));
+          if (existing) {
+            if (!existing.emailVerified) {
+              // Made with this address but never confirmed — maybe by someone else. The proxy's person takes it over,
+              // without whatever password was set on it, and it's confirmed now (the proxy vouches for the address).
+              await db.delete(account).where(eq(account.userId, existing.id));
+              await db.delete(session).where(eq(session.userId, existing.id));
+              await db.update(user).set({ emailVerified: true }).where(eq(user.id, existing.id));
+            }
+            userId = existing.id;
+          }
           else {
             if (!(await maySignUp(db, config, email))) {
               throw new APIError("FORBIDDEN", { code: "INVITE_ONLY", message: "Ferret is invite-only — ask someone in your household for an invitation link" });
@@ -101,8 +110,8 @@ function trustedHeaderSignIn(db: Db, config: Config, onAccountCreated?: () => vo
         }
         const found = await ctx.context.internalAdapter.findUserById(userId);
         if (!found) throw new APIError("UNAUTHORIZED", { message: "No such account" });
-        const session = await ctx.context.internalAdapter.createSession(found.id);
-        await setSessionCookie(ctx, { session, user: found });
+        const made = await ctx.context.internalAdapter.createSession(found.id);
+        await setSessionCookie(ctx, { session: made, user: found });
         return ctx.json({ ok: true });
       }),
     },

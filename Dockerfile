@@ -12,13 +12,19 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
 
-# Install only what the bundled server keeps outside it: the native bits (libSQL, sharp, the canvas PDFs are drawn on)
-# and pdf.js (its worker and fonts come from its own package).
+# What the bundled server keeps outside it (the native bits — libSQL, sharp, the canvas PDFs are drawn on — and pdf.js,
+# whose worker and fonts come from its own package): the server's production dependencies, at exactly the versions in
+# the lockfile, as a plain node_modules for this platform.
 FROM node:26-bookworm-slim AS runtime-deps
 WORKDIR /deps
-COPY --from=build /src/apps/server/package.json /tmp/server-package.json
-RUN DEPS=$(node -p "const d=require('/tmp/server-package.json').dependencies; ['@libsql/client','sharp','pdfjs-dist','@napi-rs/canvas'].map(n => n+'@'+d[n]).join(' ')") \
- && npm init -y >/dev/null && npm install --omit=dev --no-audit --no-fund $DEPS
+RUN npm install -g --no-audit --no-fund corepack && corepack enable
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY apps/server/package.json apps/server/
+COPY packages/shared/package.json packages/shared/
+COPY apps/server/scripts/runtime-deps.mjs /tmp/
+RUN pnpm install --frozen-lockfile --prod --filter @ferret/server --ignore-scripts \
+      --config.node-linker=hoisted --config.supported-architectures.libc=glibc \
+ && node /tmp/runtime-deps.mjs node_modules
 
 # ── Runtime ──────────────────────────────────────────────────────────────────
 FROM node:26-bookworm-slim

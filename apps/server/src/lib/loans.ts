@@ -10,7 +10,7 @@
 import { type BorrowerView, type LoanInput, type LoanPatch, type LoanSummary, addDays, addMonths, today } from "@ferret/shared";
 import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import { activity, item, loan, organization, user } from "../db/schema";
+import { activity, item, loan, loanReminderStop, organization, user } from "../db/schema";
 import type { Db, Deps } from "../ports";
 import type { FileStore } from "./files";
 import { type Caller, itemScope, logActivity, notFound } from "./inventory";
@@ -213,6 +213,8 @@ export async function borrowerReturned(db: Db, token: string) {
 export async function borrowerStop(db: Db, token: string) {
   const { l } = await byToken(db, token);
   if (!l.remindersStoppedAt) await db.update(loan).set({ remindersStoppedAt: new Date() }).where(eq(loan.id, l.id));
+  // For the address, not just this loan: a new loan to them doesn't start the emails again.
+  if (l.email) await db.insert(loanReminderStop).values({ householdId: l.householdId, email: l.email.toLowerCase() }).onConflictDoNothing();
   return borrowerView(db, token);
 }
 
@@ -220,12 +222,17 @@ export async function borrowerStop(db: Db, token: string) {
 
 const STEP = { week: (d: string) => addDays(d, 7), "2weeks": (d: string) => addDays(d, 14), month: (d: string) => addMonths(d, 1) } as const;
 
-/** When this loan's next reminder is due (null: none). */
-export function nextReminder(r: Pick<Row, "remindEvery" | "since" | "dueOn" | "lastRemindedOn">) {
+/**
+ * When this loan's next reminder is due (null: none). Counted from when it was written down, not the day it went: a
+ * loan entered long after the fact doesn't email anyone straight away.
+ */
+export function nextReminder(r: Pick<Row, "remindEvery" | "since" | "dueOn" | "lastRemindedOn" | "createdAt">) {
   if (!r.remindEvery) return null;
   const step = STEP[r.remindEvery];
   if (r.lastRemindedOn) return step(r.lastRemindedOn);
-  return r.dueOn ?? step(r.since);
+  const recorded = r.createdAt.toISOString().slice(0, 10);
+  if (r.dueOn && r.dueOn > recorded) return r.dueOn;
+  return step(r.since > recorded ? r.since : recorded);
 }
 
 const longDate = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
@@ -269,6 +276,11 @@ export async function sendLoanReminders(
     const on = deps.on ?? (await dayFor(l.householdId));
     const next = nextReminder(l);
     if (!on || !next || next > on || l.lastRemindedOn === on) continue;
+    const [stopped] = await db
+      .select({ email: loanReminderStop.email })
+      .from(loanReminderStop)
+      .where(and(eq(loanReminderStop.householdId, l.householdId), eq(loanReminderStop.email, l.email!.toLowerCase())));
+    if (stopped) continue;
     const who = firstName(owner);
     const link = borrowerUrl(deps.appUrl, await files.open(l.householdId, sealLabel(l.id), l.tokenSealed!));
     try {

@@ -141,6 +141,36 @@ describe("a plan's limits", () => {
     expect((await report(pat.as)).aiActions).toEqual({ used: 0, limit: 0 });
   });
 
+  it("asking for a photo to be read again goes through the plan too, as does each queued analysis", async () => {
+    const { plan, entitlements } = plans({ aiActions: 2 });
+    const ai = new FakeAi([describePhoto, describePhoto, describePhoto]);
+    const env = await setup({ ai, entitlements });
+    const pat = await env.user("pat");
+    const drill = await pat.addItem({ name: "Drill" });
+    // Two photos queued together: each was allowed when it came, but only one fits the allowance.
+    await pat.upload(drill.id, await photo(), "a.jpg");
+    const second = await pat.upload(drill.id, await photo(), "b.jpg");
+    await env.jobs.drain();
+    expect(ai.calls).toHaveLength(1);
+    const again = await pat.as(`/api/v1/attachments/${second.id}/analyze`, { method: "POST" });
+    expect(again.status).toBe(402);
+    plan.limits.ai = false;
+    expect((await pat.as(`/api/v1/attachments/${second.id}/analyze`, { method: "POST" })).status).toBe(402);
+    expect(ai.calls).toHaveLength(1);
+  });
+
+  it("shows the service's billing pages and links only to the owner", async () => {
+    const { entitlements } = plans();
+    const env = await setup({ entitlements });
+    const owner = await env.user("owner");
+    const kim = await env.user("kim");
+    const { id } = (await (await owner.as("/api/auth/organization/invite-member", post({ email: "kim@example.com", role: "admin" }))).json()) as { id: string };
+    await kim.as("/api/auth/organization/accept-invitation", post({ invitationId: id }));
+    expect((await report(owner.as)).plan).toMatchObject({ upgradeUrl: expect.any(String), links: [{ label: "Account" }] });
+    const theirs = await report((url, init = {}) => kim.as(url, { ...init, headers: { "X-Household-Id": owner.householdId } }));
+    expect(theirs.plan).toMatchObject({ name: "Plus", upgradeUrl: null, manageUrl: null, links: [] });
+  });
+
   it("stops AI at the period's allowance, and the report says who used it", async () => {
     const { plan, entitlements } = plans({ aiActions: 3 });
     const ai = new FakeAi([describePhoto, answer, answer]);

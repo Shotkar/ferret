@@ -3,7 +3,8 @@
 ## Your account
 
 Sign in with your email and password. The very first account on a Ferret server can sign up straight away; everyone
-after that is **invited** (see below) and confirms their email address before they can sign in.
+after that is **invited** (see below) and confirms their email address before they can sign in: open the link Ferret
+emails you, and sign in there with the password you chose.
 
 Forgot your password? **Forgot your password?** on the sign-in page emails you a link — if whoever runs Ferret has
 set up email. If not, ask them.

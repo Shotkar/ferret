@@ -46,8 +46,14 @@ export async function findFeed(db: Db, token: string) {
   return feed;
 }
 
-/** iCalendar text: escape \ ; , and newlines. */
-const escape = (s: string) => s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+/** iCalendar text: escape \ ; , and line breaks (any kind); other control characters go. */
+const escape = (s: string) =>
+  s
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r\n|\r|\n|\u2028|\u2029/g, "\\n")
+    .replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, "");
 
 /** Lines longer than 75 octets are folded (continuation lines start with a space). */
 function fold(line: string) {

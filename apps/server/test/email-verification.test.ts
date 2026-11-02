@@ -5,6 +5,14 @@ import { job, user as userTable } from "../src/db/schema";
 import { VERIFY_EMAIL_JOB, purgeUnverified, sendVerificationJob } from "../src/lib/email-verification";
 import { FakeNotifier, PASSWORD, config, setup } from "./helpers";
 
+/** Opens an emailed link: the sign-in screen's address, and the token it carries. */
+async function open(env: Env, link: string) {
+  const res = await env.app.request(link);
+  const location = res.headers.get("location") ?? "";
+  return { status: res.status, location, token: decodeURIComponent(/[?&]confirm=([^#&]*)/.exec(location)?.[1] ?? "") };
+}
+const confirm = (env: Env, token: string, password = PASSWORD) => post(env, "/confirm-email", { token, password });
+
 type Env = Awaited<ReturnType<typeof setup>>;
 const MAIL = "mailtos://ferret:pw@mail.example";
 
@@ -45,13 +53,25 @@ describe("email verification", () => {
     expect(notifier.sent[0]).toMatchObject({ url: `${MAIL}?to=sam%40example.com`, title: "Confirm your email for Ferret" });
 
     // A made-up token does nothing.
-    const bad = await env.app.request("/api/auth/verify-email?token=nope&callbackURL=/%23/verified");
-    expect(bad.headers.get("location")).toBe("/?error=INVALID_TOKEN#/verified"); // the page reads ?error before the hash
+    const bad = await open(env, "/api/auth/verify-email?token=nope&callbackURL=/%23/verified");
+    expect(bad.location).toBe("/?confirm=nope#/verified");
+    const refused = await confirm(env, "nope");
+    expect([refused.status, ((await refused.json()) as { code: string }).code]).toEqual([400, "LINK_EXPIRED"]);
     expect((await signIn(env, "sam")).status).toBe(403);
 
-    const opened = await env.app.request(linkIn(notifier)!);
-    expect([opened.status, opened.headers.get("location")]).toEqual([302, "/#/verified"]);
+    // The link opens the sign-in screen (never somewhere else); the account's own password confirms it.
+    const opened = await open(env, linkIn(notifier)!);
+    expect(opened.status).toBe(302);
+    expect(opened.location).toMatch(/^\/\?confirm=[^#]+#\/verified$/);
+    expect((await open(env, linkIn(notifier)!.replace("callbackURL=", "callbackURL=https%3A%2F%2Fevil.example%2F"))).location).toMatch(/#\/$/);
+    expect((await signIn(env, "sam")).status).toBe(403);
+    const wrong = await confirm(env, opened.token, "not-the-password");
+    expect([wrong.status, ((await wrong.json()) as { code: string }).code]).toEqual([401, "WRONG_PASSWORD"]);
+    expect((await signIn(env, "sam")).status).toBe(403);
+    expect((await confirm(env, opened.token)).status).toBe(200);
     expect((await signIn(env, "sam")).status).toBe(200);
+    // Better Auth's own link endpoint is off.
+    expect((await env.app.request(`/api/auth/verify-email?token=${opened.token}`)).headers.get("location")).toMatch(/^\/\?confirm=/);
   });
 
   it("sends the link again on request, a few times a minute at most", async () => {
@@ -63,8 +83,40 @@ describe("email verification", () => {
     expect((await post(env, "/send-verification-email", { email: "sam@example.com", callbackURL: "/#/verified" })).status).toBe(200);
     await sendQueuedEmails(env, notifier);
     expect(notifier.sent).toHaveLength(2);
-    expect((await env.app.request(linkIn(notifier)!)).status).toBe(302);
+    expect((await confirm(env, (await open(env, linkIn(notifier)!)).token)).status).toBe(200);
     expect((await signIn(env, "sam")).status).toBe(200);
+  });
+
+  it("sends an account at most a few confirmation emails a day, however often it's asked", async () => {
+    const notifier = new FakeNotifier();
+    const env = await setup({ notifier, mailUrl: MAIL });
+    await signUp(env, "owner");
+    await signUp(env, "sam");
+    await sendQueuedEmails(env, notifier);
+    for (let i = 0; i < 8; i++) {
+      await post(env, "/send-verification-email", { email: "sam@example.com", callbackURL: "/#/verified" });
+      await sendQueuedEmails(env, notifier);
+    }
+    expect(notifier.sent).toHaveLength(5);
+  });
+
+  it("never lets whoever signed up first with someone's address into it", async () => {
+    const notifier = new FakeNotifier();
+    const env = await setup({ notifier, mailUrl: MAIL });
+    await signUp(env, "owner");
+    // A stranger signs up with Sam's address and a password of their own; the link goes to Sam's inbox.
+    expect((await post(env, "/sign-up/email", { name: "X", email: "sam@example.com", password: "stranger-pass-1", callbackURL: "/#/" })).status).toBe(200);
+    await sendQueuedEmails(env, notifier);
+    const strangers = (await open(env, linkIn(notifier)!)).token;
+    // Sam opens that link: their own password doesn't fit it, so nothing is confirmed.
+    expect((await confirm(env, strangers)).status).toBe(401);
+    // Sam signs up: the unconfirmed account is replaced by Sam's, with Sam's password.
+    expect((await signUp(env, "sam")).status).toBe(200);
+    expect((await confirm(env, strangers, "stranger-pass-1")).status).toBe(401);
+    await sendQueuedEmails(env, notifier);
+    expect((await confirm(env, (await open(env, linkIn(notifier)!)).token)).status).toBe(200);
+    expect((await signIn(env, "sam")).status).toBe(200);
+    expect((await post(env, "/sign-in/email", { email: "sam@example.com", password: "stranger-pass-1" })).status).toBe(401);
   });
 
   it("refuses new accounts while Ferret can't send email, saying why — but not the first", async () => {

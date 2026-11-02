@@ -5,11 +5,11 @@
  * vectors), API keys. Database backups still hold it until they age out — the help and the privacy policy say so.
  */
 import type { AccountDeletionInfo } from "@ferret/shared";
-import { and, count, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, count, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { account, attachment, apikey, member, organization, session, user } from "../db/schema";
+import { account, attachment, apikey, member, organization, session, shareLink, user } from "../db/schema";
 import { previewKey } from "../jobs/analyze";
 import type { Db, Deps } from "../ports";
 import type { AppEnv } from "./context";
@@ -90,6 +90,8 @@ export async function deleteAccount(p: { deps: Pick<Deps, "db" | "vectors">; fil
   const { households } = await accountDeletion(p.deps.db, userId);
   await deleteHouseholds(p, households.map((h) => h.id));
   await p.deps.db.delete(apikey).where(eq(apikey.referenceId, userId));
+  // Share links they made in households that carry on without them end with them (like a removed member's).
+  await p.deps.db.update(shareLink).set({ revokedAt: new Date() }).where(and(eq(shareLink.createdBy, userId), isNull(shareLink.revokedAt)));
   await p.deps.db.delete(user).where(eq(user.id, userId));
 }
 

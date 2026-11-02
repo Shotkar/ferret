@@ -16,7 +16,7 @@ import { VISION_PX } from "../jobs/analyze";
 import type { Db, Deps, JobHandler } from "../ports";
 import type { FileStore } from "./files";
 import { type Caller, createItem, locationIn, locationPaths, logActivity, notFound } from "./inventory";
-import { recordUsage, requireAllowed, requireRoom } from "./plan";
+import { allow, recordUsage, requireAllowed, requireRoom } from "./plan";
 import { sniffContentType } from "./sniff";
 import { inList } from "./sql";
 
@@ -332,7 +332,15 @@ export function analyzeRoomScan(deps: { db: Db; files: FileStore; ai?: Deps["ai"
     try {
       const categories = await categoryPaths(deps.db, row.householdId);
       const candidates: RoomScanCandidate[] = [];
+      const who = { db: deps.db, deps, householdId: row.householdId, userId: row.createdBy };
+      let stopped: string | null = null;
       for (let n = 0; n < row.photoCount; n++) {
+        // The plan's allowance again for each photo: other photos may have used it up since this was queued.
+        const allowed = await allow(who, "ai.photo");
+        if (!allowed.ok) {
+          stopped = allowed.reason;
+          break;
+        }
         const image = await deps.files.get(row.householdId, roomPhotoKey(row.householdId, row.id, n));
         if (!image) continue;
         const photo = { data: image, contentType: "image/jpeg" };
@@ -348,8 +356,9 @@ export function analyzeRoomScan(deps: { db: Db; files: FileStore; ai?: Deps["ai"
         }
         candidates.push(...found);
         // One AI action per photo, for whoever took it (lib/plan.ts) — counted as the model answers.
-        await recordUsage({ db: deps.db, deps, householdId: row.householdId, userId: row.createdBy }, "ai.photo");
+        await recordUsage(who, "ai.photo");
       }
+      if (stopped && !candidates.length) return void (await fail(stopped));
       await deps.db.update(roomScan).set({ status: "ready", candidates, error: null, updatedAt: new Date() }).where(eq(roomScan.id, row.id));
     } catch (err) {
       if (lastAttempt) await fail("Couldn't look at the photos — try again later");

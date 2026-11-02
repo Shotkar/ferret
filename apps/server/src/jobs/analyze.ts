@@ -10,7 +10,7 @@ import { z } from "zod";
 import { attachment } from "../db/schema";
 import type { FileStore } from "../lib/files";
 import { countEvent } from "../lib/analytics";
-import { recordUsage } from "../lib/plan";
+import { allow, recordUsage } from "../lib/plan";
 import { sniffContentType } from "../lib/sniff";
 import type { Ai, Analytics, Db, Deps, Documents, Entitlements, Images, JobHandler, TextModel } from "../ports";
 
@@ -204,11 +204,14 @@ export function analyzeAttachment(deps: {
       if (analysis && kind === "photo") countEvent(deps, "photo.analyzed");
       // An AI action for whoever added it (lib/plan.ts) — only when the model was actually asked.
       if (analysis && asked) {
-        const who = { db: deps.db, deps, householdId: row.householdId, userId: row.createdBy };
         await recordUsage(who, kind === "photo" ? "ai.photo" : "ai.document");
       }
     };
     let asked = false;
+    // The plan's allowance again, now the model is about to be asked: uploads queued together were each checked
+    // before any was counted, and nothing queued gets round it.
+    const who = { db: deps.db, deps, householdId: row.householdId, userId: row.createdBy };
+    if (!(await allow(who, kind === "photo" ? "ai.photo" : "ai.document")).ok) return void (await save(null));
 
     try {
       const bytes = await deps.files.get(row.householdId, row.blobKey);

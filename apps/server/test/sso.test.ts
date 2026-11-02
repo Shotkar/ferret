@@ -3,7 +3,7 @@ import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { markAuthProxy, proxyList } from "../src/adapters/local/proxy";
 import { PROXY_MARK } from "../src/lib/sso";
-import { setup, verifiedAccount } from "./helpers";
+import { FakeNotifier, setup, verifiedAccount } from "./helpers";
 
 const ISSUER = "https://idp.test";
 const CLIENT = "ferret";
@@ -166,6 +166,26 @@ describe("trusted headers from a sign-in proxy", () => {
 
     const off = await setup();
     expect((await off.app.request("/api/auth/sign-in/trusted-header", fromProxy({ "Remote-User": "x", "Remote-Email": "x@example.com" }))).status).toBe(404);
+  });
+
+  it("takes over an unconfirmed account with the address, without the password someone set on it", async () => {
+    const notifier = new FakeNotifier();
+    const { app, auth } = await setup({ config: HEADERS, notifier, mailUrl: "mailtos://ferret:pw@mail.example" });
+    await verifiedAccount(app, auth, "first");
+    const signUp = await app.request("/api/auth/sign-up/email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: "http://localhost:8787" },
+      body: JSON.stringify({ name: "x", email: "alice@example.com", password: "someone-elses-pass" }),
+    });
+    expect(signUp.status).toBe(200);
+    const ok = await app.request("/api/auth/sign-in/trusted-header", fromProxy({ "Remote-User": "alice", "Remote-Email": "alice@example.com" }));
+    expect(ok.status).toBe(200);
+    const password = await app.request("/api/auth/sign-in/email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: "http://localhost:8787" },
+      body: JSON.stringify({ email: "alice@example.com", password: "someone-elses-pass" }),
+    });
+    expect(password.status).toBe(401);
   });
 
   it("the Node server marks only connections from the proxy, and takes off a mark a client sent", () => {

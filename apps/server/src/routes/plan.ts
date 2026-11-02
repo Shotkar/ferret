@@ -10,4 +10,4 @@ export const plan = new Hono<AppEnv>();
 
 plan.use("/*", requireUser, requireHousehold);
 
-plan.get("/", async (c) => c.json(await planReport({ db: c.var.db, deps: c.var.deps, householdId: c.var.householdId })));
+plan.get("/", async (c) => c.json(await planReport({ db: c.var.db, deps: c.var.deps, householdId: c.var.householdId }, c.var.role === "owner")));

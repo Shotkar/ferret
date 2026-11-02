@@ -12,6 +12,8 @@ export const PDF_THUMB_JOB = "attachment.pdf-thumbnail";
 export const PDF_BACKFILL_JOB = "attachment.pdf-thumbnail-backfill";
 /** As for photos (lib/attachments.ts). */
 const THUMBNAIL_PX = 600;
+/** thumbnailKey while (and after) one is tried and none came: each PDF is tried once, even if the server stopped mid-way. */
+export const NO_THUMBNAIL = "";
 
 export function pdfThumbnail(deps: { db: Db; files: FileStore; pdfPages: PdfPages; images: Images }): JobHandler {
   return async (payload) => {
@@ -23,6 +25,7 @@ export function pdfThumbnail(deps: { db: Db; files: FileStore; pdfPages: PdfPage
     if (!row || row.contentType !== "application/pdf") return;
     const bytes = await deps.files.get(row.householdId, row.blobKey);
     if (!bytes) return;
+    await deps.db.update(attachment).set({ thumbnailKey: NO_THUMBNAIL }).where(eq(attachment.id, row.id));
     // Drawn larger than the thumbnail, then shrunk (and made WebP) like a photo.
     const page = await deps.pdfPages.firstPage(bytes, THUMBNAIL_PX * 2);
     const thumb = page ? await deps.images.resize(page, THUMBNAIL_PX, "webp") : null;

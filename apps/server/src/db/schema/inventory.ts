@@ -976,6 +976,18 @@ export const loan = sqliteTable(
   (t) => [index("loan_household_idx").on(t.householdId, t.returnedOn), index("loan_item_idx").on(t.itemId), uniqueIndex("loan_token_idx").on(t.tokenHash)],
 );
 
+/** Borrowers who said "stop these reminders": no reminder goes to the address again from this household, whatever the loan. */
+export const loanReminderStop = sqliteTable(
+  "loan_reminder_stop",
+  {
+    householdId: householdId(),
+    /** Lower case. */
+    email: text("email").notNull(),
+    createdAt: timestamps.createdAt,
+  },
+  (t) => [primaryKey({ columns: [t.householdId, t.email] })],
+);
+
 /**
  * Product recalls from the CPSC (lib/recalls.ts) — public data, shared by every household, synced daily. `searchText`
  * is title, description, products and companies, normalised (lower case, letters and digits) for matching.

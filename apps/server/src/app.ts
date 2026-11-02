@@ -224,6 +224,20 @@ export function createApp(deps: Deps, config: Config, opts: AppOptions = {}) {
       allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     }),
   );
+  // Changes made with the session cookie come from Ferret's own pages only. SameSite=Lax keeps other sites' forms out,
+  // but not a sibling site on the same domain; the browser says where a request comes from (Sec-Fetch-Site, Origin),
+  // and anything else is refused. API keys aren't cookies, so scripts are unaffected. Better Auth checks its own.
+  const ownOrigins = new Set([new URL(config.PUBLIC_URL).origin, ...origins]);
+  app.use("/api/*", async (c, next) => {
+    const method = c.req.method;
+    if (method === "GET" || method === "HEAD" || method === "OPTIONS" || c.req.path.startsWith("/api/auth/")) return next();
+    if (c.req.header("authorization") || c.req.header("x-api-key")) return next();
+    const site = c.req.header("sec-fetch-site");
+    const origin = c.req.header("origin");
+    if (site === "same-origin" || site === "none") return next();
+    if (origin !== undefined ? ownOrigins.has(origin) : site === undefined) return next();
+    return c.json({ error: { code: "http_403", message: "Not from this Ferret" } }, 403);
+  });
   app.use(async (c, next) => {
     c.set("deps", deps);
     c.set("db", deps.db);
@@ -254,6 +268,23 @@ export function createApp(deps: Deps, config: Config, opts: AppOptions = {}) {
     return auth.handler(new Request(c.req.url, { method: "POST", headers, body: isObject ? text : "{}" }));
   });
   app.post("/api/auth/sign-up/email", signUpHumanCheck);
+  // "Send the link again" while signed out: the same check as signing up (when there's one), so it can't be scripted.
+  app.post("/api/auth/send-verification-email", async (c, next) =>
+    (await auth.api.getSession({ headers: c.req.raw.headers })) ? next() : signUpHumanCheck(c, next),
+  );
+  // A confirmation link (Better Auth's /verify-email, switched off) opens the sign-in screen, which asks for the
+  // account's password to confirm it (lib/email-verification.ts) — and goes on to the invitation it came from.
+  app.get("/api/auth/verify-email", (c) => {
+    const token = c.req.query("token") ?? "";
+    let hash = "#/";
+    try {
+      const back = new URL(c.req.query("callbackURL") ?? "/", config.PUBLIC_URL);
+      if (back.origin === new URL(config.PUBLIC_URL).origin && back.hash.startsWith("#/")) hash = back.hash;
+    } catch {
+      // not a URL: home
+    }
+    return c.redirect(`/?confirm=${encodeURIComponent(token)}${hash}`, 302);
+  });
   app.post("/api/auth/:path{sign-in/email|sign-up/email}", countSignIns);
   // Coming back from single sign-on (lib/sso.ts): a refusal Better Auth answers as an error (Ferret's sign-up rules:
   // invite-only) goes back to the sign-in screen with the reason, rather than leaving the browser on a JSON error.
@@ -324,5 +355,9 @@ export function createApp(deps: Deps, config: Config, opts: AppOptions = {}) {
   return { app, auth, files };
 }
 
-/** A log line with calendar feed tokens hidden. */
-export const redactTokens = (line: string) => line.replace(/\/calendar\/[\w-]+\.ics/g, "/calendar/…ics");
+/** A log line with the secrets in links hidden: calendar feeds, share and borrower links, emailed tokens. */
+export const redactTokens = (line: string) =>
+  line
+    .replace(/\/calendar\/[\w-]+\.ics/g, "/calendar/…ics")
+    .replace(/\/(s|b|api\/v1\/shared|api\/v1\/borrowed)\/[\w-]{16,}/g, "/$1/…")
+    .replace(/([?&](?:token|confirm)=)[^&\s]+/g, "$1…");

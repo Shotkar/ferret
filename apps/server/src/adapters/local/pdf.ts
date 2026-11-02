@@ -7,6 +7,12 @@ import type { PdfPages } from "../../ports";
 const STANDARD_FONTS = `${path.join(path.dirname(createRequire(import.meta.url).resolve("pdfjs-dist/package.json")), "standard_fonts")}/`;
 /** A hostile PDF can be made to take ages: give up after this. */
 const TIME_LIMIT_MS = 20_000;
+/**
+ * And to take memory: a few kilobytes can declare an enormous picture. Pictures larger than this (pixels) are left
+ * out of the page, and nothing is drawn onto a canvas larger than this (bytes) — a thumbnail needs neither.
+ */
+const MAX_IMAGE_PX = 16_000_000;
+const MAX_CANVAS_BYTES = 64 * 1024 * 1024;
 
 /**
  * Draws a PDF's first page with pdf.js (Mozilla's renderer, made for untrusted PDFs) onto @napi-rs/canvas. Nothing in
@@ -20,6 +26,8 @@ export class PdfJsPages implements PdfPages {
       useSystemFonts: false,
       standardFontDataUrl: STANDARD_FONTS,
       verbosity: 0,
+      maxImageSize: MAX_IMAGE_PX,
+      canvasMaxAreaInBytes: MAX_CANVAS_BYTES,
     });
     let timer: ReturnType<typeof setTimeout> | undefined;
     const tooSlow = new Promise<null>((resolve) => {

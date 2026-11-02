@@ -181,7 +181,8 @@ export async function markActive(db: Db, householdId: string, known: string | nu
 // ── Settings → Plan & usage ─────────────────────────────────────────────────
 
 /** The household's plan (if any), this period's usage by person, and what it holds — GET /api/v1/plan. */
-export async function planReport(w: Pick<Who, "db" | "deps" | "householdId">): Promise<PlanReport> {
+/** `owner`: whether it's for the household's owner — the service's billing pages and links are only for them. */
+export async function planReport(w: Pick<Who, "db" | "deps" | "householdId">, owner = true): Promise<PlanReport> {
   const plan = await planOf(w);
   const period = periodOf(plan);
   const rows = await w.db
@@ -208,7 +209,16 @@ export async function planReport(w: Pick<Who, "db" | "deps" | "householdId">): P
   const [members] = await w.db.select({ n: sql<number>`count(*)` }).from(member).where(eq(member.organizationId, w.householdId));
   const limits = plan?.limits;
   return {
-    plan: plan ? { name: plan.name, limits: plan.limits, upgradeUrl: plan.upgradeUrl ?? null, manageUrl: plan.manageUrl ?? null, links: plan.links ?? [], status: plan.status ?? null } : null,
+    plan: plan
+      ? {
+          name: plan.name,
+          limits: plan.limits,
+          upgradeUrl: owner ? (plan.upgradeUrl ?? null) : null,
+          manageUrl: owner ? (plan.manageUrl ?? null) : null,
+          links: owner ? (plan.links ?? []) : [],
+          status: plan.status ?? null,
+        }
+      : null,
     period: { start: plan?.period?.start ?? period, end: plan?.period?.end ?? null },
     aiActions: { used: byPerson.reduce((n, p) => n + p.aiActions, 0), limit: limits ? (limits.ai ? limits.aiActions : 0) : null },
     barcodeLookups: w.deps.products ? { used: byPerson.reduce((n, p) => n + p.barcodeLookups, 0), limit: limits?.barcodeLookups ?? null } : null,

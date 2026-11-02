@@ -1,6 +1,7 @@
 /** Lending: lent and borrowed things, reminder emails to borrowers, and the borrower's page (no account). */
 import { today } from "@ferret/shared/utils";
 import { describe, expect, it } from "vitest";
+import { loan as loanTable } from "../src/db/schema";
 import { sendLoanReminders } from "../src/lib/loans";
 import { config, FakeNotifier, setup } from "./helpers";
 
@@ -8,6 +9,8 @@ type User = Awaited<ReturnType<Awaited<ReturnType<typeof setup>>["user"]>>;
 const json = async <T>(res: Response | Promise<Response>) => (await (await res).json()) as T;
 const send = (u: User, method: string, url: string, data?: object) => u.as(url, { method, ...(data ? { body: JSON.stringify(data) } : {}) });
 const MAIL = "mailtos://ferret:pw@mail.example.com";
+/** Loans written down on this day (reminders count from it). */
+const recordedOn = (db: Awaited<ReturnType<typeof setup>>["db"], day: string) => db.update(loanTable).set({ createdAt: new Date(`${day}T12:00:00Z`) });
 
 describe("lending", () => {
   it("lends, reminds the borrower by email, lets them say it's back, and ends", async () => {
@@ -26,6 +29,7 @@ describe("lending", () => {
     expect(await json(ann.as("/api/v1/loans"))).toMatchObject({ data: [{ id: loan.id, itemName: "Ladder" }], canEmail: true });
 
     // The first reminder a week after lending; then not again until the next week.
+    await recordedOn(db, "2026-05-03");
     const remind = (on: string) => sendLoanReminders({ db, notifier, files, mailUrl: MAIL, appUrl: config.PUBLIC_URL, on });
     expect(await remind("2026-05-09")).toBe(0);
     expect(await remind("2026-05-10")).toBe(1);
@@ -63,6 +67,7 @@ describe("lending", () => {
     const ann = await user("ann");
     const drill = await ann.addItem({ name: "Drill" });
     await send(ann, "POST", `/api/v1/items/${drill.id}/loans`, { direction: "lent", person: "Pat", email: "pat@example.com", since: "2026-06-01", dueOn: "2026-06-20", remindEvery: "month" });
+    await recordedOn(db, "2026-06-01");
     const remind = (on: string) => sendLoanReminders({ db, notifier, files, mailUrl: MAIL, appUrl: config.PUBLIC_URL, on });
     expect(await remind("2026-06-19")).toBe(0);
     expect(await remind("2026-06-20")).toBe(1);
@@ -70,6 +75,27 @@ describe("lending", () => {
     const token = /\/b\/([\w-]+)/.exec(notifier.sent[0]!.body)![1]!;
     expect(await json(app.request(`/api/v1/borrowed/${token}/stop`, { method: "POST" }))).toMatchObject({ stopped: true });
     expect(await remind("2026-07-20")).toBe(0);
+
+    // "Stop" is for the address: lending them something else (or the same again) doesn't start the emails again.
+    const loans = await json<{ data: { id: string }[] }>(ann.as("/api/v1/loans"));
+    expect((await send(ann, "DELETE", `/api/v1/loans/${loans.data[0]!.id}`)).status).toBeLessThan(300);
+    await send(ann, "POST", `/api/v1/items/${drill.id}/loans`, { direction: "lent", person: "Pat", email: "PAT@example.com", since: "2026-08-01", remindEvery: "week" });
+    await recordedOn(db, "2026-08-01");
+    expect(await remind("2026-08-08")).toBe(0);
+    expect(notifier.sent).toHaveLength(1);
+  });
+
+  it("counts reminders from when a loan is written down, not the day it went", async () => {
+    const notifier = new FakeNotifier();
+    const { db, files, user } = await setup({ notifier, mailUrl: MAIL });
+    const ann = await user("ann");
+    const tent = await ann.addItem({ name: "Tent" });
+    await send(ann, "POST", `/api/v1/items/${tent.id}/loans`, { direction: "lent", person: "Lee", email: "lee@example.com", since: "2020-01-01", remindEvery: "week" });
+    await recordedOn(db, "2026-09-01");
+    const remind = (on: string) => sendLoanReminders({ db, notifier, files, mailUrl: MAIL, appUrl: config.PUBLIC_URL, on });
+    expect(await remind("2026-09-01")).toBe(0);
+    expect(await remind("2026-09-07")).toBe(0);
+    expect(await remind("2026-09-08")).toBe(1);
   });
 
   it("reminds you to give back what you borrowed, and keeps borrowers' emails out of it", async () => {

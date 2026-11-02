@@ -120,6 +120,11 @@ describe("calendar feed", () => {
     expect(ics).toContain(`DTSTART;VALUE=DATE:${addDays(today(), 30).replace(/-/g, "")}`);
     expect(ics.match(/BEGIN:VALARM/g)).toHaveLength(2);
     expect(ics.split("\r\n").every((line) => new TextEncoder().encode(line).length <= 75)).toBe(true);
+    // Any line break in what people typed stays inside its line.
+    await send(ann, "POST", "/api/v1/maintenance", { title: "Oil\rATTACH:https://example.invalid/a", notes: "a\rEND:VEVENT\u2028b", dueOn: addDays(today(), 3) });
+    const again = await (await app.request(path)).text();
+    expect(again.split("\r\n").some((line) => /[\r\n\u2028]/.test(line))).toBe(false);
+    expect(again).toContain("Oil\\nATTACH:https://example.invalid/a");
 
     // The link can be shown again (it's kept sealed with the household key).
     expect(await json(ann.as("/api/v1/calendar"))).toMatchObject({ active: true, url, webcal });

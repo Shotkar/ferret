@@ -83,22 +83,35 @@ export function Splash() {
  * the email is fixed to the invited address and creating an account is always on offer.
  *
  * Every account but the first confirms its email: after signing up, "check your email"; the link comes back to
- * `/?verified=1#/…` (Better Auth adds `error=` when the link didn't work), where this says so and asks to sign in.
+ * `/?confirm=<token>#/…`, where signing in with the account's password confirms it (the link alone proves the inbox,
+ * not who chose the password).
  */
 export function AuthScreen({ email: invited, invitationId, intro }: { email?: string; invitationId?: string; intro?: React.ReactNode }) {
   const verified = verifiedReturn();
-  const [mode, setMode] = useState<"signIn" | "signUp" | "forgot">(invited && !verified ? "signUp" : "signIn");
+  const [confirm, setConfirm] = useState(confirmReturn);
+  const [mode, setMode] = useState<"signIn" | "signUp" | "forgot">(invited && !verified && !confirm ? "signUp" : "signIn");
   // Signed up, waiting for the email to be confirmed: the address it went to.
   const [checkEmail, setCheckEmail] = useState<string | null>(null);
   // Tried to sign in before confirming: offer the link again.
   const [unconfirmed, setUnconfirmed] = useState<string | null>(null);
+  const options = useQuery({ queryKey: ["auth-options"], queryFn: api.authOptions });
+  // Sending the link again asks "are you a person?" too, when the server has the check.
+  const resendCheck = useRef<HumanCheckHandle>(null);
+  const [resendToken, setResendToken] = useState<string | null>(null);
+  const resendChecking = options.data?.humanCheck;
   const resend = useMutation({
     mutationFn: async (email: string) => {
-      const result = await authClient.sendVerificationEmail({ email, callbackURL: verifyCallback(invitationId) });
+      if (resendChecking && !resendToken) throw new Error("Tick the \"I'm a person\" check first.");
+      const result = await authClient.sendVerificationEmail({
+        email,
+        callbackURL: verifyCallback(invitationId),
+        fetchOptions: resendToken ? { headers: { "X-Turnstile-Token": resendToken } } : undefined,
+      });
+      if (resendChecking) resendCheck.current?.reset();
       if (result.error) throw new Error(result.error.message || "Couldn't send it — try again in a minute");
     },
   });
-  const options = useQuery({ queryKey: ["auth-options"], queryFn: api.authOptions, enabled: !invited });
+  const resendWidget = resendChecking ? <HumanCheck ref={resendCheck} siteKey={resendChecking.siteKey} onToken={setResendToken} /> : null;
   const canSignUp = Boolean(invited) || options.data?.signUp === true;
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -170,6 +183,18 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
     }
     setBusy(true);
     setError(null);
+    // From a confirmation link: the password it was made with confirms the account, then signs in as usual.
+    if (mode === "signIn" && confirm) {
+      const confirmed = await confirmEmail(confirm.token, password);
+      if (!confirmed.ok) {
+        setBusy(false);
+        setError(confirmed.message);
+        if (confirmed.expired) setConfirm(null);
+        return;
+      }
+      setConfirm(null);
+      clearVerifiedReturn();
+    }
     const result =
       mode === "signIn"
         ? await signInWithCheck(email, password)
@@ -241,9 +266,12 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
             {resend.isSuccess ? (
               <div className="alert alert-soft alert-success text-sm">Sent again.</div>
             ) : (
-              <button type="button" className="btn btn-soft btn-primary" disabled={resend.isPending} onClick={() => resend.mutate(checkEmail)}>
-                Send it again
-              </button>
+              <>
+                {resendWidget}
+                <button type="button" className="btn btn-soft btn-primary" disabled={resend.isPending} onClick={() => resend.mutate(checkEmail)}>
+                  Send it again
+                </button>
+              </>
             )}
             {resend.isError && <div className="alert alert-soft alert-error text-sm">{resend.error.message}</div>}
             <button type="button" className="btn btn-text btn-sm" onClick={() => {
@@ -288,7 +316,12 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
               {ssoResult}
             </div>
           )}
-          {verified === "ok" && (
+          {confirm && (
+            <div className="alert alert-soft alert-info text-sm" role="status">
+              Sign in with the password you chose to confirm your email.
+            </div>
+          )}
+          {verified === "ok" && !confirm && (
             <div className="alert alert-soft alert-success text-sm" role="status">
               Your email is confirmed. Sign in to carry on.
             </div>
@@ -325,8 +358,8 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
                 className="input"
                 required
                 autoComplete={mode === "signIn" && !invited ? "username webauthn" : "email"}
-                defaultValue={invited}
-                readOnly={Boolean(invited)}
+                defaultValue={confirm?.email ?? invited}
+                readOnly={Boolean(invited || confirm?.email)}
                 ref={emailInput}
               />
             </div>
@@ -366,10 +399,13 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
                 {resend.isSuccess ? (
                   <p>A new link is on its way to {unconfirmed}.</p>
                 ) : (
-                  <button type="button" className="btn btn-soft btn-primary btn-sm w-full" disabled={resend.isPending} onClick={() => resend.mutate(unconfirmed)}>
-                    {resend.isPending ? <span className="loading loading-spinner loading-xs" /> : <span className="icon-[tabler--mail] size-4" />}
-                    Send the link again
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    {resendWidget}
+                    <button type="button" className="btn btn-soft btn-primary btn-sm w-full" disabled={resend.isPending} onClick={() => resend.mutate(unconfirmed)}>
+                      {resend.isPending ? <span className="loading loading-spinner loading-xs" /> : <span className="icon-[tabler--mail] size-4" />}
+                      Send the link again
+                    </button>
+                  </div>
                 )}
                 {resend.isError && <p className="mt-2 text-error">{resend.error.message}</p>}
               </div>
@@ -394,7 +430,7 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
               {checking ? "Checking you're not a robot…" : mode === "signIn" ? "Sign in" : "Create account"}
             </button>
           </form>
-          {mode === "signIn" && !invited && (passkeysSupported() || options.data?.signInLink || options.data?.sso) && (
+          {mode === "signIn" && !invited && !confirm && (passkeysSupported() || options.data?.signInLink || options.data?.sso) && (
             <div className="flex flex-col gap-2">
               <div className="divider my-0 text-xs text-base-content/70">or</div>
               {options.data?.sso && (
@@ -455,6 +491,34 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
 /** Where an email confirmation link brings the person back to: the invitation they came from, or the app. */
 const verifyCallback = (invitationId?: string) => `/?verified=1#/${invitationId ? `invite/${encodeURIComponent(invitationId)}` : ""}`;
 
+/** A confirmation link (`?confirm=<token>`, via the server): its token, and the address it's for (to show). */
+function confirmReturn(): { token: string; email: string | null } | null {
+  const token = new URLSearchParams(window.location.search).get("confirm");
+  if (!token) return null;
+  let email: string | null = null;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]!.replace(/-/g, "+").replace(/_/g, "/"))) as { email?: unknown };
+    if (typeof payload.email === "string") email = payload.email;
+  } catch {
+    // not one we can read: the server will say
+  }
+  return { token, email };
+}
+
+/** Confirms the account the link is for, with the password it was made with. */
+async function confirmEmail(token: string, password: string): Promise<{ ok: true } | { ok: false; message: string; expired: boolean }> {
+  const res = await fetch("/api/auth/confirm-email", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, password }),
+  }).catch(() => null);
+  if (res?.ok) return { ok: true };
+  const body = (await res?.json().catch(() => null)) as { code?: string; message?: string } | null;
+  if (res?.status === 429) return { ok: false, message: "Too many tries from here — wait a minute.", expired: false };
+  return { ok: false, message: body?.message ?? "Couldn't confirm it just now — try again.", expired: body?.code === "LINK_EXPIRED" };
+}
+
 /** Back from a confirmation link: "ok", "failed" (expired or used), or null if not. */
 function verifiedReturn(): "ok" | "failed" | null {
   const params = new URLSearchParams(window.location.search);
@@ -492,7 +556,7 @@ function linkReturn(): "failed" | "two-step" | null {
   return v === "failed" || v === "two-step" ? v : null;
 }
 
-/** Once signed in, the address bar loses ?verified (and ?error) again. */
+/** Once signed in, the address bar loses ?verified, ?confirm (and ?error) again. */
 const clearVerifiedReturn = () => window.history.replaceState(null, "", `/${window.location.hash}`);
 
 /**

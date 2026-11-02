@@ -3,7 +3,7 @@ import type { InvitationEmails, InvitationPreview } from "@ferret/shared";
 import { describe, expect, it } from "vitest";
 import { and, eq } from "drizzle-orm";
 import { INVITATION_HEADER } from "../src/auth";
-import { job } from "../src/db/schema";
+import { invitation as invitationTable, job } from "../src/db/schema";
 import { VERIFY_EMAIL_JOB, sendVerificationJob } from "../src/lib/email-verification";
 import { INVITE_EMAIL_JOB, INVITES_A_DAY, RESEND_AFTER_MS, sendInvitationJob } from "../src/lib/invitation-email";
 import { FakeNotifier, PASSWORD, config, setup, verifiedAccount } from "./helpers";
@@ -34,7 +34,15 @@ async function confirmAndSignIn(env: Env, notifier: FakeNotifier, name: string) 
   expect(link).toBeTruthy();
   const opened = await env.app.request(link!);
   expect(opened.status).toBe(302);
-  expect(opened.headers.get("location")).toMatch(/^\/\?verified=1#\//);
+  // The sign-in screen, back to the invitation; signing in there with the password confirms the account.
+  const back = /^\/\?confirm=([^#]+)#\//.exec(opened.headers.get("location") ?? "");
+  expect(back).toBeTruthy();
+  const confirmed = await env.app.request("/api/auth/confirm-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: config.PUBLIC_URL },
+    body: JSON.stringify({ token: decodeURIComponent(back![1]!), password: PASSWORD }),
+  });
+  expect(confirmed.status).toBe(200);
   const signIn = await env.app.request("/api/auth/sign-in/email", {
     method: "POST",
     headers: { "Content-Type": "application/json", Origin: config.PUBLIC_URL },
@@ -220,5 +228,60 @@ describe("invitations", () => {
     const owner = await env.user("owner");
     await owner.as("/api/auth/organization/invite-member", post({ email: "kim@example.com", role: "member" }));
     expect((await (await owner.as("/api/v1/household/invitations")).json()) as InvitationEmails).toEqual({ email: false, data: [] });
+  });
+
+  it("take only one known role, written exactly — never a list", async () => {
+    const env = await setup();
+    const owner = await env.user("owner");
+    for (const role of ["admin, owner", "admin,owner", " owner", "owner ", "Admin"]) {
+      expect((await owner.as("/api/auth/organization/invite-member", post({ email: "x@example.com", role }))).status).toBe(400);
+    }
+    expect((await owner.as("/api/auth/organization/invite-member", post({ email: "x@example.com", role: ["admin", "owner"] }))).status).toBe(400);
+    const bob = await env.user("bob");
+    const { id } = (await (await owner.as("/api/auth/organization/invite-member", post({ email: "bob@example.com", role: "member" }))).json()) as { id: string };
+    expect((await bob.as("/api/auth/organization/accept-invitation", post({ invitationId: id }))).status).toBe(200);
+    const members = (await (await owner.as(`/api/auth/organization/list-members?organizationId=${owner.householdId}`)).json()) as { members: { id: string; user: { email: string } }[] };
+    const bobs = members.members.find((m) => m.user.email === "bob@example.com")!;
+    const change = (role: unknown) => owner.as("/api/auth/organization/update-member-role", post({ memberId: bobs.id, role, organizationId: owner.householdId }));
+    expect((await change("member, owner")).status).toBe(400);
+    expect((await change("viewer")).status).toBe(200);
+  });
+
+  it("end with the authority of whoever sent them: a removed or demoted admin's invitations and share links stop", async () => {
+    const env = await setup();
+    const owner = await env.user("owner");
+    const bob = await env.user("bob");
+    const invite = async (by: typeof owner, email: string, role: string) => {
+      const res = await by.as("/api/auth/organization/invite-member", post({ email, role, organizationId: owner.householdId }));
+      expect(res.status).toBe(200);
+      return ((await res.json()) as { id: string }).id;
+    };
+    const join = async (who: typeof owner, invitationId: string) => who.as("/api/auth/organization/accept-invitation", post({ invitationId }));
+    expect((await join(bob, await invite(owner, "bob@example.com", "admin"))).status).toBe(200);
+    const asBob = (url: string, init: RequestInit = {}) => bob.as(url, { ...init, headers: { "X-Household-Id": owner.householdId } });
+
+    // Bob, an admin, invites Cy and Dee as admins and shares the report.
+    const forCy = await invite(bob, "cy@example.com", "admin");
+    const forDee = await invite(bob, "dee@example.com", "admin");
+    const shared = (await (await asBob("/api/v1/shares", post({ kind: "report", days: 30 }))).json()) as { url: string };
+    const token = shared.url.split("/s/")[1]!;
+    expect((await env.app.request(`/api/v1/shared/${token}`)).status).toBe(200);
+
+    // Demoted: his invitations are withdrawn — and one put back to pending by hand still can't be accepted.
+    const members = (await (await owner.as(`/api/auth/organization/list-members?organizationId=${owner.householdId}`)).json()) as { members: { id: string; user: { email: string } }[] };
+    const bobs = members.members.find((m) => m.user.email === "bob@example.com")!;
+    expect((await owner.as("/api/auth/organization/update-member-role", post({ memberId: bobs.id, role: "member", organizationId: owner.householdId }))).status).toBe(200);
+    expect(((await (await env.app.request(`/api/v1/invitations/${forCy}`)).json()) as InvitationPreview).status).toBe("canceled");
+    expect((await env.app.request(`/api/v1/shared/${token}`)).status).not.toBe(200);
+    await env.db.update(invitationTable).set({ status: "pending" }).where(eq(invitationTable.id, forDee));
+    expect(((await (await env.app.request(`/api/v1/invitations/${forDee}`)).json()) as InvitationPreview).status).toBe("canceled");
+    const dee = await env.user("dee");
+    expect((await join(dee, forDee)).status).toBe(403);
+
+    // Removed: the same.
+    expect((await owner.as("/api/auth/organization/update-member-role", post({ memberId: bobs.id, role: "admin", organizationId: owner.householdId }))).status).toBe(200);
+    const forEd = await invite(bob, "ed@example.com", "member");
+    expect((await owner.as("/api/auth/organization/remove-member", post({ memberIdOrEmail: "bob@example.com", organizationId: owner.householdId }))).status).toBe(200);
+    expect(((await (await env.app.request(`/api/v1/invitations/${forEd}`)).json()) as InvitationPreview).status).toBe("canceled");
   });
 });

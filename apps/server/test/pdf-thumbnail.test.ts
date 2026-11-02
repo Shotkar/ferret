@@ -39,4 +39,17 @@ describe("PDF thumbnails", () => {
     await before.jobs.drain();
     expect((await list()).find((d) => d.id === receipt.id)!.hasThumbnail).toBe(true);
   });
+
+  it("are tried once for each PDF, even when the server stops part-way", async () => {
+    let tries = 0;
+    const crashing = { firstPage: async () => { tries++; throw new Error("killed"); } };
+    const { user, jobs } = await setup({ pdfPages: crashing, maxAttempts: 3, baseDelayMs: 0 });
+    const ann = await user("ann");
+    const drill = await ann.addItem({ name: "Drill" });
+    await ann.upload(drill.id, realPdf(), "receipt.pdf", "document");
+    await jobs.drain();
+    await jobs.enqueue(PDF_BACKFILL_JOB, {});
+    await jobs.drain();
+    expect(tries).toBe(1);
+  });
 });

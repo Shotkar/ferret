@@ -73,6 +73,13 @@ describe("responses", () => {
     expect(big.status).toBe(413);
   });
 
+  it("log share, borrower and emailed links without their token", () => {
+    expect(redactTokens("<-- GET /api/v1/shared/AbCdEfGhIjKlMnOpQrStUv_-123/items.csv")).toBe("<-- GET /api/v1/shared/…/items.csv");
+    expect(redactTokens("<-- GET /s/AbCdEfGhIjKlMnOpQrStUv_-123")).toBe("<-- GET /s/…");
+    expect(redactTokens("<-- POST /api/v1/borrowed/AbCdEfGhIjKlMnOpQrStUv/stop")).toBe("<-- POST /api/v1/borrowed/…/stop");
+    expect(redactTokens("<-- GET /api/auth/verify-email?token=eyJ.x.y&callbackURL=/")).toBe("<-- GET /api/auth/verify-email?token=…&callbackURL=/");
+  });
+
   it("log calendar feeds without their token", () => {
     expect(redactTokens("<-- GET /calendar/AbC_123-xyzxyzxyzxyzxyz.ics")).toBe("<-- GET /calendar/…ics");
     expect(redactTokens("--> GET /api/v1/items 200 3ms")).toBe("--> GET /api/v1/items 200 3ms");
@@ -136,6 +143,40 @@ describe("notification channels", () => {
       expect((await add(url)).status).toBe(422);
     }
     expect((await add("ntfys://ntfy.sh/topic")).status).toBe(201);
-    expect((await add("hassio://ha.lan/token")).status).toBe(201);
+    expect((await add("hassio://ha.lan/token")).status).toBe(201); // ann set Ferret up: her network is hers to name
+  });
+
+  it("to an address on the server's own network are only for whoever runs it", async () => {
+    const { user } = await setup({ notifier: new FakeNotifier() });
+    await user("admin");
+    const bo = await user("bo");
+    const add = (url: string) => bo.as("/api/v1/notifications", { method: "POST", body: JSON.stringify({ name: "x", url }) });
+    for (const url of ["ntfy://10.0.0.5:8080/topic", "hassio://ha.lan/token", "gotify://box/token", "ntfys://localhost/x", "ntfy://[::1]/x", "ntfy://2130706433/x", "ntfy://0x7f.1/x", "mailtos://u:p@example.com?smtp=192.168.1.2", "ntfy://user:pw@169.254.169.254/x"]) {
+      expect((await add(url)).status, url).toBe(403);
+    }
+    for (const url of ["ntfys://ntfy.sh/topic", "ntfy://mytopic", "pover://user@token", "tgram://bottoken/chat", "mailtos://u:p@gmail.com"]) {
+      expect((await add(url)).status, url).toBe(201);
+    }
+  });
+});
+
+describe("changes with the session cookie", () => {
+  it("come only from Ferret's own pages; API keys and scripts without a browser are unaffected", async () => {
+    const { app, user } = await setup();
+    const ann = await user("ann");
+    const add = (headers: Record<string, string>) => ann.as("/api/v1/items", { method: "POST", body: JSON.stringify({ name: "Lamp" }), headers });
+    expect((await add({ Origin: "https://other.example", "Sec-Fetch-Site": "same-site" })).status).toBe(403);
+    expect((await add({ Origin: "null" })).status).toBe(403);
+    expect((await add({ Origin: "", "Sec-Fetch-Site": "cross-site", "Content-Type": "text/plain" })).status).toBe(403);
+    expect((await add({ "Sec-Fetch-Site": "same-origin" })).status).toBe(201);
+    expect((await add({})).status).toBe(201); // the app's own Origin
+    expect((await ann.as("/api/v1/items", { headers: { Origin: "https://other.example" } })).status).toBe(200); // reading isn't a change
+    const { key } = (await (await ann.as("/api/v1/api-keys", { method: "POST", body: JSON.stringify({ name: "script" }) })).json()) as { key: string };
+    const scripted = await app.request("/api/v1/items", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", Origin: "https://other.example" },
+      body: JSON.stringify({ name: "Kettle" }),
+    });
+    expect(scripted.status).toBe(201);
   });
 });

@@ -49,7 +49,8 @@ On an iPhone, Ferret has to be [installed on the Home Screen](./phone) first.
 
 Get reminders in **ntfy, Pushover, Telegram, email** and many other apps, by adding an address for that app (an
 *Apprise URL* — the page shows examples). **Send a test** checks it works. (Needs whoever runs Ferret to have turned this
-on; see [Email and notifications](../hosting/email).)
+on; see [Email and notifications](../hosting/email).) An address on the server's own network — a self-hosted ntfy or
+Home Assistant at home — can only be added by whoever runs Ferret (its server admin).
 
 ## Weekly summary
 

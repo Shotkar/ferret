@@ -9,6 +9,7 @@ import { HTTPException } from "hono/http-exception";
 import { notificationChannel, pushSubscription } from "../db/schema";
 import type { Db, Deps, Notifier } from "../ports";
 import type { FileStore } from "./files";
+import { isServerAdmin } from "./server-admin";
 
 /** Enough for a phone, a family channel and email, without letting a list grow unchecked. */
 const MAX_CHANNELS = 10;
@@ -40,6 +41,11 @@ export async function listChannels(o: Owner) {
 export async function addChannel(o: Owner, input: NotificationChannelInput) {
   if ((await listChannels(o)).length >= MAX_CHANNELS) {
     throw new HTTPException(409, { message: `You can have up to ${MAX_CHANNELS} — remove one first` });
+  }
+  // The server sends to it from its own network: an address there (a self-hosted ntfy, Home Assistant…) is the server
+  // admin's to add, not everyone's.
+  if (onLocalNetwork(input.url) && !(await isServerAdmin(o.db, o.userId))) {
+    throw new HTTPException(403, { message: "Only whoever runs this Ferret can add an address on its own network" });
   }
   const [row] = await o.db
     .insert(notificationChannel)
@@ -116,4 +122,50 @@ export async function notifyPerson(
       await notifier.send(mailTo(deps.mailUrl, opts.email), { title: message.title, body: `${message.body}\n\n${message.url}${details}` }).catch(() => {});
     }
   }
+}
+
+/**
+ * Whether an Apprise URL points at the server's own network: a private, loopback or link-local address (in any
+ * spelling), localhost, a name only a local network knows (.lan, .local, .internal, .home.arpa), or a bare name with
+ * a path after it (ntfy://topic is a topic on ntfy.sh, but ntfy://box/topic is a machine called box). Also an email
+ * URL's own mail server (?smtp=).
+ */
+export function onLocalNetwork(url: string) {
+  // Only the services that can be self-hosted name a machine; the others' first part is a token for their cloud.
+  if (!SELF_HOSTED.has(url.slice(0, url.indexOf("://")).toLowerCase())) return false;
+  const rest = url.slice(url.indexOf("://") + 3);
+  const end = rest.search(/[/?#]/);
+  const authority = end < 0 ? rest : rest.slice(0, end);
+  const hasPath = end >= 0 && rest[end] === "/" && rest.length > end + 1;
+  const host = authority.slice(authority.lastIndexOf("@") + 1);
+  const smtp = /[?&]smtp=([^&#]+)/i.exec(rest)?.[1];
+  return localHost(host, hasPath) || (smtp !== undefined && localHost(decodeURIComponent(smtp), true));
+}
+
+const SELF_HOSTED = new Set(["ntfy", "ntfys", "hassio", "hassios", "gotify", "gotifys", "matrix", "matrixs", "bark", "barks", "signal", "signals", "mailto", "mailtos"]);
+
+function localHost(hostPort: string, hasPath: boolean) {
+  const host = (hostPort.startsWith("[") ? hostPort.slice(1, hostPort.indexOf("]")) : hostPort.replace(/:\d*$/, "")).toLowerCase().replace(/\.$/, "");
+  if (!host) return false;
+  if (host.includes(":")) return localIPv6(host);
+  if (/^[\d.x]+$/i.test(host) || /^0x[\da-f.x]+$/i.test(host)) return localIPv4(host);
+  if (host === "localhost" || /\.(localhost|local|lan|internal|home\.arpa|localdomain|home|intranet)$/.test(host)) return true;
+  return !host.includes(".") && hasPath;
+}
+
+/** Strict a.b.c.d is checked; any other way of writing a number as an address (2130706433, 0x7f.1…) counts as local. */
+function localIPv4(host: string) {
+  const parts = host.split(".");
+  if (parts.length !== 4 || !parts.every((p) => /^(0|[1-9]\d{0,2})$/.test(p) && Number(p) <= 255)) return true;
+  const [a, b] = parts.map(Number) as [number, number];
+  return a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b < 128) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b < 32) || (a === 192 && b === 168) || a >= 224;
+}
+
+function localIPv6(host: string) {
+  const h = host.split("%")[0]!;
+  if (h === "::" || h === "::1") return true;
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(h);
+  if (mapped) return localIPv4(mapped[1]!);
+  if (/^::ffff:/.test(h)) return true;
+  return /^f[cd]/.test(h) || /^fe[89ab]/.test(h);
 }

@@ -9,7 +9,7 @@ fake site can steal. **Add a passkey** on the device you want to use (an iPhone'
 iCloud Keychain, so one is often enough), then choose **Sign in with a passkey** on the sign-in page, or pick it from
 the suggestions under Email. A passkey counts as both steps of two-step sign-in.
 
-Adding one needs a sign-in from the last day — if it's been longer, sign out and back in first. Ferret tells you
+Adding one needs a sign-in from the last 15 minutes — if it's been longer, sign out and back in first. Ferret tells you
 whenever a passkey is added (push, your other apps, email). **Remove** takes one away.
 
 ## Email me a sign-in link

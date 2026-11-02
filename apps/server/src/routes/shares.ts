@@ -37,7 +37,8 @@ shared.use(async (c, next) => {
 });
 shared.get("/:token", async (c) => {
   const { link, v } = await openShare(c.var.deps, c.req.param("token"));
-  const seen = { ipAddress: c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || null, userAgent: c.req.header("user-agent") ?? null };
+  // X-Forwarded-For is the one address the server put there (server.ts, from a trusted proxy or the connection).
+  const seen = { ipAddress: c.req.header("x-forwarded-for")?.split(",").at(-1)?.trim() || null, userAgent: c.req.header("user-agent") ?? null };
   return c.json(await sharedView(v, link, seen));
 });
 shared.get("/:token/items.csv", async (c) => {

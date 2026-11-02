@@ -3,6 +3,7 @@
  * link is for. (Plus the API description, which does need a sign-in or key.) The invitation id in the link is the secret (long and random),
  * the same as Better Auth's own accept/reject endpoints rely on.
  */
+import { mayStillInvite } from "../auth";
 import { ssoOptions } from "../lib/sso";
 import type { InvitationPreview } from "@ferret/shared";
 import { count, eq } from "drizzle-orm";
@@ -73,17 +74,21 @@ join.get("/invitations/:id", async (c) => {
       expiresAt: invitation.expiresAt,
       householdName: organization.name,
       inviterName: user.name,
+      organizationId: invitation.organizationId,
+      inviterId: invitation.inviterId,
     })
     .from(invitation)
     .innerJoin(organization, eq(organization.id, invitation.organizationId))
     .innerJoin(user, eq(user.id, invitation.inviterId))
     .where(eq(invitation.id, c.req.param("id")));
   if (!row) throw new HTTPException(404, { message: "This invitation doesn't exist — ask for a new link" });
+  // Its sender no longer an owner or admin there: it can't be accepted, so it's as good as cancelled.
+  const withdrawn = row.status === "pending" && !(await mayStillInvite(c.var.db, { ...row, role: row.role ?? "member" }));
   const expired = row.status === "pending" && row.expiresAt < new Date();
   const preview: InvitationPreview = {
     email: row.email,
     role: row.role ?? "member",
-    status: expired ? "expired" : (row.status as InvitationPreview["status"]),
+    status: withdrawn ? "canceled" : expired ? "expired" : (row.status as InvitationPreview["status"]),
     householdName: row.householdName,
     inviterName: row.inviterName,
   };

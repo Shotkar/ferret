@@ -31,6 +31,7 @@ import { countEvent } from "../lib/analytics";
 import { type AppEnv, body, callerOf, requireHousehold, requireUser, requireWriter } from "../lib/context";
 import * as svc from "../lib/inventory";
 import { ownLabelsOf } from "../lib/own-labels";
+import { requireAllowed } from "../lib/plan";
 import { roomScansAvailable } from "../lib/room-scans";
 import { itemChanged, logActivity, withStatus } from "../lib/inventory";
 import { categoryDescendants, findTag } from "../lib/catalog";
@@ -353,6 +354,7 @@ inventory.post("/attachments/:id/analyze", requireWriter, async (c) => {
   if (found.originalRemovedAt) throw new HTTPException(409, { message: "Only a small copy of this is kept, so it can't be read again" });
   const job = analysisJob(c.var.deps, found.kind as AttachmentKind, found.contentType);
   if (!job) throw new HTTPException(409, { message: "Analysis for this kind of file isn't set up on this server" });
+  await requireAllowed(callerOf(c), found.kind === "photo" ? "ai.photo" : "ai.document");
   const [row] = await c.var.db
     .update(attachment)
     .set({ analysisStatus: "pending", suggestionsDismissedAt: null })

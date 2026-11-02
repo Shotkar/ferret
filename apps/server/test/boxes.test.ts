@@ -171,4 +171,19 @@ describe("labels you already have", () => {
     await send(ann, "PATCH", `/api/v1/items/${box.id}`, { name: "Box of cables" });
     expect((await json<Label>(send(ann, "POST", "/api/v1/labels/for", { itemId: box.id }))).code).toBe(a.code);
   });
+
+  it("with an API key, a scanned label opens only in the key's household", async () => {
+    const { app, user } = await setup();
+    const ann = await user("ann");
+    const cabin = ((await (await ann.as("/api/auth/organization/create", { method: "POST", body: JSON.stringify({ name: "Cabin", slug: "ann-cabin" }) })).json()) as { id: string }).id;
+    const inCabin = (url: string, init: RequestInit = {}) => ann.as(url, { ...init, headers: { "X-Household-Id": cabin } });
+    const { codes } = (await (await inCabin("/api/v1/labels/blank", { method: "POST", body: JSON.stringify({ count: 1 }) })).json()) as { codes: string[] };
+    expect((await ann.as(`/api/v1/labels/${codes[0]}`)).status).toBe(200); // signed in: any of your households
+    const atHome = (url: string, init: RequestInit = {}) => ann.as(url, { ...init, headers: { "X-Household-Id": ann.householdId } });
+    const { key } = (await (await atHome("/api/v1/api-keys", { method: "POST", body: JSON.stringify({ name: "home only" }) })).json()) as { key: string };
+    const byKey = (code: string) => app.request(`/api/v1/labels/${code}`, { headers: { Authorization: `Bearer ${key}` } });
+    expect((await byKey(codes[0]!)).status).toBe(404);
+    const { codes: home } = (await (await atHome("/api/v1/labels/blank", { method: "POST", body: JSON.stringify({ count: 1 }) })).json()) as { codes: string[] };
+    expect((await byKey(home[0]!)).status).toBe(200);
+  });
 });

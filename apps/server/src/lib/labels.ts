@@ -118,8 +118,10 @@ async function describe(v: Caller, row: typeof label.$inferSelect): Promise<Labe
  * What a scanned code opens, for someone signed in — in whichever of their
  * households it belongs to (the app switches to it). Not theirs: not found.
  */
-export async function resolveLabel(v: Omit<Caller, "householdId" | "timeZone">, code: string) {
+export async function resolveLabel(v: Omit<Caller, "householdId" | "timeZone">, code: string, onlyHousehold?: string) {
   const [row] = await v.db.select().from(label).where(eq(label.code, normalizeCode(code)));
-  if (!row || !(await membership(v.db, row.householdId, v.userId))) throw notFound("Label");
+  if (!row || (onlyHousehold !== undefined && row.householdId !== onlyHousehold) || !(await membership(v.db, row.householdId, v.userId))) {
+    throw notFound("Label");
+  }
   return describe({ ...v, householdId: row.householdId, timeZone: await householdTimeZone(v.db, row.householdId) }, row);
 }

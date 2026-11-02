@@ -117,10 +117,10 @@ if (existsSync(webRoot)) {
   console.warn(`Web app not found at ${webRoot} — API only. (Run the Vite dev server for the UI.)`);
 }
 
-// The client's address for Better Auth's limits, the sign-in guard and log, and unlock requests (the only readers of
-// X-Forwarded-For): believed only from TRUSTED_PROXIES.
+// The client's address for Better Auth's limits, the sign-in guard and log, unlock requests and the openings of share
+// and borrower links (the only readers of X-Forwarded-For): believed only from TRUSTED_PROXIES.
 const trustedProxies = proxyList(config.TRUSTED_PROXIES);
-const readsAddress = (req: Request) => /^\/api\/(auth|v1\/sign-in)\//.test(new URL(req.url).pathname);
+const readsAddress = (req: Request) => /^\/api\/(auth|v1\/sign-in|v1\/shared|v1\/borrowed)\//.test(new URL(req.url).pathname);
 
 // Sign-in by a forward-auth proxy's headers (lib/sso.ts): believed only when the connection itself is from
 // TRUSTED_HEADER_PROXIES — marked here, and a mark a client sends is always taken off.
