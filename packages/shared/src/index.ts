@@ -1727,3 +1727,17 @@ export interface ServerCertificates {
   trusted: ServerCertificate[];
   clients: ServerCertificate[];
 }
+
+/** A household at a glance, for home dashboards (GET /api/v1/summary). Counts only. */
+export interface HouseholdSummary {
+  household: string;
+  /** Things kept (not gone). */
+  things: number;
+  /** What they're worth: current value, else what was paid, times quantity — like the insurance report. */
+  valueCents: number;
+  /** Everything in the bell, and how many of those are urgent. */
+  needsAttention: number;
+  urgent: number;
+  /** On the shopping list. */
+  toBuy: number;
+}

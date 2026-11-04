@@ -127,6 +127,7 @@ export default defineConfig({
             { text: "Away from home", link: "/hosting/away-from-home" },
             { text: "Tunnels and access proxies", link: "/hosting/tunnels" },
             { text: "Certificates", link: "/hosting/certificates" },
+            { text: "Home dashboards", link: "/hosting/dashboards" },
             { text: "Upgrading", link: "/hosting/upgrading" },
           ],
         },

@@ -140,6 +140,7 @@ export const OPERATIONS: Operation[] = [
     description: "Maintenance overdue or due within a week, warranties ending within 30 days, claims with no news for 14 days, and photo-added items still to name. Urgent first. Entries disappear once dealt with.",
     returns: "{ data: AttentionItem[] }",
   },
+  { method: "get", path: "/summary", tag: "Items", summary: "A household at a glance, for home dashboards (Heimdall, Homepage…): things, their value, what needs attention, what to buy — counts only", returns: "HouseholdSummary" },
   { method: "get", path: "/overview", tag: "Items", summary: "The dashboard: value, gaps, warranties, maintenance, recent changes", returns: "Overview" },
 
   {

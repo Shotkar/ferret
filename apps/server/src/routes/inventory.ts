@@ -3,6 +3,7 @@
  * which the MCP tools call too, so the app and Claude always agree.
  * Accepts a session cookie or an API key (see lib/context.ts).
  */
+import { householdSummary } from "../lib/summary";
 import { PHOTO_ORDER } from "../lib/photo-order";
 import * as usage from "../lib/usage";
 import { usageReadingInput, itemsBulk,
@@ -143,6 +144,8 @@ inventory.get("/items", async (c) => {
 
 /** The Overview screen: value, warranties to act on, what's missing, recent changes. */
 inventory.get("/overview", requireUser, requireHousehold, async (c) => c.json(await svc.overview(callerOf(c))));
+/** For home dashboards (Heimdall, Homepage…): counts and the total only (lib/summary.ts). */
+inventory.get("/summary", requireUser, requireHousehold, async (c) => c.json(await householdSummary(callerOf(c))));
 
 /** Ask Ferret: a question answered from the household's own items and documents, with sources. */
 inventory.post("/ask", requireUser, requireHousehold, async (c) => {
