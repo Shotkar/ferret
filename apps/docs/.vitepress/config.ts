@@ -125,6 +125,8 @@ export default defineConfig({
             { text: "Backups and restoring", link: "/hosting/backups" },
             { text: "The server admin", link: "/hosting/server-admin" },
             { text: "Away from home", link: "/hosting/away-from-home" },
+            { text: "Tunnels and access proxies", link: "/hosting/tunnels" },
+            { text: "Certificates", link: "/hosting/certificates" },
             { text: "Upgrading", link: "/hosting/upgrading" },
           ],
         },

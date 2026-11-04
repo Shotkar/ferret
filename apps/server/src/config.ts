@@ -32,8 +32,8 @@ const schema = z.object({
    */
   TRUSTED_ORIGINS: z.string().optional(),
   /**
-   * The reverse proxies (e.g. Traefik) whose X-Forwarded-For is believed, as IP addresses or CIDR ranges, comma
-   * separated. A request from anywhere else is taken to come from its own address, so nobody can claim another
+   * The reverse proxies (e.g. Traefik, a tunnel's connector) whose X-Forwarded-For is believed, as IP addresses or CIDR
+   * ranges, comma separated — every hop between the internet and Ferret (it's read from the right, past each of them). A request from anywhere else is taken to come from its own address, so nobody can claim another
    * one to dodge the sign-in limits. Unset: only loopback (a proxy on the same host).
    */
   TRUSTED_PROXIES: z.string().default("127.0.0.1,::1"),

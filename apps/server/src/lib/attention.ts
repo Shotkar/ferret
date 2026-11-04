@@ -12,6 +12,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { attachment, backupRun, item } from "../db/schema";
 import { listClaims } from "./claims";
 import { isServerAdmin } from "./server-admin";
+import { certificatesEnding } from "./certificates";
 import { barcodeLookupStatus } from "./products";
 import { serviceTrouble } from "./service-errors";
 import { PARTS_AHEAD_DAYS, shoppingList } from "./stock";
@@ -224,6 +225,21 @@ export async function needsAttention(v: Caller): Promise<AttentionItem[]> {
         detail: `${quota.remaining} of ${quota.limit} left; it fills up again at ${at}. Scans still match the barcode books.`,
         itemId: null,
         date: null,
+      });
+    }
+  }
+
+  // Certificates Ferret uses for its own connections, ended or ending within 30 days — for the server admin.
+  if (v.deps.tls && (await isServerAdmin(v.db, v.userId))) {
+    for (const c of await certificatesEnding(v.db)) {
+      out.push({
+        kind: "service",
+        severity: c.ended ? "urgent" : "soon",
+        id: `service:certificate:${c.id}`,
+        title: c.ended ? `Certificate "${c.name}" has expired` : `Certificate "${c.name}" expires soon`,
+        detail: `${c.ended ? "Ended" : "Ends"} ${todayFor(v, new Date(c.notAfter))} — add its replacement in Settings → Server → Certificates.`,
+        itemId: null,
+        date: todayFor(v, new Date(c.notAfter)),
       });
     }
   }

@@ -1,7 +1,8 @@
 # Away from home
 
 Ferret is meant to stay off the public internet. To use it away from home, connect your phone to your home network
-with a VPN — then Ferret works exactly as it does on the Wi-Fi.
+with a VPN — then Ferret works exactly as it does on the Wi-Fi. (Rather reach it by a public name, behind Cloudflare
+Access or another access proxy? See [Tunnels and access proxies](./tunnels).)
 
 ## WireGuard (or Tailscale)
 
@@ -34,4 +35,4 @@ catches up whenever the phone is home or on the VPN.
 household — an insurer, a neighbour — who won't be on your network. To let them in without making all of Ferret
 public, expose only these paths (e.g. with a tunnel or a reverse-proxy rule): `/s/`, `/b/`,
 `/api/v1/shared/`, `/api/v1/borrowed/`, and the app itself (`/`, `/assets/`) that shows them. Everything else still
-needs a sign-in. Until then, they work for anyone on your network or VPN.
+needs a sign-in. (With an access proxy in front, see [what to let through](./tunnels#let-through-what-can-t-sign-in-to-the-proxy).) Until then, they work for anyone on your network or VPN.

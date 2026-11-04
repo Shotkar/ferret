@@ -26,6 +26,8 @@ import { QdrantVectors } from "./adapters/local/qdrant";
 import { VllmReranker } from "./adapters/local/reranker";
 import { docsScriptHashes, mountDocs, mountWebApp } from "./adapters/local/web";
 import { markAuthProxy, proxyList, withClientAddress } from "./adapters/local/proxy";
+import { NodeTls } from "./adapters/local/certificates";
+import { applyCertificates } from "./lib/certificates";
 import { createApp } from "./app";
 import { jobSchedule } from "./jobs/schedule";
 import { watched } from "./lib/service-errors";
@@ -91,7 +93,10 @@ const deps = {
   downloader: new SafeDownloader(),
   homeAssistant: new HomeAssistantWebSocket(),
   recalls: watched(db, "recalls", recalls),
+  tls: new NodeTls(),
 };
+// Certificates the server admin added for Ferret's own connections (Settings → Server), before anything connects.
+await applyCertificates(deps, config.FILES_KEY);
 // The help at /docs, when it's been built (apps/docs): its CSP allows its own inline scripts by hash.
 const docsRoot = path.resolve(config.DOCS_DIST);
 const hasDocs = existsSync(path.join(docsRoot, "csp.json"));

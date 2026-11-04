@@ -45,7 +45,8 @@ Its data — a SQLite database and the uploaded files, encrypted — lives in on
 ## Behind a reverse proxy
 
 Point the proxy at port **8787**. If the proxy runs on another machine, set `TRUSTED_PROXIES` to its address —
-otherwise every visitor looks like the proxy, and they all share one set of sign-in limits.
+otherwise every visitor looks like the proxy, and they all share one set of sign-in limits. Behind more than one (a
+tunnel, then Traefik), list them all: [Tunnels and access proxies](./tunnels).
 
 ## Sign-ups
 

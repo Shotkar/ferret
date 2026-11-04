@@ -16,7 +16,7 @@ features switch on when their settings are present, and Ferret's log lists what'
 | Setting | Default | |
 |---|---|---|
 | `ALLOW_SIGNUP` | `true` | Open sign-up. Set `false` once everyone's in; invitations still work. |
-| `TRUSTED_PROXIES` | loopback | Your reverse proxy's address(es), if it's on another machine. |
+| `TRUSTED_PROXIES` | loopback | Your reverse proxies' addresses or ranges — every one between the internet and Ferret ([tunnels](./tunnels)). |
 | `TRUSTED_ORIGINS` | — | Extra origins allowed to call the API with a sign-in (development). Leave unset. |
 | `MAX_UPLOAD_MB` | `25` | Largest photo or document. |
 | `TZ` | system | The server's time zone, e.g. `America/Denver`: when backups run, and the time zone for households that haven't chosen their own (**Settings → Household → Time zone**). |

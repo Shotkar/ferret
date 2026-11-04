@@ -1,16 +1,16 @@
 /**
  * Settings → Server: what belongs to the whole server rather than one household, for its admin only — the nightly
- * backups (status, "Back up now", the copies kept, each one's restore check, how to restore), recall checks (on or off)
- * and handing the admin role to someone else. Restoring is a command on the server, not a button: see restoreCommands below.
+ * backups (status, "Back up now", the copies kept, each one's restore check, how to restore), recall checks (on or off),
+ * certificates for the server's own connections, and handing the admin role to someone else. Restoring is a command on the server, not a button: see restoreCommands below.
  */
-import type { BackupRun, BackupSnapshot } from "@ferret/shared";
+import type { BackupRun, BackupSnapshot, ServerCertificate } from "@ferret/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DemoSwitches, DemoUsage, HostingUsageCard } from "./Demo";
 import { type FormEvent, useState } from "react";
 import { CopyField } from "./CopyField";
 import { api } from "./lib/api";
 import { SETTINGS_HREF } from "./lib/route";
-import { Modal } from "./Modal";
+import { DialogActions, Modal } from "./Modal";
 import { HelpLink } from "./HelpLink";
 import { navigateTo } from "./lib/navigate";
 
@@ -26,6 +26,7 @@ export function Server() {
       <ServiceErrors />
       <BarcodeLookups />
       <RecallChecks />
+      {!demo && <Certificates />}
       <ServerAdmin />
     </>
   );
@@ -392,6 +393,281 @@ function Restoring() {
 
 // The folder is made first, so it belongs to you (and the container's user), not root.
 const restoreCommand = "mkdir restored && docker compose run --rm -v ./restored:/restore ferret node dist/cli.js backup restore /restore";
+
+/**
+ * Certificates for Ferret's own connections to your services (server: lib/certificates.ts): authorities to trust, and
+ * client certificates presented only to the hosts they name. Hidden where the server can't use them (hosted).
+ */
+function Certificates() {
+  const qc = useQueryClient();
+  const certs = useQuery({ queryKey: ["server-certificates"], queryFn: api.serverCertificates });
+  const [adding, setAdding] = useState<"trusted" | "client" | null>(null);
+  const [removing, setRemoving] = useState<ServerCertificate | null>(null);
+  const remove = useMutation({
+    mutationFn: (id: string) => api.removeCertificate(id),
+    onSuccess: (data) => {
+      qc.setQueryData(["server-certificates"], data);
+      void qc.invalidateQueries({ queryKey: ["attention"] });
+      setRemoving(null);
+    },
+  });
+  const d = certs.data;
+  if (!d?.available) return null;
+  return (
+    <section className="card" aria-labelledby="certificates-title">
+      <div className="card-body gap-4">
+        <div className="space-y-1">
+          <h2 id="certificates-title" className="card-title flex items-center gap-2">
+            <span className="icon-[tabler--certificate] size-5 text-primary" />
+            Certificates
+            <HelpLink page="hosting/certificates.html" label="Certificates" />
+          </h2>
+          <p className="text-sm text-base-content/70">
+            For Ferret's own connections to your other services — Home Assistant, the AI models, Apprise, your sign-in provider. Downloads from the internet
+            only ever trust the usual authorities.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <h3 className="font-medium">Trusted</h3>
+          <p className="text-sm text-base-content/70">Your own certificate authority, or a service's self-signed certificate.</p>
+          <CertificateList list={d.trusted} empty="Only the usual authorities." onRemove={setRemoving} />
+          <button type="button" className="btn btn-soft btn-primary btn-sm" onClick={() => setAdding("trusted")}>
+            <span className="icon-[tabler--plus] size-4" />
+            Trust a certificate…
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          <h3 className="font-medium">Client certificates</h3>
+          <p className="text-sm text-base-content/70">For services that ask who's connecting (mutual TLS). Each is shown only to the hosts you name.</p>
+          <CertificateList list={d.clients} empty="None." onRemove={setRemoving} />
+          <button type="button" className="btn btn-soft btn-primary btn-sm" onClick={() => setAdding("client")}>
+            <span className="icon-[tabler--plus] size-4" />
+            Add a client certificate…
+          </button>
+        </div>
+      </div>
+
+      {adding === "trusted" && <TrustDialog onClose={() => setAdding(null)} />}
+      {adding === "client" && <ClientCertificateDialog onClose={() => setAdding(null)} />}
+      {removing && (
+        <Modal id="remove-certificate" onClose={() => setRemoving(null)}>
+          <div className="flex flex-col gap-5">
+            <div className="space-y-1 text-center">
+              <h3 id="remove-certificate-title" className="text-xl font-semibold">
+                Remove “{removing.name}”?
+              </h3>
+              <p className="text-base-content/80">
+                {removing.hosts
+                  ? `Ferret stops presenting it to ${removing.hosts.join(", ")}.`
+                  : "Ferret stops trusting it: services whose certificate it vouches for won't connect."}
+              </p>
+            </div>
+            {remove.isError && <div className="alert alert-soft alert-error">{remove.error.message}</div>}
+            <div className="flex flex-wrap justify-end gap-3">
+              <button type="button" className="btn btn-secondary btn-soft" onClick={() => setRemoving(null)}>
+                Cancel
+              </button>
+              <button type="button" className="btn btn-error" onClick={() => remove.mutate(removing.id)} disabled={remove.isPending}>
+                {remove.isPending && <span className="loading loading-spinner loading-sm" />}
+                Remove
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </section>
+  );
+}
+
+function CertificateList({ list, empty, onRemove }: { list: ServerCertificate[]; empty: string; onRemove: (c: ServerCertificate) => void }) {
+  if (!list.length) return <p className="text-sm text-base-content/70">{empty}</p>;
+  const soon = Date.now() + 30 * 86_400_000;
+  return (
+    <ul className="divide-y divide-base-300 rounded-box border border-base-300">
+      {list.map((c) => {
+        const ends = Date.parse(c.notAfter);
+        return (
+          <li key={c.id} className="flex flex-wrap items-start justify-between gap-2 p-3">
+            <div className="min-w-0 space-y-0.5">
+              <div className="font-medium break-words">{c.name}</div>
+              <div className="text-sm break-words text-base-content/70">
+                {c.subject}
+                {c.issuer !== c.subject && ` · from ${c.issuer}`}
+              </div>
+              {c.hosts && <div className="text-sm break-words text-base-content/70">For {c.hosts.join(", ")}</div>}
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                {ends <= Date.now() ? (
+                  <span className="badge badge-soft badge-error">Expired {formatDate(c.notAfter)}</span>
+                ) : ends < soon ? (
+                  <span className="badge badge-soft badge-warning">Expires {formatDate(c.notAfter)}</span>
+                ) : (
+                  <span className="text-base-content/70">Until {formatDate(c.notAfter)}</span>
+                )}
+              </div>
+            </div>
+            <button type="button" className="btn btn-text btn-sm" onClick={() => onRemove(c)}>
+              Remove…
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+const formatDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+
+function TrustDialog({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient();
+  const [name, setName] = useState("");
+  const [pem, setPem] = useState("");
+  const add = useMutation({
+    mutationFn: () => api.trustCertificate(name.trim(), pem),
+    onSuccess: (data) => {
+      qc.setQueryData(["server-certificates"], data);
+      onClose();
+    },
+  });
+  async function pick(f: File | undefined) {
+    if (!f) return;
+    setPem(await f.text());
+    if (!name) setName(f.name.replace(/\.(pem|crt|cer)$/i, ""));
+  }
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    add.mutate();
+  }
+  return (
+    <Modal id="trust-certificate" title="Trust a certificate" onClose={onClose}>
+      <form className="flex flex-col gap-4" onSubmit={onSubmit}>
+        <p className="text-sm text-base-content/70">
+          A certificate authority's certificate, or a service's own self-signed one, in PEM form (<code>-----BEGIN CERTIFICATE-----</code>). Never its private key.
+        </p>
+        <div>
+          <label className="label-text" htmlFor="trust-name">
+            Name
+          </label>
+          <input id="trust-name" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Home CA" maxLength={80} />
+        </div>
+        <div>
+          <label className="label-text" htmlFor="trust-file">
+            File (.pem, .crt)
+          </label>
+          <input id="trust-file" type="file" className="input" accept=".pem,.crt,.cer,application/x-pem-file,application/x-x509-ca-cert" onChange={(e) => void pick(e.target.files?.[0])} />
+        </div>
+        <div>
+          <label className="label-text" htmlFor="trust-pem">
+            Or paste it
+          </label>
+          <textarea id="trust-pem" className="textarea font-mono text-xs" rows={6} value={pem} onChange={(e) => setPem(e.target.value)} required spellCheck={false} />
+        </div>
+        {add.isError && <div className="alert alert-soft alert-error">{add.error.message}</div>}
+        <DialogActions>
+          <button type="button" className="btn btn-secondary btn-soft" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={add.isPending || !pem.trim()}>
+            {add.isPending && <span className="loading loading-spinner loading-sm" />}
+            Trust it
+          </button>
+        </DialogActions>
+      </form>
+    </Modal>
+  );
+}
+
+function ClientCertificateDialog({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient();
+  const [name, setName] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [password, setPassword] = useState("");
+  const [hosts, setHosts] = useState("");
+  const add = useMutation({
+    mutationFn: async () => {
+      if (!file) throw new Error("Choose the certificate's file");
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let binary = "";
+      for (const b of bytes) binary += String.fromCharCode(b);
+      return api.addClientCertificate({ name: name.trim(), hosts: hosts.split(/[\s,]+/).filter(Boolean), pkcs12: btoa(binary), password });
+    },
+    onSuccess: (data) => {
+      qc.setQueryData(["server-certificates"], data);
+      void qc.invalidateQueries({ queryKey: ["attention"] });
+      onClose();
+    },
+  });
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    add.mutate();
+  }
+  return (
+    <Modal id="client-certificate" title="Add a client certificate" onClose={onClose}>
+      <form className="flex flex-col gap-4" onSubmit={onSubmit}>
+        <p className="text-sm text-base-content/70">
+          A PKCS#12 file (.p12 or .pfx) holding the certificate and its key. It's kept sealed on the server and never shown again.
+        </p>
+        <div>
+          <label className="label-text" htmlFor="client-name">
+            Name
+          </label>
+          <input id="client-name" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Ferret for Home Assistant" maxLength={80} />
+        </div>
+        <div>
+          <label className="label-text" htmlFor="client-file">
+            File (.p12, .pfx)
+          </label>
+          <input
+            id="client-file"
+            type="file"
+            className="input"
+            accept=".p12,.pfx,application/x-pkcs12"
+            required
+            onChange={(e) => {
+              const f = e.target.files?.[0] ?? null;
+              setFile(f);
+              if (f && !name) setName(f.name.replace(/\.(p12|pfx)$/i, ""));
+            }}
+          />
+        </div>
+        <div>
+          <label className="label-text" htmlFor="client-password">
+            Its password
+          </label>
+          <input id="client-password" type="password" className="input" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} />
+        </div>
+        <div>
+          <label className="label-text" htmlFor="client-hosts">
+            Show it to
+          </label>
+          <textarea
+            id="client-hosts"
+            className="textarea"
+            rows={2}
+            value={hosts}
+            onChange={(e) => setHosts(e.target.value)}
+            placeholder="ha.example.lan, *.example.lan"
+            required
+            spellCheck={false}
+            autoCapitalize="none"
+          />
+          <p className="mt-1 text-sm text-base-content/70">Host names or addresses, separated by commas. <code>*.example.lan</code> covers everything under it.</p>
+        </div>
+        {add.isError && <div className="alert alert-soft alert-error">{add.error.message}</div>}
+        <DialogActions>
+          <button type="button" className="btn btn-secondary btn-soft" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={add.isPending}>
+            {add.isPending && <span className="loading loading-spinner loading-sm" />}
+            Add it
+          </button>
+        </DialogActions>
+      </form>
+    </Modal>
+  );
+}
 
 function ServerAdmin() {
   const qc = useQueryClient();

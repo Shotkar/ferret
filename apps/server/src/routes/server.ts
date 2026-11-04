@@ -14,6 +14,7 @@ import { DEMO_PARTS, partsOff, setPartsOff } from "../lib/demo-switches";
 import { HTTPException } from "hono/http-exception";
 import { aboutServer, clearServiceErrors, listServiceErrors } from "../lib/service-errors";
 import { barcodeLookupStatus } from "../lib/products";
+import { MAX_FILE_BYTES, addClient, addTrusted, listCertificates, removeCertificate } from "../lib/certificates";
 
 export const server = new Hono<AppEnv>();
 server.use(requireUser, requireServerAdmin);
@@ -67,6 +68,27 @@ server.get("/demo/usage", async (c) => {
     return c.json({ usage: null, error: err instanceof Error ? err.message : String(err) });
   }
 });
+
+/** Certificates for Ferret's own connections (lib/certificates.ts): those trusted, and client certificates. */
+server.get("/certificates", async (c) => c.json(await listCertificates(c.var.deps)));
+server.post("/certificates/trusted", async (c) => {
+  const input = await body(c.req.raw, z.object({ name: z.string().max(80).default(""), pem: z.string().min(1).max(MAX_FILE_BYTES) }));
+  return c.json(await addTrusted(c.var.deps, c.var.config.FILES_KEY, input), 201);
+});
+server.post("/certificates/client", async (c) => {
+  const input = await body(
+    c.req.raw,
+    z.object({
+      name: z.string().max(80).default(""),
+      hosts: z.array(z.string().max(253)).min(1).max(20),
+      /** The .p12 / .pfx file, base64. */
+      pkcs12: z.string().min(1).max(Math.ceil((MAX_FILE_BYTES * 4) / 3) + 4).regex(/^[A-Za-z0-9+/]+=*$/, "Not base64"),
+      password: z.string().max(200).default(""),
+    }),
+  );
+  return c.json(await addClient(c.var.deps, c.var.config.FILES_KEY, input), 201);
+});
+server.delete("/certificates/:id", async (c) => c.json(await removeCertificate(c.var.deps, c.var.config.FILES_KEY, c.req.param("id"))));
 
 /** Online barcode lookups: on or off, and what's left of the database's allowance today. */
 server.get("/barcode-lookups", async (c) => c.json(await barcodeLookupStatus(c.var.deps)));

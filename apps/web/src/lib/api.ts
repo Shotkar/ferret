@@ -1,4 +1,5 @@
 import type {
+  ServerCertificates,
   AccountDeletionInfo,
   HouseholdDeletionInfo,
   BarcodeLookupStatus,
@@ -257,6 +258,13 @@ export const api = {
   serverAdmin: () => request<{ id: string; name: string; email: string }>("/server/admin"),
   recallStatus: () => request<RecallStatus>("/server/recalls"),
   barcodeLookupStatus: () => request<BarcodeLookupStatus>("/server/barcode-lookups"),
+  /** Certificates for the server's own connections (Settings → Server → Certificates). */
+  serverCertificates: () => request<ServerCertificates>("/server/certificates"),
+  trustCertificate: (name: string, pem: string) =>
+    request<ServerCertificates>("/server/certificates/trusted", { method: "POST", body: JSON.stringify({ name, pem }) }),
+  addClientCertificate: (input: { name: string; hosts: string[]; pkcs12: string; password: string }) =>
+    request<ServerCertificates>("/server/certificates/client", { method: "POST", body: JSON.stringify(input) }),
+  removeCertificate: (id: string) => request<ServerCertificates>(`/server/certificates/${encodeURIComponent(id)}`, { method: "DELETE" }),
   /** Deleting for good: the active household (its owner), or your account. */
   householdDeletion: () => request<HouseholdDeletionInfo>("/household/deletion"),
   deleteHousehold: (confirm: string, password?: string) =>

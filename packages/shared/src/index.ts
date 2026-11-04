@@ -1706,3 +1706,24 @@ export const householdSettingsInput = z.object({
   timeZone: z.string().trim().min(1).max(64).refine(isTimeZone, "That isn't a time zone").nullable(),
 });
 export type HouseholdSettingsInput = z.infer<typeof householdSettingsInput>;
+
+/** A certificate Ferret's server trusts, or presents to some hosts (Settings → Server → Certificates). */
+export interface ServerCertificate {
+  id: string;
+  name: string;
+  subject: string;
+  issuer: string;
+  /** ISO time it stops being valid. */
+  notAfter: string;
+  fingerprint: string;
+  addedAt: string;
+  /** A client certificate's hosts: names, `*.example.lan` for everything under one, or addresses. */
+  hosts?: string[];
+}
+
+export interface ServerCertificates {
+  /** False where the server can't use its own (e.g. a hosted Ferret). */
+  available: boolean;
+  trusted: ServerCertificate[];
+  clients: ServerCertificate[];
+}

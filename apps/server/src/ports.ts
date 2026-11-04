@@ -362,6 +362,29 @@ export interface BackupElsewhere {
   latest(): Promise<{ at: Date; ok: boolean; detail: string | null } | null>;
 }
 
+/** What a certificate says (lib/certificates.ts). */
+export interface CertificateDetails {
+  subject: string;
+  issuer: string;
+  notAfter: Date;
+  /** SHA-256, as hex pairs. */
+  fingerprint: string;
+}
+
+/**
+ * Ferret's own connections to your other services (Home Assistant, the models, Apprise, the sign-in provider…):
+ * certificate authorities to trust besides the public ones, and client certificates to present (mutual TLS) — Settings →
+ * Server → Certificates. Never for downloads from the internet, which trust only the public authorities.
+ */
+export interface TlsSettings {
+  /** The certificates in a PEM (one or more). Throws if there are none, or it holds a private key. */
+  readPem(pem: string): CertificateDetails[];
+  /** A PKCS#12 (.p12/.pfx) file's own certificate. Throws on a wrong password or a broken file. */
+  readPkcs12(bytes: Uint8Array, password: string): CertificateDetails;
+  /** Use these from now on, in place of what was applied before. A client certificate goes only to its hosts. */
+  apply(trusted: string[], clients: { hosts: string[]; pkcs12: Uint8Array; password: string }[]): void;
+}
+
 /** Everything the app needs, injected at startup by the entry point (server.ts, or another runtime's). */
 export interface Deps {
   db: Db;
@@ -406,4 +429,6 @@ export interface Deps {
   entitlements?: Entitlements;
   /** Backups that run outside this server (none here: `backups` is Ferret's own). */
   backupElsewhere?: BackupElsewhere;
+  /** Certificates for Ferret's own connections (Settings → Server → Certificates) — where the runtime allows it. */
+  tls?: TlsSettings;
 }

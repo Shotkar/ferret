@@ -34,19 +34,30 @@ export function fromTrusted(peer: string | undefined, trusted: BlockList) {
 }
 
 /**
- * The client's address: the last one in X-Forwarded-For (the one our proxy added) when the connection is from a
- * trusted proxy, else the connection's own.
+ * The client's address. From a trusted proxy, X-Forwarded-For is read from the right — each proxy adds the address it
+ * was reached from — skipping every hop that is itself one of TRUSTED_PROXIES (a tunnel's connector, then Traefik…),
+ * so the first address that isn't ours is the visitor's. Anything left of it was written by the client and is never
+ * believed. Not from a trusted proxy: the connection's own address. Each trusted hop must be listed (a chain of them,
+ * e.g. cloudflared → Traefik → Ferret, needs both); one that isn't stops the walk there, at its address.
  */
 export function clientAddress(peer: string | undefined, forwardedFor: string | null, trusted: BlockList) {
   if (!peer) return undefined;
-  const from = plain(peer);
-  const family = isIP(from);
-  if (forwardedFor && family && trusted.check(from, family === 4 ? "ipv4" : "ipv6")) {
-    const last = forwardedFor.split(",").map((s) => plain(s.trim())).filter(Boolean).at(-1);
-    if (last && isIP(last)) return last;
+  let address = plain(peer);
+  if (!forwardedFor) return address;
+  const hops = forwardedFor.split(",").map((s) => plain(s.trim()));
+  while (isTrusted(address, trusted)) {
+    const next = hops.pop();
+    // Nothing more, or something that isn't an address: the nearest hop we know is the best there is.
+    if (!next || !isIP(next)) break;
+    address = next;
   }
-  return from;
+  return address;
 }
+
+const isTrusted = (address: string, trusted: BlockList) => {
+  const family = isIP(address);
+  return Boolean(family) && trusted.check(address, family === 4 ? "ipv4" : "ipv6");
+};
 
 /** The request with X-Forwarded-For set to just the client's address (see clientAddress). */
 export function withClientAddress(req: Request, peer: string | undefined, trusted: BlockList) {

@@ -22,6 +22,20 @@ describe("client address", () => {
     expect(clientAddress("10.0.0.2", "not an address", trusted)).toBe("10.0.0.2");
   });
 
+  it("walks back through a chain of trusted proxies, and no further", () => {
+    // A tunnel's connector (172.18.0.5) in front of Traefik (10.0.0.2): Traefik adds the connector last.
+    const chain = proxyList("10.0.0.2, 172.18.0.0/16");
+    expect(clientAddress("10.0.0.2", "198.51.100.7, 172.18.0.5", chain)).toBe("198.51.100.7");
+    // Whatever the visitor wrote before that is theirs, not ours: never believed.
+    expect(clientAddress("10.0.0.2", "10.0.0.2, 203.0.113.1, 198.51.100.7, 172.18.0.5", chain)).toBe("198.51.100.7");
+    expect(clientAddress("10.0.0.2", "172.18.0.9, 198.51.100.7, 172.18.0.5", chain)).toBe("198.51.100.7");
+    // A hop that isn't listed stops the walk at its own address (so all its visitors look alike — list it).
+    expect(clientAddress("10.0.0.2", "198.51.100.7, 192.168.5.5", chain)).toBe("192.168.5.5");
+    // Only trusted hops, or rubbish, left: the furthest one we could believe.
+    expect(clientAddress("10.0.0.2", "172.18.0.5", chain)).toBe("172.18.0.5");
+    expect(clientAddress("10.0.0.2", "junk, 172.18.0.5", chain)).toBe("172.18.0.5");
+  });
+
   it("passes on exactly one address", () => {
     const req = new Request("http://ferret.test/api/auth/sign-in/email", { headers: { "x-forwarded-for": "1.2.3.4, 5.6.7.8" } });
     expect(withClientAddress(req, "192.168.1.50", trusted).headers.get("x-forwarded-for")).toBe("192.168.1.50");

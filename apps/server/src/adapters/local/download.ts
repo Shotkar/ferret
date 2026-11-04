@@ -15,6 +15,7 @@
  *   Nothing downloaded is ever run or rendered here.
  */
 import { lookup as dnsLookup } from "node:dns";
+import { PUBLIC_AUTHORITIES } from "./certificates";
 import type { IncomingMessage } from "node:http";
 import http from "node:http";
 import https from "node:https";
@@ -153,6 +154,8 @@ export class SafeDownloader implements Downloader {
     return new Promise<IncomingMessage>((resolve, reject) => {
       const req = client.get(url, {
         lookup: safeLookup,
+        // The internet's authorities only: never one the server admin added for their own services.
+        ...(url.protocol === "https:" ? { ca: PUBLIC_AUTHORITIES } : {}),
         headers: { "User-Agent": "Ferret/1.0 (self-hosted home inventory)", Accept: "image/*, application/pdf;q=0.9, */*;q=0.1" },
         timeout: Math.max(1, deadline - Date.now()),
       });
