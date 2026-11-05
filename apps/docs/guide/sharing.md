@@ -30,5 +30,5 @@ was opened — tap that to see when, and from which address. **Turn off…** sto
 
 ::: tip Reaching it
 A link opens only where Ferret can be reached. If your Ferret is on your home network only, whoever opens it needs to
-be on that network (or your VPN) — see [Away from home](../hosting/away-from-home).
+be on that network (or your VPN) — see [Choosing a way in](../hosting/reaching-ferret).
 :::

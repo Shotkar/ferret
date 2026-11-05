@@ -1,8 +1,8 @@
-# Away from home
+# VPN: WireGuard, Tailscale or WARP
 
 Ferret is meant to stay off the public internet. To use it away from home, connect your phone to your home network
-with a VPN — then Ferret works exactly as it does on the Wi-Fi. (Rather reach it by a public name, behind Cloudflare
-Access or another access proxy? See [Tunnels and access proxies](./tunnels).)
+with a VPN — then Ferret works exactly as it does on the Wi-Fi, the installed app included. (Rather reach it by a public
+name? See [Choosing a way in](./reaching-ferret).)
 
 ## WireGuard (or Tailscale)
 
@@ -22,6 +22,22 @@ you're most of the way there:
 [Tailscale](https://tailscale.com/) is the easier choice if you don't have a VPN yet: no port to open on your router,
 and a *subnet router* (or Tailscale on the Ferret server itself) does the same job. If WireGuard already works for you,
 there's no need to switch.
+
+## Cloudflare WARP
+
+If you already use Cloudflare for a tunnel, its **WARP** app (Cloudflare One Agent; free for up to 50 people) can do a
+VPN's job without opening a port:
+
+- **Ferret stays private**: in Zero Trust, add your home network's range to the tunnel as a *private network* (Networks
+  → Tunnels → your tunnel → CIDR routes), and let WARP send that range through it (Split Tunnels). Phones with WARP
+  reach Ferret's home address; nobody else can.
+- **Or keep Ferret's public name** behind [Access](./tunnels) and add a rule to its policy that requires a device
+  running WARP in your organisation — the phone is checked, not the app, so there's no sign-in page for the installed
+  app to meet.
+- **Find it by name**: with a private network, add a Local Domain Fallback entry for your home domain pointing at your
+  home DNS server, so the name in `PUBLIC_URL` resolves.
+
+Check once that the installed Ferret app works with WARP switched on, away from your Wi-Fi.
 
 ## What works without the VPN
 

@@ -1,6 +1,7 @@
 # Through a tunnel or access proxy
 
-A [VPN](./away-from-home) keeps Ferret off the internet altogether, and it's still the simplest way. If you'd rather
+A [VPN](./away-from-home) keeps Ferret off the internet altogether, and it's still the simplest way
+([choosing a way in](./reaching-ferret) compares them). If you'd rather
 reach Ferret by a public name, put an **access proxy** in front of it — Cloudflare Tunnel with Cloudflare Access,
 Pangolin, or your own Traefik with client certificates — so strangers are stopped before they reach Ferret. Ferret's
 own sign-in still decides who someone is and what they can see; the proxy only decides who gets to knock.
@@ -50,9 +51,9 @@ on your network or VPN.
 Push notifications and Apprise messages go *out* from Ferret, so the proxy doesn't affect them. Emailed links (confirm
 your email, reset a password) are opened in a browser, which signs in to the proxy first — fine.
 
-**The installed app on your phone** keeps the proxy's sign-in for as long as the proxy allows. Give Ferret's
-application a long session (Cloudflare Access: *Session duration*, e.g. 1 month), or the app meets the proxy's sign-in
-page whenever it runs out.
+**The installed app on your phone** signs in to the proxy like a browser and keeps it for as long as the proxy
+allows — give Ferret's application a long session (Cloudflare Access: *Session duration*, e.g. 1 month). There's more
+to it, and a few things that can't work: [The phone app behind a proxy](./phone-app).
 
 ## Scripts and Claude: service tokens
 
@@ -76,7 +77,12 @@ claude mcp add --transport http ferret https://ferret.example.com/mcp \
 ```
 
 A service token only gets a request past the proxy — it can't act in Ferret without a key, and a key keeps its own
-limits (one household, maybe read-only).
+limits (one household, maybe read-only). Service tokens are for scripts and Claude only; the installed app
+[can't use one](./phone-app#what-can-t-work-service-tokens).
+
+Organisations made since October 2026 check service tokens **strictly** by default: Access then hands back no cookie,
+so every request must carry both headers (scripts and Claude Code do), and a request without them is refused with
+`401`/`403` rather than sent to a sign-in page.
 
 ## One sign-in instead of two
 
@@ -96,20 +102,9 @@ reaches Ferret without Access having set it, so Ferret couldn't tell whose it is
 
 ## Client certificates (mutual TLS)
 
-Instead of a sign-in page, a proxy can ask every device for a **client certificate** — Cloudflare Access's *mTLS*
-rule, or Traefik's `clientAuth` (`RequireAndVerifyClientCert`). Only devices you've given one get in at all.
-
-- **iPhone and iPad**: put the certificate (a `.p12`) in a configuration profile (or AirDrop / email it), then
-  Settings → *Profile Downloaded* → Install. Safari offers it when Ferret asks; check once that the Home Screen app does
-  too after installing it.
-- **Mac**: open the `.p12` to add it to the login keychain; Safari and Chrome ask which certificate to use the first
-  time.
-- **Scripts**: `curl --cert-type P12 --cert device.p12:password …`.
-- **Claude Code** can't present a client certificate. Give `/mcp` its own rule that takes a service token or skips the
-  certificate (an API key is still needed), or connect from your network.
-
-Ask for client certificates on everything *except* the paths in the table above: a calendar app or an insurer has
-none.
+Instead of a sign-in page, a proxy can ask every device for a **client certificate** — Cloudflare Access's *mTLS* rule
+(paid Zero Trust plans), or your own Traefik or Caddy. Making them, putting them on phones, and which paths still work:
+[Client certificates (mutual TLS)](./client-certificates).
 
 ## Certificates from your own authority
 

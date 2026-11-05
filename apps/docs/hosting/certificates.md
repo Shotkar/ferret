@@ -43,7 +43,7 @@ urgent. Add the replacement, then remove the old one.
 - `NODE_EXTRA_CA_CERTS` (a file of extra authorities, read when Ferret starts) still works too, and adds to the same
   list.
 - The certificates here are for Ferret's own connections. For **your devices** reaching Ferret — trusting Ferret's
-  certificate, or showing one to a proxy in front of it — see [Tunnels and access proxies](./tunnels#client-certificates-mutual-tls).
+  certificate, or showing one to a proxy in front of it — see [Client certificates (mutual TLS)](./client-certificates) and [Choosing a way in](./reaching-ferret).
 - Apprise sends the messages to ntfy, Gotify and the rest itself, so a self-signed ntfy needs trusting in the
   `apprise` container (or add `?verify=no` to that channel's URL). Ferret's certificates cover Ferret's connection to
   Apprise.

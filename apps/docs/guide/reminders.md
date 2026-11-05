@@ -32,7 +32,7 @@ The button opens a `webcal://` link, which your device hands to whichever app ha
   Calendar** and paste the link.
 - **Google Calendar**: on a computer, **Other calendars → + → From URL**, and paste the link. Google fetches the
   calendar from its own servers, so this only works if your Ferret can be reached from the internet —
-  a hosted Ferret can be; a Ferret at home (like `ferret.example.lan`) can't, unless you've [opened it up](../hosting/away-from-home).
+  a hosted Ferret can be; a Ferret at home (like `ferret.example.lan`) can't, unless you've [opened it up](../hosting/reaching-ferret).
   Use Apple Calendar or Outlook on your own devices instead.
 - **Outlook**: **Add calendar → Subscribe from web**, and paste the link (the same internet rule applies to Outlook on
   the web).

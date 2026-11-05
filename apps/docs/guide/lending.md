@@ -11,7 +11,7 @@ due back. Its page then says *With Sam since May 3*, and so does every list it's
 email that it's still with them (the first on the due date, if there is one), with a link where they can say
 **I've given it back** — you'll see *Sam says it's back* in the bell, to agree with — or **Stop these reminders**.
 (Email needs your Ferret to be able to send it: see [Email](../hosting/email). The link in the email works only where
-Ferret can be reached — see [Away from home](../hosting/away-from-home).)
+Ferret can be reached — see [Choosing a way in](../hosting/reaching-ferret).)
 
 When it's back: **It's back**, on its page or under **Lent & borrowed**.
 
