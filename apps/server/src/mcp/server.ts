@@ -92,10 +92,10 @@ function buildServer(v: McpCaller) {
     {
       title: "Search the inventory",
       description:
-        "Finds items by words (names, brands, serial numbers, text in documents) and by meaning (\"something to make holes\" finds a drill). Returns the best matches first, each with where it's kept.",
+        "Finds items by words (names, brands, serial numbers, text read from receipts and manuals) and by meaning (\"something to make holes\" finds a drill), best matches first, each with where it's kept; a box's 6-character QR label code finds the box. Start here whenever the person mentions a thing — to answer \"where is…\", and before create_item so you don't add a duplicate. For questions answered from documents (\"what filter does the furnace take?\") use ask_inventory; to browse a room, category or tag use list_items. Leaves out things that are gone or only wanted. Returns items, each with its id, fields, location path and what matched.",
       inputSchema: z.object({
-        query: z.string().trim().min(1).max(200),
-        limit: z.number().int().min(1).max(50).default(10),
+        query: z.string().trim().min(1).max(200).describe('What to look for, in the person\'s words: "drill", "something to make holes", a serial number or a box\'s label code'),
+        limit: z.number().int().min(1).max(50).default(10).describe("How many matches at most"),
       }),
       annotations: read,
     },
@@ -114,8 +114,8 @@ function buildServer(v: McpCaller) {
     {
       title: "Ask Ferret",
       description:
-        "Answers a question from the household's own items and documents (receipts, manuals, warranty cards), with the items it used as sources. Good for \"when does the dishwasher warranty end?\" or \"what filter does the furnace take?\".",
-      inputSchema: z.object({ question: z.string().trim().min(3).max(500) }),
+        "Answers a question in words from the household's own items and documents (receipts, manuals, warranty cards), citing the items it used — for \"when does the dishwasher warranty end?\" or \"what filter does the furnace take?\". Use search_inventory instead when the person wants to find a thing rather than learn a fact. Needs the server's AI to be switched on, counts as one AI action, and can take several seconds.",
+      inputSchema: z.object({ question: z.string().trim().min(3).max(500).describe("The question, as the person asked it") }),
       annotations: read,
     },
     async ({ question }) => run(() => svc.ask(v, question)),
@@ -125,8 +125,9 @@ function buildServer(v: McpCaller) {
     "get_item",
     {
       title: "Get an item",
-      description: "Everything about one item: its fields, where it's kept, warranties, and what its photos and documents show.",
-      inputSchema: z.object({ id: z.string().min(1) }),
+      description:
+        "Everything about one item: all its fields, where it's kept (and which box), warranties and claims, its photos and documents with what the vision model read in them, and any suggested fields waiting for the person to confirm. Use it after search_inventory or list_items has found the item, when you need the details; for what happened to it over time use item_history, and for a quick look at many items list_items is enough.",
+      inputSchema: z.object({ id: z.string().min(1).describe("The item's id, from search_inventory or list_items") }),
       annotations: read,
     },
     async ({ id }) =>
@@ -177,17 +178,17 @@ function buildServer(v: McpCaller) {
     {
       title: "List items",
       description:
-        "Lists items, most recently changed first. With locationId, only what's in that location and everything nested inside it (\"what's in the garage?\"); with categoryId, that category and its subcategories; with tag, a tag's items (a tag is also a collection, e.g. \"Christmas decorations\"); with origin, how they were added (\"claude\": what you added, to check your own work); with collectionId (from list_collections), a collection's things — wanted: \"include\" adds its want list (things not owned yet), \"only\" just that.",
+        "Lists items, most recently changed first, 50 at a time (offset for more), with where each is kept. Use it to browse rather than search: with locationId, everything in that place and the places inside it (\"what's in the garage?\"); containerItemId, what's directly in a box; categoryId, a category and its subcategories; tag, a tag's items (a tag can be a collection, e.g. \"Christmas decorations\"); origin, how they were added (\"claude\": what you added, to check your own work); collectionId (list_collections), a collection's things — wanted \"include\" adds its want list, \"only\" just that. To find a particular thing by name, use search_inventory.",
       inputSchema: z.object({
-        locationId: z.string().min(1).optional(),
-        containerItemId: z.string().min(1).optional().describe("Only what's directly inside this box"),
-        categoryId: z.string().min(1).optional(),
-        tag: z.string().trim().min(1).max(40).optional(),
+        locationId: z.string().min(1).optional().describe("Only what's in this place and the places inside it, from list_locations"),
+        containerItemId: z.string().min(1).optional().describe("Only what's directly inside this box (an item with isContainer)"),
+        categoryId: z.string().min(1).optional().describe("Only this category and its subcategories, from list_categories"),
+        tag: z.string().trim().min(1).max(40).optional().describe("Only items with this tag name (list_categories lists tags)"),
         origin: z.enum(itemOrigins).optional().describe("Only things added this way: app, photos, walkthrough, roomscan, scan, label, spreadsheet, homeassistant, claude, api"),
-        collectionId: z.string().min(1).optional(),
+        collectionId: z.string().min(1).optional().describe("Only this collection's things, from list_collections"),
         wanted: z.enum(["include", "only"]).optional().describe("The want list (things not owned yet): left out unless asked for"),
-        limit: z.number().int().min(1).max(200).default(50),
-        offset: z.number().int().min(0).default(0),
+        limit: z.number().int().min(1).max(200).default(50).describe("How many items in this page"),
+        offset: z.number().int().min(0).default(0).describe("How many to skip, for the next page (total says how many there are)"),
       }),
       annotations: read,
     },
@@ -208,7 +209,7 @@ function buildServer(v: McpCaller) {
     {
       title: "List places",
       description:
-        "Every property (home, cabin, storage unit…) with its locations as a tree (rooms › closets › shelves), their ids, and how many items each holds.",
+        "Every property (home, cabin, storage unit…) with its locations as a tree (rooms › closets › shelves), their ids and how many items each holds. Call it to get a locationId or propertyId before create_item, move_item, list_items or create_location, and to check a place exists before adding it again. Read-only; the whole tree in one call.",
       inputSchema: z.object({}),
       annotations: read,
     },
@@ -220,7 +221,7 @@ function buildServer(v: McpCaller) {
     {
       title: "What needs attention",
       description:
-        "What to act on now: maintenance overdue or due within a week, warranties ending within 30 days, warranty claims with no news for two weeks, and items added from photos that still need a name. Urgent first.",
+        "What to act on now, urgent first: maintenance overdue or due within a week, warranties ending within 30 days, warranty claims with no news for two weeks, things running low, borrowed things due back, recalls that may affect something owned, insurance limits that fall short, and items or room scans from photos still to finish. Returns entries with kind, severity (urgent or soon), title, detail, the itemId to open (if any) and a date. Use it for \"anything I should deal with?\" or a daily check-in; for the full maintenance schedule use list_maintenance, for all warranties list_warranties, for what to buy shopping_list. Empty when nothing needs doing.",
       inputSchema: z.object({}),
       annotations: read,
     },
@@ -232,7 +233,7 @@ function buildServer(v: McpCaller) {
     {
       title: "Shopping list",
       description:
-        "What to buy: tracked consumables that have run out, or are at or below their minimum (minQuantity, \"keep at least\"), with how many are left and a suggested amount to buy. Run out first.",
+        "What to buy, run-out first: tracked consumables that have run out or are at or below their minimum (minQuantity, \"keep at least\"), with how many are left and a suggested amount to buy. Use it for \"what do we need?\" or before a shop; after buying, adjust_stock with a positive delta takes things off the list. Read-only.",
       inputSchema: z.object({}),
       annotations: read,
     },
@@ -244,8 +245,11 @@ function buildServer(v: McpCaller) {
     {
       title: "An item's history",
       description:
-        "What happened to an item, newest first: when it was added, each edit (what changed — moved from where to where, value, name…), photos and documents added, warranties and claims, maintenance done, stock used or restocked. Good for \"when did we move the ladder?\" or \"when was the furnace last serviced?\". Use search_inventory first to get the item's id.",
-      inputSchema: z.object({ itemId: z.string().min(1), limit: z.number().int().min(1).max(100).default(30) }),
+        "What happened to one item, newest first: when it was added, each edit in words (moved from where to where, value, name…), photos and documents added, warranties and claims, maintenance done, stock used or restocked, loans. Use it for \"when did we move the ladder?\" or \"when was the furnace last serviced?\"; for the item as it is now use get_item. Get the id from search_inventory first. Returns entries with when (at), what happened in words, who, and how (the app, Claude, a script); more is true when there are older ones.",
+      inputSchema: z.object({
+        itemId: z.string().min(1).describe("The item's id, from search_inventory or list_items"),
+        limit: z.number().int().min(1).max(100).default(30).describe("How many entries at most, newest first"),
+      }),
       annotations: read,
     },
     async ({ itemId, limit }) =>
@@ -260,7 +264,7 @@ function buildServer(v: McpCaller) {
     {
       title: "Insurance coverage",
       description:
-        "The household's insurance limits (contents cover, and special limits on jewelry, firearms… by category or tag) next to what the inventory says those things are worth, with how much short each is. Money in cents.",
+        "Checks the household's insurance limits against the inventory: each limit set in the app (contents cover, or a special limit on one category or tag such as jewelry or firearms) next to what those things are worth, how much short it is, and how many have no value recorded. Use it for \"are we insured enough?\"; for what everything is worth by room or property, use inventory_report. Limits are set in the app; amounts are in cents. Empty when no limits are set.",
       inputSchema: z.object({}),
       annotations: read,
     },
@@ -277,7 +281,7 @@ function buildServer(v: McpCaller) {
     {
       title: "Lent and borrowed",
       description:
-        "Things lent out (who has them, since when, due back) and things borrowed from others, still out. Overdue ones are marked. Good for \"who has the ladder?\" or \"what have I lent out?\".",
+        "Things lent out (who has them, since when, when they're due back) and things borrowed from others, still out, overdue ones marked, each with its loanId. Use it for \"who has the ladder?\" or \"what have I lent out?\", and to get the loanId for loan_returned. Only open loans; returned ones are in each item's item_history.",
       inputSchema: z.object({}),
       annotations: read,
     },
@@ -294,7 +298,7 @@ function buildServer(v: McpCaller) {
     {
       title: "List categories and tags",
       description:
-        "The household's categories as a tree (ids, paths, any extra fields their items have — e.g. a TV's screen size — and item counts), its tags with how many items carry each, and its item templates (kinds of thing with their own fields: a coin's year, mint mark and grade). Use a category id with create_item/update_item (categoryId), tag names in `tags`, and a template's id as templateId — then put its fields' values in customFields by their keys.",
+        "The household's categories as a tree (ids, paths, item counts and any extra fields their items have — e.g. a TV's screen size), its tags with how many items carry each, and its item templates (kinds of thing with their own fields: a coin's year, mint mark and grade). Call it before create_item or update_item to pick a categoryId, existing tag names (to avoid near-duplicates) or a templateId — then put the template's or category's field values in customFields by their keys.",
       inputSchema: z.object({}),
       annotations: read,
     },
@@ -311,7 +315,7 @@ function buildServer(v: McpCaller) {
     {
       title: "List collections",
       description:
-        "The household's collections (coins, dolls, cards…): each with how many things are owned (pieces counts duplicates), how many are on its want list, what the owned ones are worth and cost (cents), and its templateId (its fields: list_categories). Its things: list_items with collectionId.",
+        "The household's collections (coins, dolls, cards…): for each, how many things are owned (pieces counts duplicates), how many are on its want list, what the owned ones are worth and cost (cents), and its templateId (the fields its things have: list_categories). Use it for \"how's the coin collection?\" and to get a collectionId; the things themselves are list_items with collectionId.",
       inputSchema: z.object({}),
       annotations: read,
     },
@@ -323,8 +327,13 @@ function buildServer(v: McpCaller) {
     {
       title: "List warranties",
       description:
-        "Warranties on file, soonest to end first. status: active (still covered, including expiring), expiring (ends within 60 days), expired.",
-      inputSchema: z.object({ status: z.enum(["active", "expiring", "expired"]).optional() }),
+        "Warranties on file across all items, soonest to end first. Returns each with its id, item, provider, start and end dates and status. Use it for \"what's still under warranty?\" or \"what's about to run out?\" (status expiring); for one item's warranties and claims use get_item, and for the urgent ones alongside everything else what_needs_attention.",
+      inputSchema: z.object({
+        status: z
+          .enum(["active", "expiring", "expired"])
+          .optional()
+          .describe("active: still covered (including expiring); expiring: ends within 60 days; expired. Left out: all"),
+      }),
       annotations: read,
     },
     async ({ status }) =>
@@ -340,7 +349,7 @@ function buildServer(v: McpCaller) {
     {
       title: "Inventory value report",
       description:
-        "What everything is worth (for insurance): totals by property and by room, the most valuable items, and how many items have no value recorded. An item counts at its value, or else its purchase price, times its quantity. Amounts are in cents.",
+        "What everything is worth, for insurance: totals by property and by room, the most valuable items, and how many have no value recorded. An item counts at its value, else its purchase price, times its quantity; amounts in cents; gone and wanted things are left out. Use it for \"what's all our stuff worth?\"; to compare against insurance limits use coverage_check.",
       inputSchema: z.object({}),
       annotations: read,
     },
@@ -352,10 +361,13 @@ function buildServer(v: McpCaller) {
     {
       title: "List maintenance",
       description:
-        "Maintenance tasks (replace filters, service the boiler, clean gutters…), soonest due first, with the item and where it is. status: open (default: everything not finished), overdue, due (within 14 days), upcoming, done (finished one-offs), all. itemId narrows to one item.",
+        "Maintenance tasks (replace filters, service the boiler, clean gutters…), soonest due first, each with its id, the item or place and who usually does it. Use it to see the schedule, to get a task's id for complete_maintenance, and before add_maintenance so you don't add one twice; for just what's urgent across everything, what_needs_attention.",
       inputSchema: z.object({
-        status: z.enum(["open", "overdue", "due", "upcoming", "done", "all"]).default("open"),
-        itemId: z.string().min(1).optional(),
+        status: z
+          .enum(["open", "overdue", "due", "upcoming", "done", "all"])
+          .default("open")
+          .describe("open: everything not finished; overdue; due: within 14 days; upcoming: later; done: finished one-offs; all"),
+        itemId: z.string().min(1).optional().describe("Only this item's tasks, from search_inventory"),
       }),
       annotations: read,
     },
@@ -367,8 +379,8 @@ function buildServer(v: McpCaller) {
     {
       title: "Look up a barcode",
       description:
-        "What a UPC/EAN barcode is: from Ferret's own barcode book (learned from items saved on this server), else the online product database if it's switched on (match is null when nobody knows it). youHave lists the household's things with this barcode already: when adding something, offer to add to one of those (adjust_stock) rather than making a duplicate — unless the person wants it as a separate item.",
-      inputSchema: z.object({ barcode: z.string().trim().min(8).max(20) }),
+        "Says what product a UPC/EAN barcode is, and whether the household already has it. Use it when the person reads out or scans a barcode, before create_item; to find a thing by name use search_inventory. Looks in Ferret's own barcode book (learned from items saved on this server) first, then the online product database if it's switched on. Returns match (name, brand, model, source, photos — null when nobody knows the code) and youHave (the household's items with this code: id, name, quantity, place). When youHave isn't empty, offer adjust_stock on one of those rather than a duplicate, unless the person wants a separate item.",
+      inputSchema: z.object({ barcode: z.string().trim().min(8).max(20).describe("The digits under the barcode (UPC-A, EAN-13 or EAN-8)") }),
       annotations: { ...read, openWorldHint: true },
     },
     async ({ barcode }) =>
@@ -383,7 +395,7 @@ function buildServer(v: McpCaller) {
     {
       title: "List service providers",
       description:
-        "The household's service providers (plumber, HVAC company, electrician…) with contact details, how many maintenance tasks they do, how often they've come, when they last did, and what's been spent with them. Use their id as providerId on maintenance tasks.",
+        "The household's service providers (plumber, HVAC company, electrician…) with contact details, how many maintenance tasks they do, how often they've come, when they last did and what's been spent with them. Use it for \"who did we use for the furnace?\", to get a providerId for add_maintenance or complete_maintenance, and before add_provider so you don't add one twice.",
       inputSchema: z.object({}),
       annotations: read,
     },
@@ -394,7 +406,8 @@ function buildServer(v: McpCaller) {
     "recently_deleted",
     {
       title: "Recently deleted items",
-      description: `Items deleted in the last ${TRASH_DAYS} days, newest first, with who deleted them and the day each goes for good. restore_item brings one back.`,
+      description:
+        "Items deleted in the last 30 days, newest first, with who deleted them and the day each goes for good. Use it when the person wants something back or asks what was removed; restore_item brings one back by its id. Only items — deleted maintenance tasks, places and the rest aren't listed.",
       inputSchema: z.object({}),
       annotations: read,
     },
@@ -406,8 +419,8 @@ function buildServer(v: McpCaller) {
     {
       title: "What a room scan found",
       description:
-        "A room scan from scan_room (or one taken in the app): status pending (still looking — ask again shortly), ready (found: name, category, count; tell the person and ask which to keep), failed, or done (with the items it made). Without scanId: every scan still to finish.",
-      inputSchema: z.object({ scanId: z.string().min(1).optional() }),
+        "Checks on a room scan from scan_room (or one taken in the app): status pending (still looking — ask again in a little while), ready (what it found: name, category, how many — tell the person and ask which to keep), failed, or done (with the items it made). Without scanId, every scan still waiting to be finished. Once the person has chosen, add_from_room_scan adds them.",
+      inputSchema: z.object({ scanId: z.string().min(1).optional().describe("The scan's id, from scan_room; left out: every unfinished scan") }),
       annotations: read,
     },
     async ({ scanId }) =>
@@ -432,8 +445,8 @@ function buildServer(v: McpCaller) {
     {
       title: "Lend or borrow a thing",
       description:
-        "Records that an item was lent to someone (direction \"lent\") or borrowed from them (\"borrowed\"), optionally with a due-back date. Reminder emails to borrowers are set up in the app. Search first to get the item's id.",
-      inputSchema: z.object({ itemId: z.string().min(1), ...loanInput.pick({ direction: true, person: true, since: true, dueOn: true, note: true }).shape }),
+        "Records that one of the household's items was lent to someone (direction \"lent\") or that something was borrowed from them (\"borrowed\"), optionally with a due-back date. Use it when the person says \"I lent the drill to Sam\"; get the item's id from search_inventory first. An item can have one open loan at a time; loan_returned closes it. Reminder emails to borrowers are set up in the app. Returns the loan with its id (for loan_returned) and due date.",
+      inputSchema: z.object({ itemId: z.string().min(1).describe("The item's id, from search_inventory"), ...loanInput.pick({ direction: true, person: true, since: true, dueOn: true, note: true }).shape }),
       annotations: write,
     },
     async ({ itemId, ...input }) => run(async () => compact(await loans.createLoan(v, v.files, itemId, input))),
@@ -443,8 +456,12 @@ function buildServer(v: McpCaller) {
     "loan_returned",
     {
       title: "It's back",
-      description: "Marks a lent thing as back (or a borrowed one as given back). Takes the loanId from list_loans.",
-      inputSchema: z.object({ loanId: z.string().min(1), on: z.iso.date().optional() }),
+      description:
+        "Closes a loan: a lent thing is back, or a borrowed one was given back. Use it when the person says so (\"Sam returned the ladder\"); the loanId comes from list_loans. The loan stays in the item's history and the borrower's reminder emails stop; nothing else about the item changes. Calling it again for the same loan is refused (it's already back).",
+      inputSchema: z.object({
+        loanId: z.string().min(1).describe("The loan's id, from list_loans"),
+        on: z.iso.date().optional().describe("The day it came back, yyyy-mm-dd; today if left out"),
+      }),
       annotations: write,
     },
     async ({ loanId, on }) => run(async () => compact(await loans.returnLoan(v, loanId, on))),
@@ -452,7 +469,7 @@ function buildServer(v: McpCaller) {
 
   const photoData = {
     data: z.string().min(16).describe("The image (or PDF, for a document) as base64; no data: prefix"),
-    filename: z.string().trim().min(1).max(200).default("photo.jpg"),
+    filename: z.string().trim().min(1).max(200).default("photo.jpg").describe('The file\'s name, with its extension ("receipt.pdf")'),
   };
 
   server.registerTool(
@@ -460,8 +477,12 @@ function buildServer(v: McpCaller) {
     {
       title: "Add a photo or document to an item",
       description:
-        "Attaches a photo (or a receipt/manual as kind: document) to an item. The vision model reads it in the background; about 20 seconds later get_item shows what it saw and any suggested fields — confirm them with the person before applying them with update_item.",
-      inputSchema: z.object({ itemId: z.string().min(1), kind: z.enum(["photo", "document"]).default("photo"), ...photoData }),
+        "Attaches a photo — or a receipt, manual or warranty card as kind \"document\" — to an item that already exists. The vision model reads it in the background; about 20 seconds later get_item shows what it saw and any suggested fields: confirm them with the person before applying them with update_item. To add a new thing from its photo use add_item_from_photo instead. Counts as AI actions when the AI is on.",
+      inputSchema: z.object({
+        itemId: z.string().min(1).describe("The item's id, from search_inventory"),
+        kind: z.enum(["photo", "document"]).default("photo").describe("photo: a picture of the thing; document: a receipt, manual or warranty card (photo or PDF)"),
+        ...photoData,
+      }),
       annotations: write,
     },
     async ({ itemId, kind, data, filename }) =>
@@ -476,11 +497,11 @@ function buildServer(v: McpCaller) {
     {
       title: "Find the things in a room from photos",
       description:
-        "Photos (1–5, base64) of a room or an open box: the vision model lists the things in them worth inventorying — a name, a category, how many. Say where with locationId (a room, from list_locations) or containerItemId (a box). It looks in the background: about 20–60 seconds later room_scan_results gives the list. Nothing is added until add_from_room_scan, after the person has said which to keep. One AI action per photo.",
+        "Finds the things worth inventorying in 1–5 photos of a room or an open box: the vision model lists each with a name, a category and how many. Use it when the person wants to add a lot at once; for one thing use add_item_from_photo. Say where with locationId (a room) or containerItemId (a box). It looks in the background: about 20–60 seconds later room_scan_results has the list. Nothing is added until add_from_room_scan, after the person has said which to keep. One AI action per photo.",
       inputSchema: z.object({
-        photos: z.array(photoData.data).min(1).max(5),
-        locationId: z.string().min(1).optional(),
-        containerItemId: z.string().min(1).optional(),
+        photos: z.array(photoData.data).min(1).max(5).describe("1–5 photos of the room or open box, each base64"),
+        locationId: z.string().min(1).optional().describe("The room they show, from list_locations"),
+        containerItemId: z.string().min(1).optional().describe("Or the box they show (an item with isContainer)"),
       }),
       annotations: write,
     },
@@ -496,13 +517,20 @@ function buildServer(v: McpCaller) {
     {
       title: "Add what a room scan found",
       description:
-        "Adds the things the person chose from a ready room scan, as items in its room or box (names can be corrected; categoryId from room_scan_results or list_categories). Only after the person has confirmed the list.",
+        "Adds the things the person chose from a ready room scan (room_scan_results), as items in the scan's room or box — names can be corrected and a categoryId given. Only after the person has confirmed the list; the scan is then done, and each new item records that it came from a room scan. Returns the items made.",
       inputSchema: z.object({
-        scanId: z.string().min(1),
+        scanId: z.string().min(1).describe("The scan's id, from scan_room or room_scan_results"),
         items: z
-          .array(z.object({ name: z.string().trim().min(1).max(200), quantity: z.number().int().min(1).max(10000).default(1), categoryId: z.string().min(1).nullable().optional() }))
+          .array(
+            z.object({
+              name: z.string().trim().min(1).max(200).describe("The name to save (the scan's, or the person's correction)"),
+              quantity: z.number().int().min(1).max(10000).default(1).describe("How many"),
+              categoryId: z.string().min(1).nullable().optional().describe("A category id, from room_scan_results or list_categories"),
+            }),
+          )
           .min(1)
-          .max(200),
+          .max(200)
+          .describe("Only the things the person chose to keep"),
       }),
       annotations: write,
     },
@@ -514,12 +542,12 @@ function buildServer(v: McpCaller) {
     {
       title: "Add an item from a photo",
       description:
-        "Creates an item from a photo: the item is saved (as \"New item\" unless you give a name) with the photo attached, and the vision model reads it in the background. About 20 seconds later get_item shows its suggested name, brand, model and serial — confirm with the person, then apply with update_item. Put it somewhere with locationId or containerItemId.",
+        "Creates a new item from a photo: it's saved straight away (as \"New item\" unless you give a name) with the photo attached, and the vision model reads it in the background. About 20 seconds later get_item shows its suggested name, brand, model and serial — confirm with the person, then apply with update_item. Use it when the person sends a picture of something to add; for a photo of something already in the inventory use add_photo. Put it somewhere with locationId or containerItemId.",
       inputSchema: z.object({
         ...photoData,
-        name: z.string().trim().min(1).max(200).optional(),
-        locationId: z.string().min(1).optional(),
-        containerItemId: z.string().min(1).optional(),
+        name: z.string().trim().min(1).max(200).optional().describe('Its name, if the person said it; otherwise it\'s "New item" until confirmed'),
+        locationId: z.string().min(1).optional().describe("Where it's kept, from list_locations"),
+        containerItemId: z.string().min(1).optional().describe("Or the box it's in (an item with isContainer)"),
       }),
       annotations: write,
     },
@@ -542,8 +570,8 @@ function buildServer(v: McpCaller) {
     {
       title: "File a warranty claim",
       description:
-        "Records a claim made under one of an item's warranties (warranty ids are in get_item): what went wrong, the provider's claim number (reference), and its status (filed by default). filedOn defaults to today.",
-      inputSchema: claimInput.extend({ warrantyId: z.string().min(1) }),
+        "Records a claim made under one of an item's warranties: what went wrong, the provider's claim number (reference) and its status (filed by default, today by default). Use it when the person says they've contacted the maker or seller about a fault; get the warrantyId from get_item. Follow it up later with update_warranty_claim. Claims with no news for two weeks show in what_needs_attention.",
+      inputSchema: claimInput.extend({ warrantyId: z.string().min(1).describe("The warranty's id, from get_item") }),
       annotations: write,
     },
     async ({ warrantyId, ...input }) => run(async () => compact(await claims.fileClaim(v, warrantyId, input))),
@@ -554,8 +582,8 @@ function buildServer(v: McpCaller) {
     {
       title: "Update a warranty claim",
       description:
-        "Changes a claim: its status (filed, in_progress, approved, denied, resolved), the resolution, what it cost (cents), the claim number. Closing it (denied/resolved) dates it today unless resolvedOn is given.",
-      inputSchema: claimPatch.extend({ id: z.string().min(1) }),
+        "Changes a warranty claim: its status (filed, in_progress, approved, denied, resolved), the resolution, what it cost (cents), the claim number. Use it when the person hears back about a claim; the claim's id is in get_item. Closing it (denied or resolved) dates it today unless resolvedOn is given. Fields left out stay as they are.",
+      inputSchema: claimPatch.extend({ id: z.string().min(1).describe("The claim's id, from get_item") }),
       annotations: { ...write, idempotentHint: true },
     },
     async ({ id, ...patch }) => run(async () => compact(await claims.updateClaim(v, id, patch))),
@@ -565,7 +593,8 @@ function buildServer(v: McpCaller) {
     "add_provider",
     {
       title: "Add a service provider",
-      description: "Adds a service provider (a plumber, the HVAC company…) with their trade and contact details. Check list_providers first.",
+      description:
+        "Adds a service provider — a plumber, the HVAC company, an electrician — with their trade and contact details, so maintenance can name who does it. Check list_providers first so you don't add one twice; then use its id as providerId on add_maintenance or complete_maintenance. Returns the new provider with its id.",
       inputSchema: providerInput,
       annotations: write,
     },
@@ -578,7 +607,7 @@ function buildServer(v: McpCaller) {
     {
       title: "Add an item",
       description:
-        "Adds an item. Search first to avoid duplicates. Put it somewhere with locationId (from list_locations) and give it a categoryId and tags (from list_categories; new tag names are created). Prices in cents. For a collection, collectionId (from list_collections) — it starts from the collection's template; wanted: true puts it on the want list (looked for, not owned yet), and update_item with wanted: false once it's got.",
+        "Adds a new item. Search first (search_inventory) so you don't add a duplicate; if it's already there, update_item or adjust_stock instead. Put it somewhere with locationId (list_locations) or in a box with containerItemId, and give it a categoryId and tags (list_categories; new tag names are created). Prices in cents. For a collection, collectionId (list_collections) starts it from the collection's template; wanted: true puts it on the want list (looked for, not owned yet), and update_item with wanted: false once it's got. From a photo, use add_item_from_photo. Returns the new item with its id.",
       inputSchema: itemInput,
       annotations: write,
     },
@@ -594,8 +623,8 @@ function buildServer(v: McpCaller) {
     {
       title: "Update an item",
       description:
-        "Changes some of an item's fields; fields left out stay as they are. Send null to clear a field. `tags` replaces the item's whole tag list (send the old ones you want to keep).",
-      inputSchema: itemPatch.extend({ id: z.string().min(1) }),
+        "Changes some of an item's fields — name, brand, value, category, notes, the box it's in… — after the person has said what to change (or confirmed suggestions from get_item). Fields left out stay as they are; send null to clear one. `tags` and `links` replace the whole list (send the old ones you want to keep). For just moving it use move_item; for using some up or restocking use adjust_stock, which logs the change; for a counter reading use record_reading. Returns the updated item.",
+      inputSchema: itemPatch.extend({ id: z.string().min(1).describe("The item's id, from search_inventory or list_items") }),
       annotations: { ...write, idempotentHint: true },
     },
     async ({ id, ...patch }) =>
@@ -610,11 +639,11 @@ function buildServer(v: McpCaller) {
     {
       title: "Use up or restock",
       description:
-        "Changes how many of an item there are — consumables like filters, batteries, bulbs: negative `delta` for used up (\"we used the last AA pack\" → -1), positive for bought more. Never goes below 0. The change is logged in the item's stock history. To set an exact count instead, use update_item's quantity.",
+        "Counts consumables up or down — filters, batteries, bulbs: negative delta for used up (\"we used the last AA pack\" → -1), positive for bought more. Use it whenever the person uses up or buys something tracked; it never goes below 0, logs the change in the item's stock history, and moves the item on or off the shopping list. To set an exact count (after a recount), use update_item's quantity. Returns the new count.",
       inputSchema: z.object({
-        id: z.string().min(1),
-        delta: z.number().int().min(-10000).max(10000),
-        note: z.string().max(200).optional(),
+        id: z.string().min(1).describe("The item's id, from search_inventory"),
+        delta: z.number().int().min(-10000).max(10000).describe("How many used (negative) or bought (positive); not 0"),
+        note: z.string().max(200).optional().describe('Why, for its stock history ("used for the guest room")'),
       }),
       annotations: write,
     },
@@ -631,8 +660,8 @@ function buildServer(v: McpCaller) {
     {
       title: "Log an odometer / hour-meter reading",
       description:
-        "Records what an item's counter says now — a car's odometer, a mower's or generator's engine hours, a furnace's run hours — in the item's usageUnit (set it with update_item first: miles, km, hours or cycles). Maintenance by use on that item (\"every 5,000 miles\") is then rescheduled from it.",
-      inputSchema: usageReadingInput.extend({ id: z.string().min(1).describe("The item") }),
+        "Records what an item's counter says now — a car's odometer, a mower's or generator's engine hours, a furnace's run hours — in the item's usageUnit (set it with update_item first: miles, km, hours or cycles). Maintenance by use on that item (\"every 5,000 miles\") is rescheduled from it. Use it when the person mentions a reading; when they've just done the maintenance, give the reading to complete_maintenance instead.",
+      inputSchema: usageReadingInput.extend({ id: z.string().min(1).describe("The item's id (one with a usageUnit), from search_inventory") }),
       annotations: write,
     },
     async ({ id, ...reading }) =>
@@ -647,8 +676,12 @@ function buildServer(v: McpCaller) {
     "move_item",
     {
       title: "Move an item",
-      description: "Records that an item now lives somewhere else: a location (from list_locations), or null for nowhere in particular.",
-      inputSchema: z.object({ id: z.string().min(1), locationId: z.string().min(1).nullable() }),
+      description:
+        "Records that an item now lives somewhere else: a location from list_locations, or null for nowhere in particular. Use it for \"I put the drill in the basement\"; moving a box takes what's inside it along, and moving something that was in a box takes it out of the box. To put something into a box, use update_item with containerItemId. The move shows in item_history.",
+      inputSchema: z.object({
+        id: z.string().min(1).describe("The item's id, from search_inventory"),
+        locationId: z.string().min(1).nullable().describe("Where it is now, from list_locations; null: nowhere in particular"),
+      }),
       annotations: { ...write, idempotentHint: true },
     },
     async ({ id, locationId }) =>
@@ -664,8 +697,9 @@ function buildServer(v: McpCaller) {
     "delete_item",
     {
       title: "Remove an item",
-      description: `Removes an item from the inventory. It stays in "Recently deleted" for ${TRASH_DAYS} days (restore_item brings it back), then goes for good. Confirm with the person first.`,
-      inputSchema: z.object({ id: z.string().min(1) }),
+      description:
+        "Removes an item from the inventory — only when it was added by mistake or the person wants it gone from the records. For something sold, given away, thrown out, lost or stolen, prefer update_item with disposition, which keeps it for insurance and history. It stays in Recently deleted for 30 days (restore_item brings it back), then goes for good with its photos and documents. Confirm with the person first.",
+      inputSchema: z.object({ id: z.string().min(1).describe("The item's id, from search_inventory") }),
       annotations: { ...write, destructiveHint: true },
     },
     async ({ id }) =>
@@ -680,8 +714,8 @@ function buildServer(v: McpCaller) {
     {
       title: "Restore a deleted item",
       description:
-        "Brings back an item from Recently deleted (ids from recently_deleted), with its photos, documents, warranties and maintenance. If its place or box was removed meanwhile, it comes back without one.",
-      inputSchema: z.object({ id: z.string().min(1) }),
+        "Brings back an item from Recently deleted (ids from recently_deleted), with its photos, documents, warranties and maintenance. Use it when the person wants a deleted thing back within 30 days. If its place or box was removed meanwhile, it comes back without one — move_item can put it somewhere. Returns the restored item's id and name.",
+      inputSchema: z.object({ id: z.string().min(1).describe("The deleted item's id, from recently_deleted") }),
       annotations: write,
     },
     async ({ id }) => run(async () => ({ restored: await restoreItem(v, id) })),
@@ -691,7 +725,8 @@ function buildServer(v: McpCaller) {
     "create_property",
     {
       title: "Add a property",
-      description: "Adds a property: a home, vacation home, rental, storage unit or vehicle. Locations (rooms…) go inside it.",
+      description:
+        "Adds a property — a home, vacation home, rental, storage unit or vehicle — the top level of where things are kept. Only name is required (type defaults to home); the address is optional and only used for its map picture. Check list_locations first so you don't add one twice. Rooms, closets and shelves are locations inside it: add them next with create_location. Returns the new property with its id.",
       inputSchema: propertyInput,
       annotations: write,
     },
@@ -703,10 +738,10 @@ function buildServer(v: McpCaller) {
     {
       title: "Add a location",
       description:
-        "Adds a location (a room, closet, shelf…) to a property, optionally inside another location (parentId), and optionally with locations inside it in one go: \"a garage with three shelves\" is name \"Garage\", children [\"Shelf 1\", \"Shelf 2\", \"Shelf 3\"]. propertyId can be left out when there's only one property.",
+        "Adds a location — a room, closet or shelf — to a property, optionally inside another location (parentId), and optionally with locations inside it in one go: \"a garage with three shelves\" is name \"Garage\", children [\"Shelf 1\", \"Shelf 2\", \"Shelf 3\"]. Check list_locations first so you don't add one twice. propertyId can be left out when there's only one property; a new property itself is create_property. Returns the new locations with their ids.",
       inputSchema: locationInput.extend({
-        propertyId: z.string().min(1).optional(),
-        children: z.array(z.string().trim().min(1).max(120)).max(50).optional(),
+        propertyId: z.string().min(1).optional().describe("The property, from list_locations; can be left out when there's only one"),
+        children: z.array(z.string().trim().min(1).max(120)).max(50).optional().describe('Names of locations to make inside it in one go: ["Shelf 1", "Shelf 2"]'),
       }),
       annotations: write,
     },
@@ -730,7 +765,7 @@ function buildServer(v: McpCaller) {
     {
       title: "Add a maintenance task",
       description:
-        "Adds upkeep to track: on an item (itemId), a place (locationId) or the whole household. Give intervalCount + intervalUnit for something that repeats (\"every 3 months\"), or neither for a one-off. dueOn defaults to one interval from today (today for a one-off). By use (\"every 5,000 miles\"): usageEvery, on an item that counts something — set the item's usageUnit (update_item) and log a reading (record_reading) first; it can have a time interval too (whichever comes first). Check list_maintenance first so you don't add it twice.",
+        "Adds upkeep to track: on an item (itemId), a place (locationId) or the whole household. Give intervalCount + intervalUnit for something that repeats (\"every 3 months\"), or neither for a one-off. dueOn defaults to one interval from today (today for a one-off). By use (\"every 5,000 miles\"): usageEvery, on an item that counts something — set the item's usageUnit (update_item) and log a reading (record_reading) first; it can have a time interval too (whichever comes first). Check list_maintenance first so you don't add it twice. Due tasks show in what_needs_attention and the household's reminders.",
       inputSchema: maintenanceInput,
       annotations: write,
     },
@@ -742,8 +777,8 @@ function buildServer(v: McpCaller) {
     {
       title: "Mark maintenance done",
       description:
-        "Records that a task was done (today, or doneOn), with an optional note and cost in cents. Credited to the task's usual provider unless providerId says otherwise (null: the household did it). A repeating task is then due again one interval after that day; a one-off is finished. For maintenance by use, give `reading` (what the odometer / hour meter says now): the next is due usageEvery after it.",
-      inputSchema: maintenanceDone.extend({ id: z.string().min(1) }),
+        "Records that a task was done (today, or doneOn), with an optional note and cost in cents — use it whenever the person says they did one (\"changed the furnace filter\"); the id comes from list_maintenance. Credited to the task's usual provider unless providerId says otherwise (null: the household did it), and its part, if it has one, comes out of stock. A repeating task is then due again one interval after that day; a one-off is finished. For maintenance by use, give reading (what the odometer or hour meter says now): the next is due usageEvery after it. Returns the task with its new due date.",
+      inputSchema: maintenanceDone.extend({ id: z.string().min(1).describe("The task's id, from list_maintenance") }),
       annotations: write,
     },
     async ({ id, ...done }) => run(async () => taskView(await upkeep.markDone(v, id, done))),
@@ -753,8 +788,9 @@ function buildServer(v: McpCaller) {
     "delete_maintenance",
     {
       title: "Remove a maintenance task",
-      description: "Stops tracking a maintenance task. Confirm with the person first.",
-      inputSchema: z.object({ id: z.string().min(1) }),
+      description:
+        "Deletes a maintenance task the household no longer needs (the item is gone, or it was added by mistake), so it stops coming due and leaves reminders. This is not for a task that was just done — use complete_maintenance, which schedules the next one. The past times it was done stay in the item's history; the task itself can't be brought back with these tools. Confirm with the person first.",
+      inputSchema: z.object({ id: z.string().min(1).describe("The task's id, from list_maintenance") }),
       annotations: { ...write, destructiveHint: true },
     },
     async ({ id }) => run(async () => ({ removed: await upkeep.deleteTask(v, id) })),

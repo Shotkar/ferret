@@ -8,6 +8,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7c4a2d" alt="MIT license"></a>
   <a href="https://github.com/ferret-project/ferret/pkgs/container/ferret"><img src="https://img.shields.io/badge/docker-ghcr.io%2Fferret--project%2Fferret-7c4a2d?logo=docker&logoColor=white" alt="Docker image"></a>
   <a href="https://discord.gg/XSkKyP2pdg"><img src="https://img.shields.io/badge/chat-Discord-7c4a2d?logo=discord&logoColor=white" alt="Discord"></a>
+  <a href="https://glama.ai/mcp/servers/ferret-project/ferret"><img src="https://glama.ai/mcp/servers/ferret-project/ferret/badges/score.svg" alt="Ferret MCP server – quality and maintenance score on Glama"></a>
 </p>
 
 <p align="center">
@@ -149,6 +150,8 @@ Other clients that speak Streamable HTTP take the same address and header (`X-AP
 | Add and change | add items (also from a photo, or a whole room's photos), update, move, delete and restore; properties and rooms |
 | Upkeep | maintenance by date or by use (odometer, engine hours), warranties and claims, service providers |
 | Household | stock and the shopping list, lending, barcodes, collections, the insurance report and coverage check, what needs attention |
+
+<a href="https://glama.ai/mcp/servers/ferret-project/ferret"><img src="https://glama.ai/mcp/servers/ferret-project/ferret/badges/card.svg" alt="Ferret MCP server – quality and maintenance score on Glama" width="380"></a>
 
 **Safe by design.** A key acts for one person in one household, can be **read-only** (Claude can look and ask, but the
 tools that change things aren't offered) and can expire; revoke it any time. Viewers' keys are always read-only.

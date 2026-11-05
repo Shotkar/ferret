@@ -29,16 +29,16 @@ const cents = z.number().int().nonnegative().optional().nullable();
 
 // ── Properties (a home, cabin, storage unit…) ───────────────────────────────
 const propertyFields = z.object({
-  name: z.string().trim().min(1).max(120),
-  type: z.enum(propertyTypes),
-  street: optionalText(200),
-  city: optionalText(120),
-  region: optionalText(120),
-  postalCode: optionalText(20),
-  country: optionalText(80),
-  yearBuilt: z.number().int().min(1600).max(2200).optional().nullable(),
-  valueCents: cents,
-  notes: optionalText(5000),
+  name: z.string().trim().min(1).max(120).describe('What the household calls it: "Home", "Lake cabin", "Storage unit 12"'),
+  type: z.enum(propertyTypes).describe("What kind of property it is"),
+  street: optionalText(200).describe("Street address (used for its map picture, if maps are on)"),
+  city: optionalText(120).describe("Town or city"),
+  region: optionalText(120).describe("State, province or region"),
+  postalCode: optionalText(20).describe("ZIP or postal code"),
+  country: optionalText(80).describe("Country name"),
+  yearBuilt: z.number().int().min(1600).max(2200).optional().nullable().describe("The year the building was built"),
+  valueCents: cents.describe("What the property itself is worth, in cents (not its contents)"),
+  notes: optionalText(5000).describe("Anything else worth keeping about it"),
 });
 export const propertyInput = propertyFields.extend({ type: propertyFields.shape.type.default("home") });
 export type PropertyInput = z.infer<typeof propertyInput>;
@@ -48,11 +48,11 @@ export type PropertyPatch = z.infer<typeof propertyPatch>;
 
 // ── Locations (rooms, closets, shelves — nested via parentId) ───────────────
 export const locationInput = z.object({
-  propertyId: z.string().min(1),
-  parentId: z.string().min(1).optional().nullable(),
-  name: z.string().trim().min(1).max(120),
-  icon: optionalText(64),
-  notes: optionalText(5000),
+  propertyId: z.string().min(1).describe("The property it's in, from list_locations"),
+  parentId: z.string().min(1).optional().nullable().describe("The location it's inside (a shelf in a closet), from list_locations; null: directly in the property"),
+  name: z.string().trim().min(1).max(120).describe('What the household calls it: "Garage", "Hall closet", "Top shelf"'),
+  icon: optionalText(64).describe("An icon name for the app (optional)"),
+  notes: optionalText(5000).describe("Anything else worth keeping about it"),
 });
 export type LocationInput = z.infer<typeof locationInput>;
 /** Rename or move a location within its property. */
@@ -181,49 +181,47 @@ export type ItemOrigin = (typeof itemOrigins)[number];
 export const appOrigins = ["app", "photos", "walkthrough", "scan", "label"] as const;
 
 const itemFields = z.object({
-  name: z.string().trim().min(1).max(200),
-  description: optionalText(5000),
-  brand: optionalText(120),
-  model: optionalText(120),
-  serialNumber: optionalText(120),
-  barcode: optionalText(64),
-  quantity: z.number().int().min(0),
-  /** Keep at least this many: at or below it, it goes on the shopping list. */
-  minQuantity: z.number().int().min(0).max(100000).optional().nullable(),
-  /** What it counts, for maintenance by use: miles, km, hours, cycles (lib/usage.ts). */
-  usageUnit: z.enum(usageUnits).optional().nullable(),
-  condition: z.enum(itemConditions).optional().nullable(),
-  purchaseDate: z.iso.date().optional().nullable(),
-  purchasePriceCents: cents,
-  valueCents: cents,
-  notes: optionalText(10000),
-  favorite: z.boolean(),
-  heir: optionalText(120),
-  /** A box, bin or case that holds other items. */
-  isContainer: z.boolean(),
-  locationId: z.string().min(1).optional().nullable(),
-  containerItemId: z.string().min(1).optional().nullable(),
-  categoryId: z.string().min(1).optional().nullable(),
-  /** Tag names; new ones are created. On a patch, the full new set. */
-  tags: z.array(tagName).max(30),
-  customFields: z.record(z.string(), z.union([z.string().max(500), z.number()])).optional().nullable(),
-  /** The template it's made from (GET /templates): its fields show on it, besides its category's. */
-  templateId: z.string().min(1).optional().nullable(),
-  /** The collection it's part of (GET /collections). */
-  collectionId: z.string().min(1).optional().nullable(),
-  /** On the want list: not owned yet — left out of totals, the report, stock and search unless asked for. */
-  wanted: z.boolean(),
-  /** Web links: the manufacturer's page, the manual online… On a patch, the full new list. */
-  links: z.array(itemLink).max(10).optional().nullable(),
-  /** Gone: sold, given away, thrown out, lost or stolen (null = you still have it), when, for how much, and a note. */
-  disposition: z.enum(itemDispositions).optional().nullable(),
-  disposedOn: z.iso.date().optional().nullable(),
-  disposalCents: cents,
-  disposalNote: optionalText(2000),
+  name: z.string().trim().min(1).max(200).describe('What it is, the way people would look for it: "Cordless drill"'),
+  description: optionalText(5000).describe("A longer description: colour, size, what it's for"),
+  brand: optionalText(120).describe("Who made it"),
+  model: optionalText(120).describe("Model name or number, as on its label"),
+  serialNumber: optionalText(120).describe("Its serial number, for warranty claims and insurance"),
+  barcode: optionalText(64).describe("Its UPC/EAN barcode (also learned into the household's barcode book)"),
+  quantity: z.number().int().min(0).describe("How many there are; to count stock up or down, adjust_stock logs the change"),
+  minQuantity: z.number().int().min(0).max(100000).optional().nullable().describe("Keep at least this many: at or below it, it goes on the shopping list"),
+  usageUnit: z.enum(usageUnits).optional().nullable().describe("What its counter measures, for maintenance by use (a car's miles, a mower's hours)"),
+  condition: z.enum(itemConditions).optional().nullable().describe("What shape it's in"),
+  purchaseDate: z.iso.date().optional().nullable().describe("When it was bought, yyyy-mm-dd"),
+  purchasePriceCents: cents.describe("What was paid for one, in cents (12999 = $129.99)"),
+  valueCents: cents.describe("What one is worth now, in cents — used for the insurance report"),
+  notes: optionalText(10000).describe("Anything else worth keeping: where the spare key is, quirks, settings"),
+  favorite: z.boolean().describe("Starred, to find quickly in the app"),
+  heir: optionalText(120).describe("Who should have it one day"),
+  isContainer: z.boolean().describe("A box, bin or case that holds other items (they set containerItemId to it)"),
+  locationId: z.string().min(1).optional().nullable().describe("Where it's kept: a location id from list_locations (null: nowhere in particular)"),
+  containerItemId: z.string().min(1).optional().nullable().describe("The box it's in: an item id with isContainer; it's then wherever the box is"),
+  categoryId: z.string().min(1).optional().nullable().describe("A category id from list_categories"),
+  tags: z.array(tagName).max(30).describe("Tag names; new ones are created. When updating, the full new list"),
+  customFields: z
+    .record(z.string(), z.union([z.string().max(500), z.number()]))
+    .optional()
+    .nullable()
+    .describe("Values for its category's or template's extra fields, by their keys (list_categories shows them)"),
+  templateId: z.string().min(1).optional().nullable().describe("The item template it's made from (list_categories), whose fields it then has"),
+  collectionId: z.string().min(1).optional().nullable().describe("The collection it's part of (list_collections)"),
+  wanted: z.boolean().describe("On the want list: not owned yet — left out of totals, the report, stock and search unless asked for"),
+  links: z.array(itemLink).max(10).optional().nullable().describe("Web links: the maker's page, the manual online… When updating, the full new list"),
+  disposition: z
+    .enum(itemDispositions)
+    .optional()
+    .nullable()
+    .describe("No longer had: sold, given, discarded, lost or stolen (null: still have it). Gone items leave lists and totals"),
+  disposedOn: z.iso.date().optional().nullable().describe("When it went, yyyy-mm-dd"),
+  disposalCents: cents.describe("What it sold for, in cents"),
+  disposalNote: optionalText(2000).describe("Who it went to, or what happened (for a lost or stolen claim)"),
 });
 export const itemInput = itemFields.extend({
-  /** Which of the app's ways added it (Claude, scripts and imports are recorded by the server, whatever this says). */
-  origin: z.enum(appOrigins).optional(),
+  origin: z.enum(appOrigins).optional().describe("Which of the app's ways added it; ignored for Claude and API keys (recorded by the server)"),
   quantity: itemFields.shape.quantity.default(1),
   favorite: itemFields.shape.favorite.default(false),
   isContainer: itemFields.shape.isContainer.default(false),
@@ -305,15 +303,14 @@ export interface Warranty extends WarrantyInput {
 
 // ── Service providers ───────────────────────────────────────────────────────
 const providerFields = z.object({
-  name: z.string().trim().min(1).max(120),
-  /** What they do: "Plumber", "HVAC", "Appliance repair"… */
-  trade: optionalText(60),
-  contactName: optionalText(120),
-  phone: optionalText(40),
-  email: z.email().max(200).optional().nullable().or(z.literal("").transform(() => null)),
-  website: optionalText(300),
-  address: optionalText(300),
-  notes: optionalText(5000),
+  name: z.string().trim().min(1).max(120).describe('The business or person: "Acme Heating & Air"'),
+  trade: optionalText(60).describe('What they do: "Plumber", "HVAC", "Appliance repair"'),
+  contactName: optionalText(120).describe("Who to ask for"),
+  phone: optionalText(40).describe("Phone number, as they give it"),
+  email: z.email().max(200).optional().nullable().or(z.literal("").transform(() => null)).describe("Email address"),
+  website: optionalText(300).describe("Their website"),
+  address: optionalText(300).describe("Their business address"),
+  notes: optionalText(5000).describe("Anything worth remembering: rates, who to ask for, what they did well"),
 });
 export const providerInput = providerFields;
 export type ProviderInput = z.infer<typeof providerInput>;
@@ -344,32 +341,25 @@ export interface ProviderVisit {
 
 // ── Maintenance ─────────────────────────────────────────────────────────────
 const interval = {
-  /** Repeats every intervalCount intervalUnits; leave both out for a one-off. */
-  intervalCount: z.number().int().min(1).max(1000).optional().nullable(),
-  intervalUnit: z.enum(intervalUnits).optional().nullable(),
+  intervalCount: z.number().int().min(1).max(1000).optional().nullable().describe('Repeats every this many intervalUnits ("every 3 months": 3); leave both out for a one-off'),
+  intervalUnit: z.enum(intervalUnits).optional().nullable().describe("The unit of intervalCount"),
 };
 const bothOrNeither = (t: { intervalCount?: number | null; intervalUnit?: string | null }) =>
   t.intervalCount == null || t.intervalUnit != null;
 
 export const maintenanceInput = z
   .object({
-    title: z.string().trim().min(1).max(200),
-    notes: optionalText(5000),
-    /** On an item, or a place (e.g. "Clean gutters" on the house's roof), or neither (the whole household). */
-    itemId: z.string().min(1).optional().nullable(),
-    locationId: z.string().min(1).optional().nullable(),
+    title: z.string().trim().min(1).max(200).describe('What to do: "Replace furnace filter", "Clean gutters"'),
+    notes: optionalText(5000).describe("How to do it: the part number, steps, what to watch for"),
+    itemId: z.string().min(1).optional().nullable().describe("The item it's for (search_inventory); leave out for a place or the whole household"),
+    locationId: z.string().min(1).optional().nullable().describe('The place it\'s for, e.g. "Clean gutters" on the roof (list_locations)'),
     ...interval,
-    /** When it's next due (defaults to today for a one-off, or one interval from today). */
-    dueOn: z.iso.date().optional(),
-    /** The manual it came from. */
-    attachmentId: z.string().min(1).optional().nullable(),
-    /** Who usually does it. */
-    providerId: z.string().min(1).optional().nullable(),
-    /** The consumable it uses (an item: a furnace filter), and how many each time: Done takes them out of stock. */
-    partItemId: z.string().min(1).optional().nullable(),
-    partQuantity: z.number().int().min(1).max(1000).optional(),
-    /** Also (or only) every this much use of its item, in what the item counts ("every 5,000 miles"). Needs `itemId`. */
-    usageEvery: z.number().int().min(1).max(10_000_000).optional().nullable(),
+    dueOn: z.iso.date().optional().describe("When it's next due, yyyy-mm-dd; defaults to one interval from today (today for a one-off)"),
+    attachmentId: z.string().min(1).optional().nullable().describe("The manual it came from: a document's id from get_item"),
+    providerId: z.string().min(1).optional().nullable().describe("Who usually does it, from list_providers"),
+    partItemId: z.string().min(1).optional().nullable().describe("The consumable it uses (a filter item): marking it done takes partQuantity out of stock"),
+    partQuantity: z.number().int().min(1).max(1000).optional().describe("How many of the part each time (default 1)"),
+    usageEvery: z.number().int().min(1).max(10_000_000).optional().nullable().describe('Also (or only) due every this much use, in the item\'s usageUnit ("every 5,000 miles": 5000). Needs itemId'),
   })
   .refine(bothOrNeither, { message: "Say how often: a number and a unit", path: ["intervalUnit"] })
   .refine((t) => !t.usageEvery || t.itemId, { message: "Maintenance by use needs the thing it's on", path: ["usageEvery"] });
@@ -394,16 +384,12 @@ export const maintenancePatch = z
 export type MaintenancePatch = z.infer<typeof maintenancePatch>;
 
 export const maintenanceDone = z.object({
-  /** Defaults to today. The next due date counts from this day. */
-  doneOn: z.iso.date().optional(),
-  note: optionalText(2000),
-  costCents: cents,
-  /** Who did it this time (default: the task's usual provider; null: we did). */
-  providerId: z.string().min(1).optional().nullable(),
-  /** Take the task's part out of stock (default yes; no when an old one was cleaned instead, say). */
-  usePart: z.boolean().optional(),
-  /** Maintenance by use: what the item's count says now (logged as a reading); the next one is due `usageEvery` on. */
-  reading: z.number().min(0).max(1_000_000_000).optional(),
+  doneOn: z.iso.date().optional().describe("When it was done, yyyy-mm-dd; today if left out. The next due date counts from this day"),
+  note: optionalText(2000).describe("Anything worth remembering about this time"),
+  costCents: cents.describe("What it cost this time, in cents"),
+  providerId: z.string().min(1).optional().nullable().describe("Who did it this time (list_providers); left out: the task's usual provider; null: the household"),
+  usePart: z.boolean().optional().describe("Take the task's part out of stock (default true; false when an old one was cleaned instead)"),
+  reading: z.number().min(0).max(1_000_000_000).optional().describe("Maintenance by use: what the item's counter says now; the next one is due usageEvery after it"),
 });
 export type MaintenanceDone = z.infer<typeof maintenanceDone>;
 
@@ -436,10 +422,9 @@ export interface MaintenanceTask {
 
 // ── Readings (maintenance by use) ───────────────────────────────────────────
 export const usageReadingInput = z.object({
-  value: z.number().min(0).max(1_000_000_000),
-  /** Defaults to today. */
-  readOn: z.iso.date().optional(),
-  note: optionalText(200),
+  value: z.number().min(0).max(1_000_000_000).describe("What the counter says now, in the item's usageUnit"),
+  readOn: z.iso.date().optional().describe("When it was read, yyyy-mm-dd; today if left out"),
+  note: optionalText(200).describe("Anything worth noting with the reading"),
 });
 export type UsageReadingInput = z.infer<typeof usageReadingInput>;
 
@@ -474,15 +459,14 @@ export interface MaintenanceLogEntry {
 export const openClaimStatuses: readonly ClaimStatus[] = ["filed", "in_progress", "approved"];
 
 const claimFields = z.object({
-  /** Defaults to today. */
-  filedOn: z.iso.date(),
-  problem: z.string().trim().min(1).max(2000),
-  reference: optionalText(120),
-  status: z.enum(claimStatuses),
-  resolution: optionalText(2000),
-  resolvedOn: z.iso.date().optional().nullable(),
-  costCents: cents,
-  notes: optionalText(5000),
+  filedOn: z.iso.date().describe("When the claim was made, yyyy-mm-dd; today if left out"),
+  problem: z.string().trim().min(1).max(2000).describe("What went wrong, in the person's words"),
+  reference: optionalText(120).describe("The provider's claim or case number"),
+  status: z.enum(claimStatuses).describe("Where it stands: filed, in_progress, approved, denied or resolved"),
+  resolution: optionalText(2000).describe("How it ended: repaired, replaced, refunded…"),
+  resolvedOn: z.iso.date().optional().nullable().describe("When it was closed, yyyy-mm-dd"),
+  costCents: cents.describe("What the household paid out of pocket, in cents"),
+  notes: optionalText(5000).describe("Anything else: calls made, who said what"),
 });
 export const claimInput = claimFields.partial({ filedOn: true, status: true });
 export type ClaimInput = z.infer<typeof claimInput>;
@@ -1434,16 +1418,13 @@ export const loanDirections = ["lent", "borrowed"] as const;
 export type LoanDirection = (typeof loanDirections)[number];
 export const remindEvery = ["week", "2weeks", "month"] as const;
 export const loanInput = z.object({
-  direction: z.enum(loanDirections),
-  /** Who has it (lent) or whose it is (borrowed). */
-  person: z.string().trim().min(1).max(80),
-  /** Lent: their email, for reminders. */
-  email: z.email().max(320).optional().nullable(),
-  since: z.iso.date().optional().nullable(),
-  dueOn: z.iso.date().optional().nullable(),
-  note: optionalText(1000),
-  /** Lent, with an email: remind them this often. */
-  remindEvery: z.enum(remindEvery).optional().nullable(),
+  direction: z.enum(loanDirections).describe("lent: the household's thing is with someone else; borrowed: someone else's thing is here"),
+  person: z.string().trim().min(1).max(80).describe("Who has it (lent) or whose it is (borrowed)"),
+  email: z.email().max(320).optional().nullable().describe("Lent: the borrower's email, for reminders"),
+  since: z.iso.date().optional().nullable().describe("When it went (or came), yyyy-mm-dd; today if left out"),
+  dueOn: z.iso.date().optional().nullable().describe("When it's due back, yyyy-mm-dd"),
+  note: optionalText(1000).describe("Anything worth remembering about the loan"),
+  remindEvery: z.enum(remindEvery).optional().nullable().describe("Lent, with an email: remind the borrower this often"),
 });
 export type LoanInput = z.infer<typeof loanInput>;
 export const loanPatch = loanInput.omit({ direction: true }).partial();
