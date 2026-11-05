@@ -43,6 +43,8 @@ jobs:
           fetch-depth: 0 # the release tags, for the version
       - id: version
         run: echo "version=$(scripts/version.sh)" >> "$GITHUB_OUTPUT"
+      # arm64 (Apple Silicon, Raspberry Pi, ARM servers): only the native dependencies' install runs emulated.
+      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -61,7 +63,7 @@ jobs:
         with:
           context: .
           push: true
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           build-args: FERRET_VERSION=${{ steps.version.outputs.version }}
           labels: ${{ steps.meta.outputs.labels }}

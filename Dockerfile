@@ -1,5 +1,6 @@
 # ── Build ────────────────────────────────────────────────────────────────────
-FROM node:26-bookworm-slim AS build
+# The bundles are the same on every platform, so this stage runs on the builder's own (no emulation for arm64).
+FROM --platform=$BUILDPLATFORM node:26-bookworm-slim AS build
 WORKDIR /src
 # Node 25+ no longer bundles Corepack; it still picks the pnpm in package.json's packageManager.
 RUN npm install -g --no-audit --no-fund corepack && corepack enable

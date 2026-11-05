@@ -5,7 +5,8 @@ Its data — a SQLite database and the uploaded files, encrypted — lives in on
 
 ## What you need
 
-- A machine with **Docker** and Docker Compose.
+- A machine with **Docker** and Docker Compose — x86-64 or 64-bit ARM (a Raspberry Pi 4 or 5 on a 64-bit OS, an
+  Apple Silicon Mac, an ARM server).
 - An address people reach it at, ideally **HTTPS** behind a reverse proxy (Traefik, Caddy, nginx). Installing on an
   iPhone, the camera and push notifications all need HTTPS.
 
