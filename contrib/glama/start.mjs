@@ -3,9 +3,23 @@
 // server. Logs go to stderr; stdout carries only MCP messages.
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { createInterface } from "node:readline";
+import { fileURLToPath } from "node:url";
 
-const BASE = process.env.PUBLIC_URL ?? "http://localhost:8787";
+// Throwaway settings: this Ferret holds nothing but an empty household.
+const env = {
+  NODE_ENV: "production",
+  PUBLIC_URL: "http://localhost:8787",
+  AUTH_SECRET: "glama-check-only-not-a-secret-0123456789abcdef",
+  FILES_KEY: "CQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQk=",
+  DATA_DIR: "/tmp/ferret",
+  ...process.env,
+};
+const BASE = env.PUBLIC_URL;
+// The published image keeps the server at /app/dist; a build from source at apps/server/dist.
+const here = path.dirname(fileURLToPath(import.meta.url));
+const SERVER = [path.join(here, "../../apps/server/dist/server.js"), "/app/dist/server.js"].find((p) => existsSync(p));
 const KEY_FILE = "/tmp/ferret-glama-key";
 const log = (...a) => console.error("[glama]", ...a);
 
@@ -13,7 +27,8 @@ const healthy = () => fetch(`${BASE}/healthz`).then((r) => r.ok, () => false);
 
 async function startFerret() {
   if (await healthy()) return; // another session already started it
-  const server = spawn("node", ["/app/dist/server.js"], { cwd: "/app", stdio: ["ignore", process.stderr, process.stderr], detached: true });
+  if (!SERVER) throw new Error("Ferret's server isn't built (pnpm --filter @ferret/server build)");
+  const server = spawn("node", [SERVER], { cwd: path.dirname(path.dirname(SERVER)), env, stdio: ["ignore", process.stderr, process.stderr], detached: true });
   server.unref();
   for (let i = 0; i < 120; i++) {
     if (await healthy()) return;
