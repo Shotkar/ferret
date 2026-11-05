@@ -114,6 +114,11 @@ describe("service errors", () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(await alert(new Date())).toBe(0); // new failures, but within 6 hours of the last alert
     expect(await alert(new Date(Date.now() + 7 * 60 * 60 * 1000))).toBe(1);
+    // That alert came 7 hours after the failures stopped: it says they're old news, not that it's failing now.
+    expect(notifier.sent.at(-1)).toMatchObject({ title: "Ferret couldn't reach Chat model earlier (localhost:8787)" });
+    expect(notifier.sent.at(-1)!.body).toMatch(/\(last seen \d{4}-\d{2}-\d{2} \d{2}:\d{2} \S+ — not since\)/);
+    expect(notifier.sent.at(-1)!.body).toContain("stopped by themselves");
+    expect(notifier.sent[0]!.body).not.toContain("not since"); // the first, right after the failure, didn't
 
     expect((await ann.as("/api/v1/server/errors", { method: "DELETE" })).status).toBe(204);
     expect(await json(ann.as("/api/v1/server/errors"))).toEqual({ data: [] });

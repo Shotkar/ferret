@@ -33,6 +33,8 @@ export const SERVICE_NAMES: Record<string, string> = {
 };
 
 const NOTIFY_EVERY_MS = 6 * 60 * 60 * 1000;
+/** A service whose newest failure is older than this has stopped failing, as far as anyone knows: the alert says so. */
+const STOPPED_MS = 2 * 60 * 60 * 1000;
 const RECENT_MS = 24 * 60 * 60 * 1000;
 
 /** Keep secrets out of the log: tokens in URLs, bearer keys. */
@@ -252,16 +254,34 @@ export async function alertServiceErrors(
   if (!admin) return 0;
   const [who] = await deps.db.select({ email: user.email }).from(user).where(eq(user.id, admin.id));
   const newest = (s: string) => fresh.filter((r) => r.service === s).sort((a, b) => b.lastAt.getTime() - a.lastAt.getTime());
-  const lines = services.map((s) => `• ${SERVICE_NAMES[s] ?? s}: ${newest(s)[0]!.message}`);
+  const timeZone = await adminTimeZone(deps.db);
+  // An alert can come hours after the last failure (the 6-hour wait): say when a service last failed if it's stopped since.
+  const stopped = (s: string) => now.getTime() - newest(s)[0]!.lastAt.getTime() >= STOPPED_MS;
+  const lines = services.map((s) => {
+    const latest = newest(s)[0]!;
+    return `• ${SERVICE_NAMES[s] ?? s}: ${latest.message}${stopped(s) ? ` (last seen ${localTime(latest.lastAt, timeZone)} — not since)` : ""}`;
+  });
   const name = (s: string) => SERVICE_NAMES[s] ?? s;
+  const allStopped = services.every(stopped);
   const alert = {
     // Which server, in the title: several servers may write to the same inbox.
-    title: `${services.length === 1 ? `Ferret can't reach ${name(services[0]!)}` : `${services.length} services Ferret uses are failing`} (${deps.about.host})`,
-    body: `${lines.join("\n")}\n\nFerret carries on without them where it can. Details are in Settings → Server.`,
+    title: `${
+      services.length === 1
+        ? allStopped
+          ? `Ferret couldn't reach ${name(services[0]!)} earlier`
+          : `Ferret can't reach ${name(services[0]!)}`
+        : allStopped
+          ? `${services.length} services Ferret uses were failing earlier`
+          : `${services.length} services Ferret uses are failing`
+    } (${deps.about.host})`,
+    body: `${lines.join("\n")}\n\n${
+      allStopped
+        ? "These have stopped by themselves; Ferret will tell you if they start again. Details are in Settings → Server."
+        : "Ferret carries on without them where it can. Details are in Settings → Server."
+    }`,
     url: `${deps.appUrl}/#/settings/server`,
   };
   // The email has room for the details: each service's newest few entries, as triage notes.
-  const timeZone = await adminTimeZone(deps.db);
   const notes = services.flatMap((s) => newest(s).slice(0, 3)).map((r) => triageText(r, deps.about, timeZone));
   const details = `── For triage ──\n\n${notes.join("\n\n")}`;
   await notifyPerson(deps, admin.id, { ...alert, tag: "ferret-service-errors" }, { email: who?.email, details });
