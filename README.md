@@ -28,6 +28,9 @@ live with. And when you need something, Ferret tells you where it is.
 
 ## What it does
 
+Add things fast, label boxes, find anything, keep receipts and warranties, schedule maintenance, track stock and
+the shopping list, remember what you lent, and print an insurance report. Claude can do all of it too, over MCP.
+
 <table>
   <tr>
     <td align="center" width="33%">
@@ -108,6 +111,49 @@ The help is built in at `/docs`: [installing](https://ferret-demo.digitalempire.
 [every setting](https://ferret-demo.digitalempire.us/docs/hosting/configuration),
 [AI](https://ferret-demo.digitalempire.us/docs/hosting/ai), [backups](https://ferret-demo.digitalempire.us/docs/hosting/backups)
 and [connecting Claude](https://ferret-demo.digitalempire.us/docs/guide/claude).
+
+## Use it with Claude (MCP)
+
+Ferret has an MCP server built in at `/mcp`, so Claude (or any MCP client) can use your inventory for you:
+
+- *"Where did we put the tent?"*
+- *"Add the new blender — it was $89 at Target, it's in the kitchen."*
+- *"We used the last furnace filter."* (stock goes down, and it's on the shopping list)
+- *"What maintenance is due this month, and when does the dishwasher warranty end?"*
+
+Make a key in Ferret (**Household & settings → Claude & API → New key**), then:
+
+```bash
+claude mcp add --transport http ferret https://ferret.example.com/mcp --header "Authorization: Bearer ferret_…"
+```
+
+Other clients that speak Streamable HTTP take the same address and header (`X-API-Key: ferret_…` works too):
+
+```json
+{
+  "mcpServers": {
+    "ferret": {
+      "type": "http",
+      "url": "https://ferret.example.com/mcp",
+      "headers": { "Authorization": "Bearer ferret_…" }
+    }
+  }
+}
+```
+
+**What Claude can do** (40 tools):
+
+| | |
+|---|---|
+| Find | search by words and meaning, ask questions answered from receipts and manuals, items, places, history, recently deleted |
+| Add and change | add items (also from a photo, or a whole room's photos), update, move, delete and restore; properties and rooms |
+| Upkeep | maintenance by date or by use (odometer, engine hours), warranties and claims, service providers |
+| Household | stock and the shopping list, lending, barcodes, collections, the insurance report and coverage check, what needs attention |
+
+**Safe by design.** A key acts for one person in one household, can be **read-only** (Claude can look and ask, but the
+tools that change things aren't offered) and can expire; revoke it any time. Viewers' keys are always read-only.
+Deleted things wait 30 days in *Recently deleted*, and nothing a model suggests from a photo or document is applied
+until someone confirms it.
 
 ## Develop
 

@@ -1,5 +1,5 @@
 {
-  "name": "ferret",
+  "name": "ferret-monorepo",
   "private": true,
   "license": "MIT",
   "description": "Ferret — find anything you own. Self-hosted, multi-user home inventory with an API and MCP server.",
