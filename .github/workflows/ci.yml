@@ -3,6 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
+    # A release tag builds again, so the release always gets its versioned image — even when its commit was pushed
+    # (and built, without the version) before deploy.sh tagged it.
+    tags: ["[0-9][0-9][0-9][0-9].[0-9]*.[0-9]*"]
   pull_request:
 
 # Read-only unless a job asks for more (the image job writes packages).
@@ -32,7 +35,7 @@ jobs:
   image:
     name: Build & push image
     needs: check
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
