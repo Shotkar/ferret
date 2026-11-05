@@ -8,13 +8,15 @@ nothing in it outlives the container.
 
 It's for that check only. To run Ferret, use the main image and `compose.yaml` ([installing](../../apps/docs/hosting/install.md)).
 
-On Glama, the server's **Configuration** builds from source instead (it writes its own Dockerfile); `start.mjs` finds
-the server either way and brings its own throwaway settings, so no environment variables are needed:
+On Glama, the server's **Configuration** builds from source instead (it writes its own Dockerfile, with pnpm and
+mcp-proxy already installed); `start.mjs` finds the server either way and brings its own throwaway settings. What
+passed its check (2026-11-05):
 
-- Base image `debian:bookworm-slim`, Node.js `26` (Ferret needs 26+), Python left as it is
-- Build steps: `pnpm install --frozen-lockfile`, `pnpm --filter @ferret/server build` (Glama's image brings pnpm and
-  mcp-proxy; pnpm switches to the version in package.json by itself)
-- Command: `mcp-proxy node contrib/glama/start.mjs`
+- Base image `debian:trixie-slim`; **Node.js `26`** (Ferret needs 26+ — the form defaults to 24); Python left as it is
+- Build steps: `["git fetch --depth 1 origin main && git checkout FETCH_HEAD", "pnpm install --frozen-lockfile",
+  "pnpm --filter @ferret/server build"]` — the first builds the latest `main` even when Glama has pinned an older commit
+- CMD arguments: `["mcp-proxy", "--", "node", "contrib/glama/start.mjs"]`
+- Environment variables JSON schema: `{"type": "object", "properties": {}}`; placeholder parameters: empty
 
 Try it locally:
 
