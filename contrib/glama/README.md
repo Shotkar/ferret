@@ -12,8 +12,8 @@ On Glama, the server's **Configuration** builds from source instead (it writes i
 the server either way and brings its own throwaway settings, so no environment variables are needed:
 
 - Base image `debian:bookworm-slim`, Node.js `26` (Ferret needs 26+), Python left as it is
-- Build steps: `npm install -g corepack mcp-proxy@6 && corepack enable`, `pnpm install --frozen-lockfile`,
-  `pnpm --filter @ferret/server build`
+- Build steps: `pnpm install --frozen-lockfile`, `pnpm --filter @ferret/server build` (Glama's image brings pnpm and
+  mcp-proxy; pnpm switches to the version in package.json by itself)
 - Command: `mcp-proxy node contrib/glama/start.mjs`
 
 Try it locally:
