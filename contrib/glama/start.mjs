@@ -15,7 +15,10 @@ const env = {
   FILES_KEY: "CQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQk=",
   DATA_DIR: "/tmp/ferret",
   ...process.env,
+  // Always this container's own Ferret, whatever the environment says.
+  PORT: "8787",
 };
+env.PUBLIC_URL = "http://localhost:8787";
 const BASE = env.PUBLIC_URL;
 // The published image keeps the server at /app/dist; a build from source at apps/server/dist.
 const here = path.dirname(fileURLToPath(import.meta.url));
