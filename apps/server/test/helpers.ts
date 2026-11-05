@@ -134,8 +134,12 @@ export class FakePush implements Push {
   publicKey = "BFakePublicKey";
   sent: { endpoint: string; title: string; body: string; url: string }[] = [];
   gone = new Set<string>();
+  /** Endpoints whose push service refuses, with its answer. */
+  failing = new Map<string, string>();
   async send(target: PushTarget, message: { title: string; body: string; url: string }) {
     if (this.gone.has(target.endpoint)) return "gone" as const;
+    const refused = this.failing.get(target.endpoint);
+    if (refused) throw new Error(refused);
     this.sent.push({ endpoint: target.endpoint, ...message });
     return "sent" as const;
   }

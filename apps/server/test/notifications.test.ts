@@ -75,6 +75,9 @@ describe("notifications to other apps", () => {
     await send(ann, "POST", "/api/v1/notifications", { name: "Phone", url: NTFY });
     await send(ann, "POST", "/api/v1/notifications", { name: "Email", url: "mailtos://ann:pw@example.com" });
     await send(ann, "POST", "/api/v1/push/subscribe", { endpoint: "https://fcm.googleapis.com/fcm/send/1", keys: { p256dh: "BKey", auth: "secret" } });
+    // A device whose push service refuses (Apple's BadJwtToken) mustn't stop the Apprise channels, sent after the devices.
+    await send(ann, "POST", "/api/v1/push/subscribe", { endpoint: "https://web.push.apple.com/1", keys: { p256dh: "BKey", auth: "secret" } });
+    push.failing.set("https://web.push.apple.com/1", 'Push service answered 403: {"reason":"BadJwtToken"}');
     notifier.failing.set("mailtos://ann:pw@example.com", "Couldn't reach Apprise");
 
     const at = (hour: number) => () => new Date(new Date().setHours(hour, 5, 0, 0));
@@ -99,9 +102,10 @@ describe("notifications to other apps", () => {
     const failing = await db.select().from(notificationChannel).where(eq(notificationChannel.name, "Email"));
     expect(failing[0]).toMatchObject({ lastError: "Couldn't reach Apprise", lastNotifiedOn: null });
     notifier.failing.clear();
+    push.failing.clear();
     await remind(11);
     expect(notifier.sent.map((s) => s.url)).toEqual([NTFY, "mailtos://ann:pw@example.com"]);
-    expect(push.sent).toHaveLength(1);
+    expect(push.sent.map((s) => s.endpoint)).toEqual(["https://fcm.googleapis.com/fcm/send/1", "https://web.push.apple.com/1"]);
     expect((await db.select().from(notificationChannel)).every((c) => c.lastError === null && c.lastNotifiedOn === today())).toBe(true);
 
     // Someone who leaves the household stops hearing about it.

@@ -43,4 +43,6 @@ VAPID_PRIVATE_KEY=…
 VAPID_SUBJECT=mailto:you@example.com
 ```
 
+`VAPID_SUBJECT` tells push services who to contact about your server: a `mailto:` or `https:` address **on a public domain**. Apple's push service — iPhones, iPads and Safari on a Mac — refuses anything else, such as `mailto:admin@ferret.lan` or `https://ferret.lan` (the server's log answers `403 BadJwtToken` for those devices), so on a server with a local name, set it to an email address you use. Left unset, it's `admin@` your `PUBLIC_URL`'s host, and Ferret warns at start when Apple would refuse it.
+
 Push needs HTTPS. The daily reminder goes out from `REMIND_HOUR` (default 9) in each household's own time zone (**Settings → Household → Time zone**; a household that hasn't chosen one uses the server's `TZ`).

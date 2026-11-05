@@ -31,7 +31,7 @@ import { applyCertificates } from "./lib/certificates";
 import { createApp } from "./app";
 import { jobSchedule } from "./jobs/schedule";
 import { watched } from "./lib/service-errors";
-import { doclingOptions, loadConfig, vapidSubject } from "./config";
+import { doclingOptions, loadConfig, vapidSubject, vapidSubjectProblem } from "./config";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const config = loadConfig(process.env);
@@ -153,6 +153,10 @@ serve(
   console.log("   Recalls:        the US CPSC's recalls, if the server admin switches them on (Settings → Server)");
   console.log(`   Barcode lookup: ${on(products, `UPCitemdb${config.UPCITEMDB_KEY ? " (paid key)" : " (free: 100 a day)"}`, "set BARCODE_LOOKUP=upcitemdb")} + Ferret's own barcode book`);
   console.log(`   Push reminders: ${on(push, `daily from ${config.REMIND_HOUR}:00 (TZ ${process.env.TZ ?? "system"})`, "set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY")}`);
+  const subjectProblem = push && vapidSubjectProblem(vapidSubject(config));
+  if (subjectProblem) {
+    console.warn(`   ⚠ Push to iPhones and Safari won't work: the VAPID subject (${vapidSubject(config)}) ${subjectProblem}. Set VAPID_SUBJECT to a mailto: or https: address on a public domain.`);
+  }
   console.log(`   Email:          ${on(notifier && config.MAIL_URL, "through Apprise (password reset, sign-in links, emailed sign-in)", "set MAIL_URL, with APPRISE_URL — needed for password reset")}`);
   console.log(`   Maps:           ${on(maps, "Apple Maps pictures of property addresses", "set APPLE_MAPS_TEAM_ID, APPLE_MAPS_KEY_ID and APPLE_MAPS_PRIVATE_KEY")}`);
   console.log(`   Backups:        ${on(backups, `nightly from ${config.BACKUP_HOUR}:00 to ${config.BACKUP_DIR}, keeping ${config.BACKUP_KEEP}`, "set BACKUP_DIR")}`);

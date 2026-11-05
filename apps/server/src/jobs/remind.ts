@@ -92,7 +92,10 @@ export function sendReminders(deps: Deps & { files: FileStore; appUrl: string; r
           continue;
         }
         if (digest) {
-          const result = await push.send(sub, { title: digest.title, body: digest.short, url: digest.url, tag: "ferret-reminders" });
+          // A device whose push service refuses (logged by the watched port) is tried again next hour; it never stops
+          // everyone else's reminders, the Apprise channels or the weekly summaries below.
+          const result = await push.send(sub, { title: digest.title, body: digest.short, url: digest.url, tag: "ferret-reminders" }).catch(() => "failed" as const);
+          if (result === "failed") continue;
           if (result === "gone") {
             await db.delete(pushSubscription).where(eq(pushSubscription.id, sub.id));
             continue;

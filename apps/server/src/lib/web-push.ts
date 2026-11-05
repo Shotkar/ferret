@@ -99,7 +99,12 @@ export class WebCryptoPush implements Push {
       body: await encryptForBrowser(target, text(JSON.stringify(message))),
     });
     if (res.status === 404 || res.status === 410) return "gone" as const;
-    if (!res.ok) throw new Error(`Push service answered ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`);
+    if (!res.ok) {
+      const answer = (await res.text().catch(() => "")).slice(0, 200);
+      // Apple's way of refusing the subject (it wants a mailto: or https: address on a public domain).
+      const hint = answer.includes("BadJwtToken") ? ` — check VAPID_SUBJECT (${this.subject}): Apple refuses one that isn't on a public domain` : "";
+      throw new Error(`Push service answered ${res.status}: ${answer}${hint}`);
+    }
     return "sent" as const;
   }
 }

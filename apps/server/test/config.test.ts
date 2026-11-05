@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { doclingOptions, loadConfig, vapidSubject } from "../src/config";
+import { doclingOptions, loadConfig, vapidSubject, vapidSubjectProblem } from "../src/config";
 
 const base = { NODE_ENV: "test", AUTH_SECRET: "test-secret-test-secret-test-secret-123", FILES_KEY: btoa(String.fromCharCode(...new Uint8Array(32).fill(9))) };
 
@@ -28,5 +28,14 @@ describe("Web Push's contact", () => {
   it("is admin@ the public host unless VAPID_SUBJECT says otherwise", () => {
     expect(vapidSubject(loadConfig({ ...base, PUBLIC_URL: "https://ferret.example.com" }))).toBe("mailto:admin@ferret.example.com");
     expect(vapidSubject(loadConfig({ ...base, VAPID_SUBJECT: "mailto:me@example.org" }))).toBe("mailto:me@example.org");
+  });
+
+  it("is checked for what Apple's push service refuses: no public domain", () => {
+    for (const bad of ["https://ferret.lan", "mailto:admin@ferret.lan", "mailto:admin@localhost", "https://10.0.0.2", "https://nas", "https://ferret.home.arpa", "ferret.example.com", "http://ferret.example.org"]) {
+      expect(vapidSubjectProblem(bad), bad).toBeTruthy();
+    }
+    for (const good of ["mailto:me@example.org", "https://ferret.example.org", "mailto:noreply@ferret.app"]) {
+      expect(vapidSubjectProblem(good), good).toBeUndefined();
+    }
   });
 });

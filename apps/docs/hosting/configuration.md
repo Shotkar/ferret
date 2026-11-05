@@ -50,7 +50,7 @@ features switch on when their settings are present, and Ferret's log lists what'
 
 | Setting | |
 |---|---|
-| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Push notifications (`npx web-push generate-vapid-keys`). |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Push notifications (`npx web-push generate-vapid-keys`). `VAPID_SUBJECT`: a `mailto:` or `https:` address on a public domain — Apple's push refuses local names like `.lan` ([more](./email)). |
 | `REMIND_HOUR` | Hour the daily reminder goes out, in each household's time zone (default `9`). |
 | `APPRISE_URL` | The Apprise container (`http://apprise:8000`): reminders to ntfy, Pushover, Telegram, email… |
 | `MAIL_URL` | Email for Ferret itself, through Apprise (`mailtos://…`). |

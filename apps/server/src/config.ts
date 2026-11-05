@@ -257,6 +257,29 @@ export function vapidSubject(config: Pick<Config, "VAPID_SUBJECT" | "PUBLIC_URL"
   return config.VAPID_SUBJECT ?? `mailto:admin@${new URL(config.PUBLIC_URL).hostname}`;
 }
 
+/** Names that never resolve on the internet: a single label, an IP address, or a local or reserved top-level domain. */
+const LOCAL_TLDS = new Set(["lan", "local", "localhost", "localdomain", "home", "internal", "intranet", "corp", "private", "test", "example", "invalid", "arpa"]);
+
+/**
+ * Why push services would refuse this VAPID subject, if they would. Apple's (iPhone, iPad, Safari on a Mac) answers
+ * 403 BadJwtToken unless it's a mailto: or https: address on a public domain — `https://ferret.lan` or
+ * `mailto:admin@ferret.lan` fail there, though Google's and Mozilla's take them.
+ */
+export function vapidSubjectProblem(subject: string): string | undefined {
+  let url: URL;
+  try {
+    url = new URL(subject);
+  } catch {
+    return "isn't a mailto: or https: address";
+  }
+  const host = url.protocol === "mailto:" ? url.pathname.split("@")[1] : url.protocol === "https:" ? url.hostname : undefined;
+  if (host === undefined) return "isn't a mailto: or https: address";
+  const name = host.toLowerCase().replace(/\.$/, "");
+  const labels = name.split(".");
+  const local = labels.length < 2 || /^[\d.]+$/.test(name) || name.startsWith("[") || LOCAL_TLDS.has(labels.at(-1)!);
+  return local ? `uses ${name || "no domain"}, which isn't a public domain — Apple's push service refuses it` : undefined;
+}
+
 /** The origins trusted besides PUBLIC_URL (TRUSTED_ORIGINS, or its default for the environment). */
 export function trustedOrigins(config: Pick<Config, "TRUSTED_ORIGINS" | "NODE_ENV">) {
   const raw = config.TRUSTED_ORIGINS ?? (config.NODE_ENV === "production" ? "" : "http://localhost:5173");
