@@ -51,10 +51,18 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # Docker Hub too, once the repository variable DOCKERHUB_NAMESPACE (and the secret DOCKERHUB_TOKEN) are set.
+      - if: vars.DOCKERHUB_NAMESPACE != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_NAMESPACE }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/ferret
+          images: |
+            ghcr.io/${{ github.repository_owner }}/ferret
+            name=docker.io/${{ vars.DOCKERHUB_NAMESPACE }}/ferret,enable=${{ vars.DOCKERHUB_NAMESPACE != '' }}
           tags: |
             type=raw,value=latest
             type=sha,format=short
@@ -69,3 +77,12 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      # Docker Hub's page shows the README and a one-line description.
+      - if: vars.DOCKERHUB_NAMESPACE != ''
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ vars.DOCKERHUB_NAMESPACE }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ vars.DOCKERHUB_NAMESPACE }}/ferret
+          short-description: Find anything you own — a self-hosted home inventory with a REST API and an MCP server.
+          enable-url-completion: true
