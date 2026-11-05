@@ -17,6 +17,31 @@ furnace filter"*.
 
 A key works for one household, acts as you, and can be revoked any time from the same page.
 
+### Other MCP clients
+
+Ferret's MCP server is at `/mcp` on your Ferret's address (Streamable HTTP). Clients that can send a header take the
+address and the key — as `Authorization: Bearer ferret_…` or `X-API-Key: ferret_…`:
+
+```json
+{
+  "mcpServers": {
+    "ferret": {
+      "type": "http",
+      "url": "https://ferret.example.lan/mcp",
+      "headers": { "Authorization": "Bearer ferret_…" }
+    }
+  }
+}
+```
+
+Clients that only start a local program and talk to it over stdio — Docker's MCP Toolkit, desktop apps' config files —
+can use the small bridge in
+[`contrib/mcp-bridge`](https://github.com/ferret-project/ferret/tree/main/contrib/mcp-bridge): it runs with Node or
+Docker, takes `FERRET_URL` and `FERRET_API_KEY`, and forwards each message to your Ferret. It holds nothing itself.
+
+Ferret is listed in the [MCP Registry](https://registry.modelcontextprotocol.io) as `io.github.ferret-project/ferret`,
+so directories built on it can find it; you fill in your Ferret's address and a key.
+
 On a hosted Ferret, API keys (Claude and scripts) may come with some plans only — see [Plan and usage](./plan-and-usage).
 
 ## The API

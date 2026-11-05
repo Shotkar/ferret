@@ -80,13 +80,14 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      # Docker Hub's page shows the README and a one-line description. Its images and links are HTML with relative
+      # Docker Hub's page shows the README and a one-line description. Its images and links (HTML and Markdown) have relative
       # paths, which Docker Hub can't follow, so they're made absolute (GitHub's raw files) first.
       - if: vars.DOCKERHUB_NAMESPACE != ''
         run: |
           sed -E \
             -e 's#(src|srcset)="([^":#]+)"#\1="https://raw.githubusercontent.com/${{ github.repository }}/main/\2"#g' \
             -e 's#href="([^":#]+)"#href="https://github.com/${{ github.repository }}/blob/main/\1"#g' \
+            -e 's#\]\(([^):#]+)\)#](https://github.com/${{ github.repository }}/blob/main/\1)#g' \
             README.md > "$RUNNER_TEMP/README.dockerhub.md"
       - if: vars.DOCKERHUB_NAMESPACE != ''
         uses: peter-evans/dockerhub-description@v4

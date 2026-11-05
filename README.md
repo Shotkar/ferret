@@ -6,7 +6,7 @@
 <p align="center">
   <a href="https://github.com/ferret-project/ferret/releases/latest"><img src="https://img.shields.io/github/v/release/ferret-project/ferret?label=release&color=7c4a2d" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7c4a2d" alt="MIT license"></a>
-  <a href="https://github.com/ferret-project/ferret/pkgs/container/ferret"><img src="https://img.shields.io/badge/docker-ghcr.io%2Fferret--project%2Fferret-7c4a2d?logo=docker&logoColor=white" alt="Docker image"></a>
+  <a href="https://hub.docker.com/r/ferretproject/ferret"><img src="https://img.shields.io/docker/pulls/ferretproject/ferret?label=docker&color=7c4a2d&logo=docker&logoColor=white" alt="Docker image"></a>
   <a href="https://discord.gg/XSkKyP2pdg"><img src="https://img.shields.io/badge/chat-Discord-7c4a2d?logo=discord&logoColor=white" alt="Discord"></a>
   <a href="https://glama.ai/mcp/servers/ferret-project/ferret"><img src="https://glama.ai/mcp/servers/ferret-project/ferret/badges/score.svg" alt="Ferret MCP server – quality and maintenance score on Glama"></a>
 </p>
@@ -105,6 +105,10 @@ curl -o .env https://raw.githubusercontent.com/ferret-project/ferret/main/.env.e
 docker compose up -d
 ```
 
+The image is on [GitHub's registry](https://github.com/ferret-project/ferret/pkgs/container/ferret)
+(`ghcr.io/ferret-project/ferret`) and [Docker Hub](https://hub.docker.com/r/ferretproject/ferret)
+(`ferretproject/ferret`) — the same tags on both (`latest`, or a release like `2026.11.2`), for x86-64 and 64-bit ARM.
+
 Then open `PUBLIC_URL`; the first account made is the server admin. Keep a copy of `FILES_KEY` somewhere safe —
 without it, uploaded files can't be read. Behind a reverse proxy, set `TRUSTED_PROXIES` to its address.
 
@@ -141,6 +145,11 @@ Other clients that speak Streamable HTTP take the same address and header (`X-AP
   }
 }
 ```
+
+Clients that only start a local program and talk to it over stdio (Docker's MCP Toolkit, desktop apps' config files)
+can use the small bridge in [`contrib/mcp-bridge`](contrib/mcp-bridge): it forwards each message to your Ferret with the
+key. Ferret is also listed in the [MCP Registry](https://registry.modelcontextprotocol.io) as
+`io.github.ferret-project/ferret`.
 
 **What Claude can do** (40 tools):
 
