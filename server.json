@@ -1,0 +1,32 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.ferret-project/ferret",
+  "title": "Ferret",
+  "description": "Self-hosted home inventory: find, add and update what you own, maintenance, warranties.",
+  "version": "2026.11.1",
+  "websiteUrl": "https://ferret-demo.digitalempire.us/docs/guide/claude",
+  "repository": {
+    "url": "https://github.com/ferret-project/ferret",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://{ferret_host}/mcp",
+      "variables": {
+        "ferret_host": {
+          "description": "Your Ferret server's address, e.g. ferret.example.com",
+          "isRequired": true
+        }
+      },
+      "headers": [
+        {
+          "name": "X-API-Key",
+          "description": "An API key from Ferret: Settings → Claude & API → New key (ferret_…)",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}
