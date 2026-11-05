@@ -1,11 +1,11 @@
 // For Glama's directory check only (contrib/glama/README.md): starts a throwaway Ferret, makes its first account, a
-// household and an API key, then bridges MCP over stdio to Ferret's /mcp — so `mcp-proxy` can wrap it like any stdio
-// server. Logs go to stderr; stdout carries only MCP messages.
+// household and an API key, then bridges MCP over stdio to Ferret's /mcp (contrib/mcp-bridge) — so `mcp-proxy` can wrap
+// it like any stdio server. Logs go to stderr; stdout carries only MCP messages.
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
+import { bridge } from "../mcp-bridge/bridge.mjs";
 
 // Throwaway settings: this Ferret holds nothing but an empty household.
 const env = {
@@ -70,31 +70,4 @@ await startFerret();
 const key = await apiKey();
 log("Ferret is up; bridging stdio to /mcp");
 
-// One JSON-RPC message a line in; each answer (JSON or an SSE stream) out as lines.
-const out = (msg) => process.stdout.write(`${JSON.stringify(msg)}\n`);
-const lines = createInterface({ input: process.stdin });
-lines.on("line", async (line) => {
-  if (!line.trim()) return;
-  const msg = JSON.parse(line);
-  try {
-    const res = await fetch(`${BASE}/mcp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream", "X-API-Key": key },
-      body: line,
-    });
-    if (res.status === 202 || res.status === 204) return; // a notification
-    const text = await res.text();
-    if ((res.headers.get("content-type") ?? "").includes("text/event-stream")) {
-      for (const event of text.split(/\r?\n\r?\n/)) {
-        const data = event.split(/\r?\n/).filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trimStart()).join("\n");
-        if (data) out(JSON.parse(data));
-      }
-    } else if (text) {
-      out(JSON.parse(text));
-    }
-  } catch (error) {
-    log(error);
-    if (msg.id !== undefined) out({ jsonrpc: "2.0", id: msg.id, error: { code: -32603, message: String(error) } });
-  }
-});
-lines.on("close", () => process.exit(0));
+bridge(BASE, key);

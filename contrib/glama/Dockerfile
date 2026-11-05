@@ -4,6 +4,7 @@ FROM ghcr.io/ferret-project/ferret:latest
 USER root
 RUN npm install -g mcp-proxy@6 && npm cache clean --force
 COPY contrib/glama/start.mjs /app/glama/start.mjs
+COPY contrib/mcp-bridge/bridge.mjs /app/mcp-bridge/bridge.mjs
 USER node
 # Throwaway values: this container holds nothing but an empty household.
 ENV PUBLIC_URL=http://localhost:8787 \
