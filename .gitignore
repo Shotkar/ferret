@@ -18,6 +18,10 @@ coverage/
 
 # The help: pages added at build time (FERRET_HELP_PAGES, apps/docs/.vitepress/config.ts)
 apps/docs/extra/
+# The API reference, made from the server's OpenAPI description before each build (apps/docs/api-pages.mjs)
+apps/docs/api/
+apps/docs/.vitepress/openapi.json
+apps/docs/.vitepress/api-sidebar.json
 
 # Your own notes and settings for Claude Code, kept out of the repo
 CLAUDE.md

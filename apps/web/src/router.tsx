@@ -36,7 +36,6 @@ import { itemOriginList } from "./lib/origin";
 import { type Route, type SettingsSection, settingsSections } from "./lib/route";
 
 // Screens only reached here load when first opened: each route's loader fetches its code before it draws.
-const ApiReference = lazyRouteComponent(() => import("./ApiReference"), "ApiReference");
 const Deleted = lazyRouteComponent(() => import("./Deleted"), "Deleted");
 const Import = lazyRouteComponent(() => import("./Import"), "Import");
 const InviteScreen = lazyRouteComponent(() => import("./Invite"), "InviteScreen");
@@ -344,7 +343,6 @@ const routeTree = rootRoute.addChildren([
     ...importRoutes,
     screen("places", "places", Places),
     screen("categories", "categories", ({ householdId }) => <Categories householdId={householdId} />),
-    screen("api", "api", () => <ApiReference />, ApiReference),
     screen("providers", "providers", ({ householdId }) => <Providers householdId={householdId} />),
     screen("report", "report", Report, Report),
     screen("maintenance", "maintenance", Maintenance),

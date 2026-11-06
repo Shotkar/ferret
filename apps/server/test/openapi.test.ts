@@ -33,11 +33,11 @@ describe("OpenAPI", () => {
     expect(open).toEqual([]);
   });
 
-  it("serves an OpenAPI 3.1 document to signed-in callers only", async () => {
+  it("serves the OpenAPI 3.1 document to anyone, signed in or not", async () => {
     const { app, user } = await setup();
-    expect((await app.request("/api/v1/openapi.json")).status).toBe(401);
     const ann = await user("ann");
-    const res = await ann.as("/api/v1/openapi.json");
+    expect((await ann.as("/api/v1/openapi.json")).status).toBe(200);
+    const res = await app.request("/api/v1/openapi.json");
     expect(res.status).toBe(200);
     const doc = (await res.json()) as {
       openapi: string;
@@ -50,6 +50,7 @@ describe("OpenAPI", () => {
     expect(Object.keys(create.responses)).toContain("201");
     expect(Object.keys(doc.paths["/items/{id}"]!.delete!.responses)).toContain("204");
     expect(doc.paths["/auth-options"]!.get!.security).toEqual([]);
+    expect(doc.paths["/openapi.json"]!.get!.security).toEqual([]);
     expect(doc.paths["/items/{id}/attachments"]!.post!.requestBody!.content).toHaveProperty("multipart/form-data");
   });
 });

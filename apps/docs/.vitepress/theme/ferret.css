@@ -177,3 +177,54 @@ html:not(.dark) .vp-doc img.dark-only {
 .VPSidebarItem.level-1 > .item > .indicator {
   display: none;
 }
+
+/* The API reference (api/, made by api-pages.mjs): an endpoint's method and path, its fields' types. */
+.api-op {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+.api-op code {
+  overflow-wrap: anywhere;
+}
+.api-method {
+  border-radius: 4px;
+  padding: 0 6px;
+  font-family: var(--vp-font-family-mono);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+}
+.api-get {
+  color: var(--vp-c-green-1);
+  background: var(--vp-c-green-soft);
+}
+.api-post {
+  color: var(--vp-c-brand-1);
+  background: var(--vp-c-brand-soft);
+}
+.api-put,
+.api-patch {
+  color: var(--vp-c-yellow-1);
+  background: var(--vp-c-yellow-soft);
+}
+.api-delete {
+  color: var(--vp-c-red-1);
+  background: var(--vp-c-red-soft);
+}
+.api-op .VPBadge {
+  margin: 0;
+  transform: none;
+}
+.api-type {
+  color: var(--vp-c-text-2);
+  font-family: var(--vp-font-family-mono);
+  font-size: 13px;
+}
+.api-required {
+  color: var(--vp-c-red-1);
+}
+.api-lead {
+  color: var(--vp-c-text-2);
+}

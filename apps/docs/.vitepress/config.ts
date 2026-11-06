@@ -29,6 +29,10 @@ function withExtra(groups: DefaultTheme.SidebarItem[]) {
   return groups;
 }
 
+/** The API reference's sidebar, written by api-pages.mjs (run before every build and dev server) with the pages. */
+const apiSidebarFile = path.join(import.meta.dirname, "api-sidebar.json");
+const apiSidebar: DefaultTheme.SidebarItem[] = existsSync(apiSidebarFile) ? JSON.parse(readFileSync(apiSidebarFile, "utf8")) : [];
+
 // Served by Ferret itself at /docs (adapters/local/web.ts), with its own CSP: the inline scripts VitePress writes are
 // allowed by hash (csp-hashes.mjs, run after the build). No outside requests: local search, no fonts or analytics.
 export default defineConfig({
@@ -40,7 +44,7 @@ export default defineConfig({
   description: "Find anything you own: how to use Ferret, and how to run it.",
   head: [["link", { rel: "icon", type: "image/svg+xml", href: "/docs/favicon.svg" }]],
   lastUpdated: false,
-  // Links out of the help, into the app (/../#/api): they open with target="_self", so VitePress's router leaves them be.
+  // Links out of the help, into the app (/../#/settings): they open with target="_self", so VitePress's router leaves them be.
   ignoreDeadLinks: [/^\/\.\.\//],
   themeConfig: {
     logo: { src: "/favicon.svg", alt: "" },
@@ -48,7 +52,7 @@ export default defineConfig({
     nav: [
       { text: "Using Ferret", link: "/guide/getting-started", activeMatch: "/guide/" },
       { text: "Running Ferret", link: "/hosting/install", activeMatch: "/hosting/" },
-      { text: "API", link: "/../#/api", target: "_self" },
+      { text: "API", link: "/api/", activeMatch: "/api/" },
       { text: "Back to Ferret", link: "/../", target: "_self" },
     ],
     // The Ferret community: questions, ideas and news (icons in the top bar).
@@ -108,6 +112,7 @@ export default defineConfig({
           text: "Claude and automation",
           items: [
             { text: "Claude and the API", link: "/guide/claude" },
+            { text: "API reference", link: "/api/" },
             { text: "Home dashboards", link: "/hosting/dashboards" },
             { text: "Home Assistant import", link: "/guide/importing#home-assistant" },
           ],
@@ -121,6 +126,7 @@ export default defineConfig({
           ],
         },
       ]),
+      "/api/": apiSidebar,
       "/hosting/": [
         {
           text: "Running Ferret",

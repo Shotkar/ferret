@@ -25,7 +25,6 @@ export type Route =
   | { name: "categories" }
   | { name: "report" }
   | { name: "providers" }
-  | { name: "api" }
   | { name: "provider"; id: string }
   | { name: "maintenance" }
   | { name: "deleted" }
@@ -64,8 +63,8 @@ export const LABELS_HREF = "#/labels";
 /** The insurance report (print or save as PDF) and CSV download. */
 export const REPORT_HREF = "#/report";
 export const PROVIDERS_HREF = "#/providers";
-/** The REST API reference. */
-export const API_HREF = "#/api";
+/** The REST API reference: pages of the help (apps/docs/api-pages.mjs). */
+export const API_HREF = "/docs/api/";
 export const providerHref = (id: string) => `#/providers/${encodeURIComponent(id)}`;
 /** The print page for these labels (none: blank labels). */
 export const printLabelsHref = (codes: string[]) => `${LABELS_HREF}?codes=${codes.map(encodeURIComponent).join(",")}`;

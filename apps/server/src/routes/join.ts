@@ -1,6 +1,6 @@
 /**
  * Joining Ferret, before signing in: is sign-up open, and what an invitation
- * link is for. (Plus the API description, which does need a sign-in or key.) The invitation id in the link is the secret (long and random),
+ * link is for, and the API's description (only its shape — every endpoint it describes still needs a key). The invitation id in the link is the secret (long and random),
  * the same as Better Auth's own accept/reject endpoints rely on.
  */
 import { mayStillInvite } from "../auth";
@@ -15,13 +15,16 @@ import { emailEnabled } from "../lib/email-verification";
 import { passwordResetEnabled } from "../lib/password-reset";
 import { HTTPException } from "hono/http-exception";
 import { invitation, organization, user } from "../db/schema";
-import { type AppEnv, requireUser } from "../lib/context";
+import type { AppEnv } from "../lib/context";
 import { openApiDocument } from "../lib/openapi";
 
 export const join = new Hono<AppEnv>();
 
-/** The API described as OpenAPI 3.1 — for Postman, Bruno or code generators (with a key); the app's API page reads it too. */
-join.get("/openapi.json", requireUser, (c) => c.json(openApiDocument(c.var.config.PUBLIC_URL)));
+/**
+ * The API described as OpenAPI 3.1 — for Postman, Bruno or code generators (the help's API reference links it).
+ * Open to anyone: it holds no data, and says nothing the open-source code doesn't.
+ */
+join.get("/openapi.json", (c) => c.json(openApiDocument(c.var.config.PUBLIC_URL)));
 
 /**
  * What the sign-in screen offers. "Create an account": for the very first account (it sets Ferret up), then only

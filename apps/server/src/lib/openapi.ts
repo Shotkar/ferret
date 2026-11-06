@@ -1,6 +1,6 @@
 /**
  * The REST API described as OpenAPI 3.1, served at /api/v1/openapi.json and
- * shown in the app (Settings → API reference). Request bodies and query
+ * made into the help's API reference (apps/docs/api-pages.mjs). Request bodies and query
  * parameters come from the same zod schemas the routes validate with, so they
  * can't drift; test/openapi.test.ts fails if a route is added without an entry.
  */
@@ -88,7 +88,7 @@ const id = (what: string) => `The ${what}'s id`;
 export const OPERATIONS: Operation[] = [
   // ── Account ────────────────────────────────────────────────────────────────
   { method: "get", path: "/me", tag: "Account", summary: "Who you are, and your active household", returns: "{ user, activeHouseholdId }" },
-  { method: "get", path: "/openapi.json", tag: "Account", summary: "This description of the API (OpenAPI 3.1)" },
+  { method: "get", path: "/openapi.json", tag: "Account", summary: "This description of the API (OpenAPI 3.1)", auth: "none" },
   { method: "post", path: "/usage", tag: "Account", summary: "Count a visit, the Home Screen offer taken, a return or \"Run your own\" (the public demo; nothing about who)", auth: "none", body: z.object({ event: z.enum(BROWSER_EVENTS), ref: z.string().max(200).optional() }), returns: "204" },
   { method: "get", path: "/auth-options", tag: "Account", summary: "Whether sign-up is open, and whether password reset and emailed sign-in links (both need email) are", auth: "none", returns: "{ signUp, passwordReset, signInLink, humanCheck?, demo? }" },
   { method: "get", path: "/invitations/{id}", tag: "Account", summary: "What an invitation link is for", auth: "none", returns: "InvitationPreview" },

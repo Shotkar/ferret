@@ -103,12 +103,12 @@ On a hosted Ferret, API keys (Claude and scripts) may come with some plans only 
 
 ## The API
 
-Scripts can use the same key with the REST API at `/api/v1`. The [API reference](/../#/api){target="_self"} (also linked from that
+Scripts can use the same key with the REST API at `/api/v1`. The [API reference](../api/) (also linked from that
 page) lists every endpoint, with a ready-to-copy request in curl, JavaScript or Python and what comes back; find one by
 typing part of its name. A few things — managing keys, your sign-in security, [Download everything](./download-everything),
 backups — need a real sign-in, not a key.
 
-The API is also described as **OpenAPI 3.1** at `/api/v1/openapi.json` (with a key, or signed in) — import it into
+The API is also described as **OpenAPI 3.1** at `/api/v1/openapi.json` — import it into
 Postman, Bruno or Insomnia, or generate a client from it.
 
 ## Other ways to connect

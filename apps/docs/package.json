@@ -4,8 +4,9 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "dev": "vitepress dev --port 5174",
-    "build": "vitepress build && node csp-hashes.mjs && node help-json.mjs && node ../../scripts/precompress.mjs .vitepress/dist",
+    "api": "pnpm --filter @ferret/server exec tsx scripts/openapi-json.ts ../docs/.vitepress/openapi.json && node api-pages.mjs",
+    "dev": "pnpm api && vitepress dev --port 5174",
+    "build": "pnpm api && vitepress build && node csp-hashes.mjs && node help-json.mjs && node ../../scripts/precompress.mjs .vitepress/dist",
     "preview": "vitepress preview"
   },
   "devDependencies": {
