@@ -6,8 +6,9 @@ Its data — a SQLite database and the uploaded files, encrypted — lives in on
 ## What you need
 
 - A machine with **Docker** and Docker Compose — x86-64 or 64-bit ARM (a Raspberry Pi 4 or 5 on a 64-bit OS, an
-  Apple Silicon Mac, an ARM server).
-- An address people reach it at, ideally **HTTPS** behind a reverse proxy (Traefik, Caddy, nginx). Installing on an
+  Apple Silicon Mac, an ARM server). Ferret itself uses about 150 MB of memory when idle, a little more while it
+  makes thumbnails; 1 GB for the whole machine is plenty. The AI features run on models elsewhere ([AI](./ai)).
+- An address people reach it at, ideally **HTTPS** behind a reverse proxy ([Caddy, nginx or Traefik](./reverse-proxy)). Installing on an
   iPhone, the camera and push notifications all need HTTPS.
 
 ## Steps
@@ -87,9 +88,10 @@ server.
 
 ## Behind a reverse proxy
 
-Point the proxy at port **8787**. If the proxy runs on another machine, set `TRUSTED_PROXIES` to its address —
-otherwise every visitor looks like the proxy, and they all share one set of sign-in limits. Behind more than one (a
-tunnel, then Traefik), list them all: [Tunnels and access proxies](./tunnels).
+Point the proxy at port **8787**, and set `TRUSTED_PROXIES` to the proxy's address — otherwise every visitor looks
+like the proxy, and they all share one set of sign-in limits. Behind more than one (a tunnel, then Traefik), list them
+all: [Tunnels and access proxies](./tunnels). Ready-made setups for Caddy, nginx and Traefik:
+[Reverse proxy examples](./reverse-proxy).
 
 ## Sign-ups
 

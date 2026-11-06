@@ -105,11 +105,19 @@ export default defineConfig({
           ],
         },
         {
-          text: "More",
+          text: "Claude and automation",
           items: [
             { text: "Claude and the API", link: "/guide/claude" },
+            { text: "Home dashboards", link: "/hosting/dashboards" },
+            { text: "Home Assistant import", link: "/guide/importing#home-assistant" },
+          ],
+        },
+        {
+          text: "More",
+          items: [
             { text: "Plan and usage", link: "/guide/plan-and-usage" },
             { text: "Account security", link: "/guide/security" },
+            { text: "Troubleshooting", link: "/guide/troubleshooting" },
           ],
         },
       ]),
@@ -118,6 +126,7 @@ export default defineConfig({
           text: "Running Ferret",
           items: [
             { text: "Install", link: "/hosting/install" },
+            { text: "Reverse proxy examples", link: "/hosting/reverse-proxy" },
             { text: "Settings (.env)", link: "/hosting/configuration" },
             { text: "AI features", link: "/hosting/ai" },
             { text: "Email and notifications", link: "/hosting/email" },
@@ -126,6 +135,7 @@ export default defineConfig({
             { text: "Certificates", link: "/hosting/certificates" },
             { text: "Home dashboards", link: "/hosting/dashboards" },
             { text: "Upgrading", link: "/hosting/upgrading" },
+            { text: "Troubleshooting", link: "/guide/troubleshooting#running-ferret" },
           ],
         },
         {

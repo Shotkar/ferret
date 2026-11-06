@@ -50,3 +50,17 @@ Scripts can use the same key with the REST API at `/api/v1`. The [API reference]
 page) lists every endpoint, with a ready-to-copy request in curl, JavaScript or Python and what comes back; find one by
 typing part of its name. A few things — managing keys, your sign-in security, [Download everything](./download-everything),
 backups — need a real sign-in, not a key.
+
+The API is also described as **OpenAPI 3.1** at `/api/v1/openapi.json` (with a key, or signed in) — import it into
+Postman, Bruno or Insomnia, or generate a client from it.
+
+## Other ways to connect
+
+| To… | Use |
+| --- | --- |
+| Show counts on a home dashboard (Heimdall, Homepage) | `GET /api/v1/summary` — [Home dashboards](../hosting/dashboards) |
+| Get maintenance in a calendar app | the calendar feed — [Reminders](./reminders#calendar) |
+| Send reminders to ntfy, Pushover, Telegram… | [Other apps](./reminders#other-apps) |
+| Bring in devices and rooms from Home Assistant | [Importing](./importing#home-assistant) |
+| Load or move things in bulk | a spreadsheet, [importing](./importing#a-spreadsheet-csv) and the [insurance report's CSV](./insurance-report) |
+| Take everything with you | [Download everything](./download-everything): JSON, CSV and the files |
