@@ -75,10 +75,10 @@ export type CustomFieldValues = Record<string, string | number>;
 
 // ── Collections: coins, dolls, cards — kept as a set, with a want list ──────────────────────────────────
 export const collectionInput = z.object({
-  name: z.string().trim().min(1).max(80),
-  description: optionalText(2000),
+  name: z.string().trim().min(1).max(80).describe('The collection\'s name: "US quarters", "Vinyl records"'),
+  description: optionalText(2000).describe("What it is, what's being looked for"),
   /** Its kind of thing: the template whose fields are its columns (and new things in it start from). */
-  templateId: z.string().min(1).nullable().optional(),
+  templateId: z.string().min(1).nullable().optional().describe("The kind of thing in it, from list_templates: its fields are the collection's columns"),
 });
 export type CollectionInput = z.infer<typeof collectionInput>;
 export const collectionPatch = collectionInput.partial();
@@ -127,10 +127,10 @@ export interface ItemTemplate {
 }
 
 const categoryFields = z.object({
-  name: z.string().trim().min(1).max(80),
-  parentId: z.string().min(1).nullable(),
-  icon: optionalText(64),
-  fields: z.array(categoryField).max(20),
+  name: z.string().trim().min(1).max(80).describe('The category\'s name: "Power tools", "Kitchen appliances"'),
+  parentId: z.string().min(1).nullable().describe("The category it's inside, from list_categories; null or left out: top level"),
+  icon: optionalText(64).describe("An icon name for the app (optional)"),
+  fields: z.array(categoryField).max(20).describe('Extra fields its items fill in, e.g. a TV\'s screen size: { key: "screen_size", label: "Screen size", type: "number", unit: "in" }'),
 });
 export const categoryInput = categoryFields.partial({ parentId: true, icon: true, fields: true });
 export type CategoryInput = z.infer<typeof categoryInput>;
@@ -272,26 +272,21 @@ export const listQuery = z.object({
 export type ListQuery = z.infer<typeof listQuery>;
 
 // ── Warranties ──────────────────────────────────────────────────────────────
+const warrantyFields = {
+  provider: optionalText(120).describe('Who stands behind it: "Bosch", "Best Buy Geek Squad"'),
+  startsOn: z.iso.date().optional().nullable().describe("When cover began, yyyy-mm-dd (usually the purchase date)"),
+  endsOn: z.iso.date().describe("When cover ends, yyyy-mm-dd"),
+  coverage: optionalText(2000).describe('What it covers: "parts and labour", "accidental damage"'),
+  /** The document it came from (receipt, warranty card), if any. */
+  attachmentId: z.string().min(1).optional().nullable().describe("The receipt or warranty card it came from: a document's id from get_item"),
+  notes: optionalText(5000).describe("Anything else: how to claim, the registration number"),
+};
 export const warrantyInput = z
-  .object({
-    provider: optionalText(120),
-    startsOn: z.iso.date().optional().nullable(),
-    endsOn: z.iso.date(),
-    coverage: optionalText(2000),
-    /** The document it came from (receipt, warranty card), if any. */
-    attachmentId: z.string().min(1).optional().nullable(),
-    notes: optionalText(5000),
-  })
+  .object(warrantyFields)
   .refine((w) => !w.startsOn || w.startsOn <= w.endsOn, { message: "A warranty can't end before it starts", path: ["endsOn"] });
 export type WarrantyInput = z.infer<typeof warrantyInput>;
-export const warrantyPatch = z.object({
-  provider: optionalText(120),
-  startsOn: z.iso.date().optional().nullable(),
-  endsOn: z.iso.date().optional(),
-  coverage: optionalText(2000),
-  attachmentId: z.string().min(1).optional().nullable(),
-  notes: optionalText(5000),
-});
+export const warrantyPatch = z.object({ ...warrantyFields, endsOn: warrantyFields.endsOn.optional() });
+export type WarrantyPatch = z.infer<typeof warrantyPatch>;
 
 export interface Warranty extends WarrantyInput {
   id: string;
@@ -367,17 +362,17 @@ export type MaintenanceInput = z.infer<typeof maintenanceInput>;
 
 export const maintenancePatch = z
   .object({
-    title: z.string().trim().min(1).max(200),
-    notes: optionalText(5000),
-    itemId: z.string().min(1).nullable(),
-    locationId: z.string().min(1).nullable(),
-    providerId: z.string().min(1).nullable(),
-    partItemId: z.string().min(1).nullable(),
-    partQuantity: z.number().int().min(1).max(1000),
+    title: z.string().trim().min(1).max(200).describe("What to do"),
+    notes: optionalText(5000).describe("How to do it: the part number, steps, what to watch for"),
+    itemId: z.string().min(1).nullable().describe("The item it's for (search_inventory); null: not on an item"),
+    locationId: z.string().min(1).nullable().describe("The place it's for (list_locations); null: not on a place"),
+    providerId: z.string().min(1).nullable().describe("Who usually does it, from list_providers; null: the household"),
+    partItemId: z.string().min(1).nullable().describe("The consumable it uses (a filter item); null: none"),
+    partQuantity: z.number().int().min(1).max(1000).describe("How many of the part each time"),
     ...interval,
-    usageEvery: z.number().int().min(1).max(10_000_000).nullable(),
+    usageEvery: z.number().int().min(1).max(10_000_000).nullable().describe("Due every this much use, in the item's usageUnit; null: not by use"),
     /** Reschedule: when it's next due (also re-opens a finished one-off). */
-    dueOn: z.iso.date(),
+    dueOn: z.iso.date().describe("Reschedule: when it's next due, yyyy-mm-dd (also re-opens a finished one-off)"),
   })
   .partial()
   .refine(bothOrNeither, { message: "Say how often: a number and a unit", path: ["intervalUnit"] });
@@ -1509,14 +1504,14 @@ export const coverageScopes = ["all", "category", "tag"] as const;
 export const coverageInput = z
   .object({
     /** "Personal property (Coverage C)", "Jewelry & watches"… */
-    label: z.string().trim().min(1).max(80),
-    limitCents: z.number().int().min(0).max(1_000_000_000_00),
-    scope: z.enum(coverageScopes),
+    label: z.string().trim().min(1).max(80).describe('The policy line: "Personal property (Coverage C)", "Jewelry & watches"'),
+    limitCents: z.number().int().min(0).max(1_000_000_000_00).describe("What the policy pays at most, in cents"),
+    scope: z.enum(coverageScopes).describe("What it covers: all (everything), category (categoryId) or tag (tag)"),
     /** Only this property's things (else everywhere). */
-    propertyId: z.string().min(1).max(64).optional().nullable(),
-    categoryId: z.string().min(1).max(64).optional().nullable(),
-    tag: z.string().trim().min(1).max(40).optional().nullable(),
-    note: optionalText(500),
+    propertyId: z.string().min(1).max(64).optional().nullable().describe("Only this property's things, from list_locations; left out: every property"),
+    categoryId: z.string().min(1).max(64).optional().nullable().describe("With scope category: the category, from list_categories (its subcategories count too)"),
+    tag: z.string().trim().min(1).max(40).optional().nullable().describe("With scope tag: the tag's name"),
+    note: optionalText(500).describe("Anything worth keeping: the policy number, a rider"),
   })
   .refine((c) => c.scope !== "category" || c.categoryId, { message: "Which category?", path: ["categoryId"] })
   .refine((c) => c.scope !== "tag" || c.tag, { message: "Which tag?", path: ["tag"] });

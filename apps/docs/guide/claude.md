@@ -17,6 +17,63 @@ furnace filter"*.
 
 A key works for one household, acts as you, and can be revoked any time from the same page.
 
+### Claude Desktop
+
+Claude Desktop starts its MCP servers as programs on your computer, so it reaches Ferret through Ferret's small
+**bridge**, which passes each message on to your Ferret with your key. It needs [Node.js](https://nodejs.org) 26 or
+newer.
+
+1. Save the bridge somewhere it can stay, e.g. a `ferret` folder in your home folder:
+
+   ```bash
+   mkdir -p ~/ferret && curl -o ~/ferret/bridge.mjs https://raw.githubusercontent.com/ferret-project/ferret/main/contrib/mcp-bridge/bridge.mjs
+   ```
+
+2. In Claude Desktop, **Settings → Developer → Edit Config** opens `claude_desktop_config.json`. Add Ferret, with your
+   Ferret's address and the key:
+
+   ```json
+   {
+     "mcpServers": {
+       "ferret": {
+         "command": "node",
+         "args": ["/Users/you/ferret/bridge.mjs"],
+         "env": {
+           "FERRET_URL": "https://ferret.example.lan",
+           "FERRET_API_KEY": "ferret_…"
+         }
+       }
+     }
+   }
+   ```
+
+   Use the full path to `bridge.mjs`. On Windows, double each backslash, as JSON needs:
+   `"C:\\Users\\you\\ferret\\bridge.mjs"`.
+
+3. Quit Claude Desktop completely and open it again. Ask *"what's in the garage?"* to try it.
+
+If it doesn't show up:
+
+- **Claude Desktop can't find Node** (common on a Mac with Node from Homebrew): put its full path as `"command"` —
+  `which node` in a terminal prints it, e.g. `/opt/homebrew/bin/node`.
+- **Your Ferret's certificate is from your own authority** (a LAN address): add
+  `"NODE_EXTRA_CA_CERTS": "/path/to/your-ca.pem"` to `env`.
+- **Settings → Developer** shows whether Ferret is running, and opens its log.
+
+Claude's **Connectors** (Settings → Connectors → Add custom connector) need a sign-in Ferret doesn't offer yet; use
+the config file above.
+
+### What Claude can do
+
+With a full key, Claude can find things (by words and meaning, and from receipts and manuals), look at an item's
+photos, add and change things — one at a time or many at once — and look after places, categories, QR labels,
+warranties and claims, maintenance, recalls, stock and the shopping list, lending, collections and insurance limits.
+With a **read-only** key it only gets the tools that look and ask. A few things stay in the app: managing keys,
+members and invitations, share links, pairing codes, settings and backups.
+
+Claude asks before deleting anything, deleted things wait 30 days in [Recently deleted](./recently-deleted), and
+suggestions read from photos and documents are applied only once you've said yes.
+
 ### Other MCP clients
 
 Ferret's MCP server is at `/mcp` on your Ferret's address (Streamable HTTP). Clients that can send a header take the

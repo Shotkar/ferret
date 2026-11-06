@@ -40,6 +40,7 @@ import { addAttachment, attachmentFields, setMainPhoto } from "../lib/attachment
 import { sniffContentType } from "../lib/sniff";
 import { isServerAdmin } from "../lib/server-admin";
 import { itemHistory } from "../lib/history";
+import * as warranties from "../lib/warranties";
 
 export const inventory = new Hono<AppEnv>();
 
@@ -196,74 +197,26 @@ inventory.delete("/items/:id", requireWriter, async (c) => {
 });
 
 // ── Warranties ──────────────────────────────────────────────────────────────
-const warrantyOf = (c: Context<AppEnv>) =>
-  and(eq(warranty.id, c.req.param("id")!), eq(warranty.householdId, c.var.householdId), isNull(warranty.deletedAt));
-
 /** Every warranty in the household, soonest to end first. ?status=active|expiring|expired narrows it. */
 inventory.get("/warranties", async (c) => {
   const status = z.enum(["active", "expiring", "expired"]).optional().parse(c.req.query("status") || undefined);
   return c.json({ data: await svc.listWarranties(callerOf(c), status) });
 });
 
-inventory.get("/items/:id/warranties", async (c) => {
-  const rows = await c.var.db
-    .select()
-    .from(warranty)
-    .where(and(eq(warranty.itemId, c.req.param("id")), eq(warranty.householdId, c.var.householdId), isNull(warranty.deletedAt)))
-    .orderBy(warranty.endsOn);
-  return c.json({ data: rows.map(withStatus) });
-});
+inventory.get("/items/:id/warranties", async (c) => c.json({ data: await warranties.itemWarranties(callerOf(c), c.req.param("id")) }));
 
-inventory.post("/items/:id/warranties", requireWriter, async (c) => {
-  const input = await body(c.req.raw, warrantyInput);
-  const [owner] = await c.var.db
-    .select({ id: item.id, name: item.name })
-    .from(item)
-    .where(and(eq(item.id, c.req.param("id")), eq(item.householdId, c.var.householdId), isNull(item.deletedAt)));
-  if (!owner) throw new HTTPException(404, { message: "Item not found" });
-  if (input.attachmentId) await requireAttachmentOf(c, owner.id, input.attachmentId);
-  const [row] = await c.var.db
-    .insert(warranty)
-    .values({ ...input, householdId: c.var.householdId, itemId: owner.id })
-    .returning();
-  await logActivity(callerOf(c), "warranty.create", row!.id, `Added a warranty to ${owner.name} (until ${row!.endsOn})`, owner.id);
-  await itemChanged(c.var, owner.id);
-  return c.json(withStatus(row!), 201);
-});
+inventory.post("/items/:id/warranties", requireWriter, async (c) =>
+  c.json(await warranties.createWarranty(callerOf(c), c.req.param("id"), await body(c.req.raw, warrantyInput)), 201),
+);
 
-inventory.patch("/warranties/:id", requireWriter, async (c) => {
-  const input = await body(c.req.raw, warrantyPatch);
-  const [current] = await c.var.db.select().from(warranty).where(warrantyOf(c));
-  if (!current) throw new HTTPException(404, { message: "Warranty not found" });
-  const startsOn = input.startsOn === undefined ? current.startsOn : input.startsOn;
-  const endsOn = input.endsOn ?? current.endsOn;
-  if (startsOn && startsOn > endsOn) throw new HTTPException(422, { message: "A warranty can't end before it starts" });
-  if (input.attachmentId) await requireAttachmentOf(c, current.itemId, input.attachmentId);
-  const [row] = await c.var.db.update(warranty).set(input).where(warrantyOf(c)).returning();
-  await itemChanged(c.var, current.itemId);
-  return c.json(withStatus(row!));
-});
+inventory.patch("/warranties/:id", requireWriter, async (c) =>
+  c.json(await warranties.updateWarranty(callerOf(c), c.req.param("id"), await body(c.req.raw, warrantyPatch))),
+);
 
 inventory.delete("/warranties/:id", requireWriter, async (c) => {
-  const [row] = await c.var.db
-    .update(warranty)
-    .set({ deletedAt: new Date() })
-    .where(warrantyOf(c))
-    .returning({ id: warranty.id, itemId: warranty.itemId });
-  if (!row) throw new HTTPException(404, { message: "Warranty not found" });
-  await logActivity(callerOf(c), "warranty.delete", row.id, "Removed a warranty", row.itemId);
-  await itemChanged(c.var, row.itemId);
+  await warranties.deleteWarranty(callerOf(c), c.req.param("id"));
   return c.body(null, 204);
 });
-
-/** A warranty's source document must belong to the same item. */
-async function requireAttachmentOf(c: Context<AppEnv>, itemId: string, attachmentId: string) {
-  const [found] = await c.var.db
-    .select({ id: attachment.id })
-    .from(attachment)
-    .where(and(eq(attachment.id, attachmentId), eq(attachment.itemId, itemId), eq(attachment.householdId, c.var.householdId)));
-  if (!found) throw new HTTPException(422, { message: "That document isn't attached to this item" });
-}
 
 // ── Attachments (photos & documents, stored encrypted per household) ────────
 const uploadLimit = createMiddleware<AppEnv>((c, next) =>
