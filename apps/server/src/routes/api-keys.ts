@@ -1,6 +1,6 @@
 /**
  * /api/v1/api-keys — the signed-in user's API keys for the current household
- * (Settings → API keys). Only a real sign-in can manage keys: a key can't make
+ * (Settings → Claude & API). Only a real sign-in can manage keys: a key can't make
  * or see other keys.
  */
 import { type ApiKeySummary, apiKeyInput, type NewApiKey } from "@ferret/shared";

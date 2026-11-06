@@ -28,7 +28,7 @@ mcp.all("/", sizeLimit, async (c) => {
   const holder = key ? await verifyKey(c.var.auth, c.var.db, key) : null;
   if (!holder) {
     return c.json(
-      { jsonrpc: "2.0", error: { code: -32001, message: "Ferret needs an API key: Authorization: Bearer ferret_… (Settings → API keys)" }, id: null },
+      { jsonrpc: "2.0", error: { code: -32001, message: "Ferret needs an API key: Authorization: Bearer ferret_… (Settings → Claude & API)" }, id: null },
       401,
       { "WWW-Authenticate": 'Bearer realm="ferret"' },
     );

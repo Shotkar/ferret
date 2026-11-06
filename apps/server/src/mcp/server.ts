@@ -1,6 +1,6 @@
 /**
  * The MCP server: "talk to my house". Claude connects to /mcp with an API key
- * (Settings → API keys) and works with that key's household through these
+ * (Settings → Claude & API) and works with that key's household through these
  * tools. Each tool calls the same service (lib/inventory.ts) as the REST API.
  *
  * Stateless: a fresh McpServer per request, built for the caller (a read-only

@@ -532,12 +532,12 @@ export function openApiDocument(publicUrl: string) {
       title: "Ferret",
       version: "1",
       description:
-        "Ferret's REST API: the same household inventory the app and Claude (MCP, at /mcp) use. Every call acts in one household. Make an API key in Settings → API keys and send it as `Authorization: Bearer ferret_…` (or `x-api-key`).",
+        "Ferret's REST API: the same household inventory the app and Claude (MCP, at /mcp) use. Every call acts in one household. Make an API key in Settings → Claude & API and send it as `Authorization: Bearer ferret_…` (or `x-api-key`).",
     },
     servers: [{ url: `${publicUrl}/api/v1` }],
     components: {
       securitySchemes: {
-        apiKey: { type: "http", scheme: "bearer", description: "An API key from Settings → API keys (ferret_…)" },
+        apiKey: { type: "http", scheme: "bearer", description: "An API key from Settings → Claude & API (ferret_…)" },
         apiKeyHeader: { type: "apiKey", in: "header", name: "x-api-key" },
         session: { type: "apiKey", in: "cookie", name: "better-auth.session_token", description: "The app's sign-in" },
       },

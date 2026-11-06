@@ -1,4 +1,4 @@
-/** API keys (Settings → API keys) and the MCP server Claude talks to with them. */
+/** API keys (Settings → Claude & API) and the MCP server Claude talks to with them. */
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { and, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
