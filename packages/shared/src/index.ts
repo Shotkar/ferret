@@ -1041,6 +1041,12 @@ export interface BackupSnapshot {
   filesBytes: number;
 }
 
+/** Settings → Server: PUBLIC_URL, and whether it was set (unset: sign-ins work from any address Ferret is opened at, but links use this). */
+export interface ServerAddress {
+  set: boolean;
+  publicUrl: string;
+}
+
 /** Settings → Server's keys: where each secret Ferret needs came from — never a secret itself (bar the push public key). */
 export interface ServerSecrets {
   /** The data folder's secrets.json, where the ones Ferret made are kept. */

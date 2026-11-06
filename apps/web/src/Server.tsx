@@ -19,6 +19,7 @@ export function Server() {
   const demo = useQuery({ queryKey: ["auth-options"], queryFn: api.authOptions, staleTime: Infinity }).data?.demo;
   return (
     <>
+      <AddressNotice />
       <DemoUsage />
       <HostingUsageCard />
       <DemoSwitches />
@@ -29,6 +30,29 @@ export function Server() {
       {!demo && <Certificates />}
       <ServerAdmin />
     </>
+  );
+}
+
+/**
+ * PUBLIC_URL unset (a one-click install that can't know its address): sign-ins work from wherever Ferret is opened, but
+ * links Ferret sends and passkeys use the default — say so, with the address this page is open at to set it to.
+ */
+function AddressNotice() {
+  const address = useQuery({ queryKey: ["server-address"], queryFn: api.serverAddress });
+  if (!address.data || address.data.set) return null;
+  const here = window.location.origin;
+  return (
+    <div className="alert alert-soft alert-warning flex-col items-start gap-2" role="status">
+      <p className="font-medium">Set Ferret's address (PUBLIC_URL)</p>
+      <p className="text-sm">
+        It isn't set, so signing in works from the local address Ferret is opened at (an IP address or a name like
+        umbrel.local, not a domain name) — but links it sends (invitations, password
+        resets, share links, calendar feeds) point to <code className="break-all">{address.data.publicUrl}</code>, and passkeys and
+        single sign-on won't work. Set <code>PUBLIC_URL</code> in Ferret's settings — probably to <code className="break-all">{here}</code>{" "}
+        — and restart it.
+      </p>
+      <HelpLink page="hosting/configuration.html" label="Settings" />
+    </div>
   );
 }
 

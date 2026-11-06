@@ -3,7 +3,7 @@
  * whether things are checked against product recalls.
  */
 import { Hono } from "hono";
-import { type ServerSecrets, serverAdminInput } from "@ferret/shared";
+import { type ServerAddress, type ServerSecrets, serverAdminInput } from "@ferret/shared";
 import { type AppEnv, body, requireServerAdmin, requireUser } from "../lib/context";
 import { serverAdmin, setServerAdmin } from "../lib/server-admin";
 import { z } from "zod";
@@ -26,6 +26,9 @@ server.put("/admin", async (c) => {
   const { email } = await body(c.req.raw, serverAdminInput);
   return c.json(await setServerAdmin(c.var.db, email));
 });
+
+/** PUBLIC_URL and whether it was set (Settings → Server says to set it when it isn't). */
+server.get("/address", (c) => c.json({ set: c.var.config.publicUrlSet, publicUrl: c.var.config.PUBLIC_URL } satisfies ServerAddress));
 
 /** Where each secret came from (Settings → Server → Keys) — never the secrets, bar the push public key. */
 server.get("/secrets", (c) => {

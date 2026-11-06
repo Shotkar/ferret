@@ -25,7 +25,7 @@ import { magicLink, organization, twoFactor } from "better-auth/plugins";
 import { createAccessControl } from "better-auth/plugins/access";
 import { adminAc, defaultStatements, memberAc, ownerAc } from "better-auth/plugins/organization/access";
 import { and, count, eq, gt, isNull } from "drizzle-orm";
-import { type Config, trustedOrigins } from "./config";
+import { type Config, sameOrigin, trustedOrigins } from "./config";
 import { isNewPlace, recordSignIn, type SignInMethod } from "./lib/security";
 import { VERIFY_TTL_S, confirmEmail, mayEmailConfirmation, replaceUnconfirmed } from "./lib/email-verification";
 import { RESET_PATHS, RESET_TTL_S, passwordResetFront } from "./lib/password-reset";
@@ -94,7 +94,8 @@ export function createAuth(db: Db, config: Config, opts: AuthHooks = {}) {
     baseURL: config.PUBLIC_URL,
     basePath: "/api/auth",
     secret: config.AUTH_SECRET,
-    trustedOrigins: trustedOrigins(config),
+    // PUBLIC_URL unset (a one-click install): also the address each sign-in came to, if it's the page's own (config.ts).
+    trustedOrigins: config.publicUrlSet ? trustedOrigins(config) : (request) => [...trustedOrigins(config), ...sameOrigin(request)],
     database: drizzleAdapter(db, { provider: "sqlite", schema }),
     emailAndPassword: {
       enabled: true,

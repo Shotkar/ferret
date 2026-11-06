@@ -58,6 +58,11 @@ if (secrets.made.length) {
   const list = secrets.made.length > 1 ? `${secrets.made.slice(0, -1).join(", ")} and ${secrets.made.at(-1)}` : secrets.made[0];
   console.log(`🔑 Made ${list}, kept in ${path.join(dataDir, SECRETS_FILE)}.`);
 }
+if (!config.publicUrlSet) {
+  console.warn(
+    `   ⚠ PUBLIC_URL isn't set: sign-ins work from local addresses it's opened at (an IP, umbrel.local…), but links it sends and passkeys use ${config.PUBLIC_URL}. Set PUBLIC_URL to the address people use.`,
+  );
+}
 if (secrets.sources.FILES_KEY === "ferret") {
   console.log("   FILES_KEY is kept in the data folder. Save a copy elsewhere (Settings → Server shows how) — without it, no photo, document or backup can be opened.");
 }

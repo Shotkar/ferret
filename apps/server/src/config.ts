@@ -227,7 +227,14 @@ function base64Length(value: string) {
   }
 }
 
-export type Config = z.infer<typeof schema>;
+export type Config = z.infer<typeof schema> & {
+  /**
+   * Whether PUBLIC_URL was set. Unset (a one-click install that can't know its own address), sign-ins are also accepted
+   * from the local address each request came to — a same-origin request (sameOrigin) — not PUBLIC_URL only; links Ferret sends
+   * (email, shares, calendars) and passkeys still use the default until it's set (auth.ts, Settings → Server).
+   */
+  publicUrlSet: boolean;
+};
 
 /** Settings whose empty value is a choice of its own, not "unset". */
 const EMPTY_MEANS_SOMETHING = new Set(["CHAT_REASONING"]);
@@ -252,7 +259,36 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   if (c.TRUSTED_HEADER_AUTH && !c.TRUSTED_HEADER_PROXIES.trim()) {
     throw new Error("Invalid configuration:\n  TRUSTED_HEADER_AUTH needs TRUSTED_HEADER_PROXIES (the sign-in proxy's address)");
   }
-  return c;
+  return { ...c, publicUrlSet: set.PUBLIC_URL !== undefined };
+}
+
+/**
+ * A request's own origin, when it's provably the same origin as the page that sent it: the browser says so
+ * (Sec-Fetch-Site: same-origin, which pages can't forge), or its Origin's host is the host the request came to. Used
+ * for sign-ins only while PUBLIC_URL is unset; another site's page always has another origin, so it's still refused.
+ */
+export function sameOrigin(request: Request | undefined): string[] {
+  const origin = request?.headers.get("origin");
+  if (!origin || origin === "null") return [];
+  let url: URL;
+  try {
+    url = new URL(origin);
+  } catch {
+    return [];
+  }
+  // Only local addresses: an IP, or a name only a local network knows (umbrel.local, nas.lan, a bare hostname). A
+  // public name could be an attacker's, pointed at this server by DNS rebinding — it would look same-origin to the
+  // browser. A Ferret reached by a real domain sets PUBLIC_URL.
+  if (!isLocalName(url.hostname)) return [];
+  if (request!.headers.get("sec-fetch-site") === "same-origin") return [origin];
+  return url.host === request!.headers.get("host") ? [origin] : [];
+}
+
+/** An IP address, or a name that never resolves on the internet: one label, or a local or reserved top-level domain. */
+export function isLocalName(host: string) {
+  const name = host.toLowerCase().replace(/\.$/, "");
+  const labels = name.split(".");
+  return labels.length < 2 || /^[\d.]+$/.test(name) || name.startsWith("[") || LOCAL_TLDS.has(labels.at(-1)!);
 }
 
 /** What's sent to docling with each document: DOCLING_OPTIONS, else the VLM pipeline at DOCLING_VLM_URL, else docling's defaults. */
@@ -283,9 +319,7 @@ export function vapidSubjectProblem(subject: string): string | undefined {
   const host = url.protocol === "mailto:" ? url.pathname.split("@")[1] : url.protocol === "https:" ? url.hostname : undefined;
   if (host === undefined) return "isn't a mailto: or https: address";
   const name = host.toLowerCase().replace(/\.$/, "");
-  const labels = name.split(".");
-  const local = labels.length < 2 || /^[\d.]+$/.test(name) || name.startsWith("[") || LOCAL_TLDS.has(labels.at(-1)!);
-  return local ? `uses ${name || "no domain"}, which isn't a public domain — Apple's push service refuses it` : undefined;
+  return isLocalName(name) ? `uses ${name || "no domain"}, which isn't a public domain — Apple's push service refuses it` : undefined;
 }
 
 /** The origins trusted besides PUBLIC_URL (TRUSTED_ORIGINS, or its default for the environment). */

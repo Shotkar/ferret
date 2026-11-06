@@ -4,11 +4,21 @@ Everything is set in `.env` next to `compose.yaml`; restart Ferret after a chang
 features switch on when their settings are present (an empty one, `KEY=`, counts as unset — except `CHAT_REASONING=`,
 which leaves the reasoning effort out), and Ferret's log lists what's on when it starts.
 
-## Required
+## The address: PUBLIC_URL
 
 | Setting | |
 |---|---|
-| `PUBLIC_URL` | The address people (and Claude) use, e.g. `https://ferret.example.lan`. |
+| `PUBLIC_URL` | The address people (and Claude) use, e.g. `https://ferret.example.lan`. **Set it.** |
+
+Ferret puts `PUBLIC_URL` in every link it sends — invitations, password resets, share links, calendar feeds — and passkeys
+and [single sign-on](./single-sign-on) are tied to it. Once it's set, sign-ins are accepted from that address only.
+
+Left unset — a one-click install that can't know its own address — Ferret still starts, and signing in works from the
+local address it's opened at: an IP address, or a name only your network knows (`umbrel.local`, `nas.lan`, a bare
+hostname). Another site's page is still refused, and so is any public domain name, since an attacker's domain could be
+pointed at your server. Reached by a real domain, Ferret needs `PUBLIC_URL`. Unset, links point to
+`http://localhost:8787`, and passkeys and single sign-on don't work, so **Settings → Server** and the log ask you to set
+it.
 
 ## Secrets
 
