@@ -73,10 +73,13 @@ there, it says so in its log and stops.
 
 ## On Unraid
 
-Ferret's Unraid template is in `https://github.com/ferret-project/unraid-templates`: in Unraid, **Docker** →
-**Template Repositories**, add that address, then **Add Container** → **Ferret**. Set `PUBLIC_URL`; the secrets
-(`AUTH_SECRET`, `FILES_KEY`) can stay empty — Ferret makes them. The template runs Ferret as `nobody:users` (99:100), like Unraid's shares, with its data in
-`/mnt/user/appdata/ferret`. Backups, email and the AI features are under **Show more settings**.
+Ferret is in **Community Apps**: **Apps** → search for **Ferret** → **Install**. Set `PUBLIC_URL`; the secrets
+(`AUTH_SECRET`, `FILES_KEY`) can stay empty — Ferret makes them. The template runs Ferret as `nobody:users` (99:100),
+like Unraid's shares, with its data in `/mnt/user/appdata/ferret`. Backups, email, the push contact and the AI features
+are under **Show more settings**.
+
+The template itself is in `https://github.com/ferret-project/unraid-templates` — to use it without Community Apps, add
+that address under **Docker** → **Template Repositories**, then **Add Container** → **Ferret**.
 
 Ferret makes its secrets in `/mnt/user/appdata/ferret` the first time it starts, so appdata backups include them. Make a
 [key file](./backups#a-key-file-for-files-key) from the container's console once it's running, and keep it off the
