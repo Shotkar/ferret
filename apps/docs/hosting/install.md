@@ -20,17 +20,19 @@ Its data — a SQLite database and the uploaded files, encrypted — lives in on
    curl -o .env https://raw.githubusercontent.com/ferret-project/ferret/main/.env.example
    ```
 
-2. Fill in the three required settings:
+2. Set `PUBLIC_URL` in `.env` — the address people reach Ferret at:
 
    ```bash
-   AUTH_SECRET=   # openssl rand -base64 32
-   FILES_KEY=     # openssl rand -base64 32
    PUBLIC_URL=https://ferret.example.lan
    ```
 
+   Ferret makes its [secrets](./configuration#secrets) (`AUTH_SECRET`, `FILES_KEY`, the push keys) the first time it
+   starts and keeps them in the data folder. You can set your own in `.env` instead.
+
    ::: danger FILES_KEY
    Every uploaded photo and document is encrypted with a key sealed by `FILES_KEY`. **Lose it and they're
-   unreadable** — backups too. Save it in your password manager now.
+   unreadable** — backups too. Once Ferret is running, make a [key file](./backups#a-key-file-for-files-key)
+   (**Settings → Server → Keys** shows how) and keep it, and its passphrase, off the server.
    :::
 
 3. Start it:
@@ -55,6 +57,30 @@ The same image is published in two places — use whichever you like:
 Both have the same tags: `latest`, each release (`2026.11.2` — see [Upgrading](./upgrading)) and each build
 (`sha-…`), for x86-64 and 64-bit ARM. `compose.yaml` uses GitHub's; for Docker Hub, change its `image:` line to
 `ferretproject/ferret:${FERRET_TAG:-latest}`. Unraid, Portainer and other tools that ask for an image name take either.
+
+## The data folder's owner
+
+The container runs as user 1000 (group 1000), not as root, so the host folder mounted at `/data` (and at `/backups`)
+must be writable by it:
+
+```bash
+sudo chown -R 1000:1000 ./data
+```
+
+Or run the container as the folder's owner instead: `user: "<uid>:<gid>"` in `compose.yaml`, `--user <uid>:<gid>` with
+`docker run`. Changing the user later? Hand it everything already in the folder too (`chown -R`). If Ferret can't write
+there, it says so in its log and stops.
+
+## On Unraid
+
+Ferret's Unraid template is in `https://github.com/ferret-project/unraid-templates`: in Unraid, **Docker** →
+**Template Repositories**, add that address, then **Add Container** → **Ferret**. Set `PUBLIC_URL`; the secrets
+(`AUTH_SECRET`, `FILES_KEY`) can stay empty — Ferret makes them. The template runs Ferret as `nobody:users` (99:100), like Unraid's shares, with its data in
+`/mnt/user/appdata/ferret`. Backups, email and the AI features are under **Show more settings**.
+
+Ferret makes its secrets in `/mnt/user/appdata/ferret` the first time it starts, so appdata backups include them. Make a
+[key file](./backups#a-key-file-for-files-key) from the container's console once it's running, and keep it off the
+server.
 
 ## Behind a reverse proxy
 

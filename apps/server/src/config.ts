@@ -229,8 +229,16 @@ function base64Length(value: string) {
 
 export type Config = z.infer<typeof schema>;
 
+/** Settings whose empty value is a choice of its own, not "unset". */
+const EMPTY_MEANS_SOMETHING = new Set(["CHAT_REASONING"]);
+
 export function loadConfig(env: Record<string, string | undefined>): Config {
-  const parsed = schema.safeParse(env);
+  // An empty setting is an unset one: Unraid passes every variable in its template, and `.env` files keep `KEY=` lines.
+  // Except where empty already meant something (CHAT_REASONING= leaves reasoning_effort out).
+  const set = Object.fromEntries(
+    Object.entries(env).filter(([k, v]) => v !== undefined && (v.trim() !== "" || EMPTY_MEANS_SOMETHING.has(k))),
+  );
+  const parsed = schema.safeParse(set);
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n");
     throw new Error(`Invalid configuration:\n${issues}`);

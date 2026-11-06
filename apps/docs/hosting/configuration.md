@@ -1,15 +1,33 @@
 # Settings (.env)
 
 Everything is set in `.env` next to `compose.yaml`; restart Ferret after a change (`docker compose up -d`). Optional
-features switch on when their settings are present, and Ferret's log lists what's on when it starts.
+features switch on when their settings are present (an empty one, `KEY=`, counts as unset — except `CHAT_REASONING=`,
+which leaves the reasoning effort out), and Ferret's log lists what's on when it starts.
 
 ## Required
 
 | Setting | |
 |---|---|
-| `AUTH_SECRET` | Signs sessions. 32+ random characters: `openssl rand -base64 32`. |
-| `FILES_KEY` | Master key for uploaded files: `openssl rand -base64 32`. **Keep a copy in your password manager.** |
 | `PUBLIC_URL` | The address people (and Claude) use, e.g. `https://ferret.example.lan`. |
+
+## Secrets
+
+Ferret needs a few secrets. **It makes them for you** the first time it starts — the right kind, from a secure random
+source — and keeps them in the data folder, in `secrets.json` (readable by Ferret's own user only, and never copied into
+its [backups](./backups)). Set any of them yourself and yours is used instead; that keeps it out of the data folder and
+out of any copy of it. **Settings → Server → Keys** shows where each one came from.
+
+| Setting | What it's for | To set your own | If it's lost |
+|---|---|---|---|
+| `FILES_KEY` | Seals every photo, document and pairing code, and the backups. | `openssl rand -base64 32` (exactly that: 32 random bytes) | **Lost for good** without a copy — nothing uploaded can be opened again. Ferret won't make a new one once files are sealed: it stops and says which key it needs. |
+| `AUTH_SECRET` | Signs sign-ins, and seals two-step sign-in. | `openssl rand -base64 32` (32+ characters) | **Can be replaced**: Ferret stops rather than swap it by itself; `node dist/cli.js secrets new AUTH_SECRET` makes a new one — everyone signs in again, and two-step sign-in is turned off for those who had it, to set up again. Passwords, passkeys and API keys keep working. |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Push notifications to the installed app (set both, or neither). | `npx web-push generate-vapid-keys` | **Remade by Ferret** on its own; each device turns push on again. |
+
+All of them come back from a [key file](./backups#a-key-file-for-files-key) — one file, sealed with a passphrase you
+choose. Make one once, whichever way the secrets were set, and keep it (and the passphrase) off the server.
+
+Moving a secret Ferret made into the settings: copy it from a key file (`key recover` prints them) into `.env`, restart,
+and check **Settings → Server → Keys** says "From the settings". The copy in `secrets.json` is then unused.
 
 ## General
 
@@ -50,7 +68,7 @@ features switch on when their settings are present, and Ferret's log lists what'
 
 | Setting | |
 |---|---|
-| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Push notifications (`npx web-push generate-vapid-keys`). `VAPID_SUBJECT`: a `mailto:` or `https:` address on a public domain — Apple's push refuses local names like `.lan` ([more](./email)). |
+| `VAPID_SUBJECT` | Push notifications (the keys: [secrets](#secrets)). `VAPID_SUBJECT`: a `mailto:` or `https:` address on a public domain — Apple's push refuses local names like `.lan` ([more](./email)). |
 | `REMIND_HOUR` | Hour the daily reminder goes out, in each household's time zone (default `9`). |
 | `APPRISE_URL` | The Apprise container (`http://apprise:8000`): reminders to ntfy, Pushover, Telegram, email… |
 | `MAIL_URL` | Email for Ferret itself, through Apprise (`mailtos://…`). |
@@ -61,7 +79,7 @@ features switch on when their settings are present, and Ferret's log lists what'
 | Setting | |
 |---|---|
 | `OLLAMA_URL`, `VISION_MODEL`, `EMBED_MODEL` | Reading photos; embeddings for smart search. |
-| `CHAT_URL`, `CHAT_MODEL`, `CHAT_REASONING` | A stronger text model for Ask Ferret and documents (OpenAI-compatible). |
+| `CHAT_URL`, `CHAT_MODEL`, `CHAT_REASONING` | A stronger text model for Ask Ferret and documents (OpenAI-compatible). `CHAT_REASONING` (default `low`) is sent as `reasoning_effort`; set it empty for a model that doesn't take one. |
 | `DOCLING_URL`, `DOCLING_VLM_URL`, `DOCLING_OPTIONS` | Reading PDFs and scanned documents; `DOCLING_VLM_URL` reads pages with granite-docling (an OpenAI-compatible endpoint) instead of docling's standard pipeline. |
 | `QDRANT_URL`, `QDRANT_API_KEY`, `QDRANT_COLLECTION` | Smart search's vector store. |
 | `RERANK_URL`, `RERANK_MODEL` | Better ordering of search results. |

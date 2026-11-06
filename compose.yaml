@@ -1,5 +1,5 @@
 # Ferret with Docker Compose.
-#   cp .env.example .env   # then fill in AUTH_SECRET and PUBLIC_URL
+#   cp .env.example .env   # then set PUBLIC_URL (Ferret makes its secrets the first time; see .env.example)
 #   docker compose up -d
 #
 # Uses the image CI pushes to GHCR. To build locally instead: docker compose up -d --build

@@ -3,7 +3,7 @@
  * whether things are checked against product recalls.
  */
 import { Hono } from "hono";
-import { serverAdminInput } from "@ferret/shared";
+import { type ServerSecrets, serverAdminInput } from "@ferret/shared";
 import { type AppEnv, body, requireServerAdmin, requireUser } from "../lib/context";
 import { serverAdmin, setServerAdmin } from "../lib/server-admin";
 import { z } from "zod";
@@ -25,6 +25,18 @@ server.get("/admin", async (c) => c.json(await serverAdmin(c.var.db)));
 server.put("/admin", async (c) => {
   const { email } = await body(c.req.raw, serverAdminInput);
   return c.json(await setServerAdmin(c.var.db, email));
+});
+
+/** Where each secret came from (Settings → Server → Keys) — never the secrets, bar the push public key. */
+server.get("/secrets", (c) => {
+  const { config, deps } = c.var;
+  const names = ["FILES_KEY", "AUTH_SECRET", "VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY"] as const;
+  const present = { FILES_KEY: true, AUTH_SECRET: true, VAPID_PUBLIC_KEY: !!config.VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY: !!config.VAPID_PRIVATE_KEY };
+  return c.json({
+    file: deps.secrets?.file ?? null,
+    secrets: names.map((name) => ({ name, source: present[name] ? (deps.secrets?.sources[name] ?? "settings") : "none" })),
+    pushPublicKey: deps.push?.publicKey ?? null,
+  } satisfies ServerSecrets);
 });
 
 /** Failed calls to the services Ferret uses, newest first. */

@@ -1041,6 +1041,15 @@ export interface BackupSnapshot {
   filesBytes: number;
 }
 
+/** Settings → Server's keys: where each secret Ferret needs came from — never a secret itself (bar the push public key). */
+export interface ServerSecrets {
+  /** The data folder's secrets.json, where the ones Ferret made are kept. */
+  file: string | null;
+  secrets: { name: "FILES_KEY" | "AUTH_SECRET" | "VAPID_PUBLIC_KEY" | "VAPID_PRIVATE_KEY"; source: "settings" | "ferret" | "none" }[];
+  /** The push public key browsers subscribe with (public by design), or null without push. */
+  pushPublicKey: string | null;
+}
+
 export interface BackupStatus {
   /** False until BACKUP_DIR is set. */
   enabled: boolean;
@@ -1054,6 +1063,10 @@ export interface BackupStatus {
   lastOk: BackupRun | null;
   /** Backups made outside this server instead (Deps.backupElsewhere): where, and its newest run. */
   elsewhere: { where: string; at: string | null; ok: boolean | null; detail: string | null } | null;
+  /** FILES_KEY's fingerprint (household_key.kek_id; `cli.js key fingerprint`) — never the key itself. */
+  keyId: string;
+  /** The newest key file made with `cli.js key export`, and whether it holds the key in use now. */
+  keyFile: { at: string; keyId: string; where: string; current: boolean } | null;
 }
 
 // ── API keys (for Claude via MCP, and scripts) ─────────────────────────────

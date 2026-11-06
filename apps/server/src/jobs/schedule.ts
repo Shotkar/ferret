@@ -4,6 +4,7 @@
  * Only what's configured is registered (no push, no reminder job).
  */
 import type { Extensions } from "../app";
+import { KEY_FILE_JOB, keyFileNotice } from "../lib/key-file-log";
 import type { Auth } from "../auth";
 import type { Config } from "../config";
 import { BACKUP_JOB, backupDue, backupJob } from "../lib/backup";
@@ -97,6 +98,7 @@ export function jobSchedule({
     [DOWNLOAD_JOB]: downloadJob({ ...deps, files, maxBytes: config.MAX_UPLOAD_MB * 1024 * 1024 }),
     [SECURITY_ALERT_JOB]: securityAlert({ ...deps, files, appUrl }),
     [NEW_PLACE_JOB]: newPlaceAlert({ ...deps, files, appUrl, mailUrl }),
+    [KEY_FILE_JOB]: keyFileNotice({ ...deps, files, appUrl, mailUrl }),
     [UNLOCK_JOB]: sendUnlockLink({ ...deps, files, appUrl, mailUrl }),
     [RESET_JOB]: passwordResetJob({ db, auth }),
     [MAGIC_LINK_JOB]: magicLinkJob({ db, auth }),

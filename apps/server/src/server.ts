@@ -11,6 +11,8 @@ import { FolderBackupTarget, SqliteSnapshots } from "./adapters/local/backup";
 import { OllamaAi } from "./adapters/local/ai";
 import { OpenAiChat } from "./adapters/local/chat";
 import { createLocalDb, runMigrations } from "./adapters/local/db";
+import { ensureDataDir } from "./adapters/local/data-dir";
+import { MissingSecret, SECRETS_FILE, resolveSecrets } from "./adapters/local/secrets";
 import { DoclingDocuments } from "./adapters/local/docling";
 import { SharpImages } from "./adapters/local/images";
 import { PdfJsPages } from "./adapters/local/pdf";
@@ -28,20 +30,52 @@ import { docsScriptHashes, mountDocs, mountWebApp } from "./adapters/local/web";
 import { markAuthProxy, proxyList, withClientAddress } from "./adapters/local/proxy";
 import { NodeTls } from "./adapters/local/certificates";
 import { applyCertificates } from "./lib/certificates";
+import { otherMasterKeys } from "./lib/files";
 import { createApp } from "./app";
 import { jobSchedule } from "./jobs/schedule";
 import { watched } from "./lib/service-errors";
 import { doclingOptions, loadConfig, vapidSubject, vapidSubjectProblem } from "./config";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const config = loadConfig(process.env);
-const dataDir = path.resolve(config.DATA_DIR);
+// The data folder first: the secrets Ferret makes for you live in it (adapters/local/secrets.ts).
+const dataDir = path.resolve(process.env.DATA_DIR?.trim() || "./data");
+ensureDataDir(dataDir);
 
 const { db } = createLocalDb(`file:${path.join(dataDir, "ferret.db")}`);
 // Migrations live next to the bundle in production (dist/migrations) and in ./migrations in dev.
 const migrationsFolder = [path.join(here, "migrations"), path.join(here, "../migrations")].find((p) => existsSync(p));
 if (!migrationsFolder) throw new Error("Migrations folder not found");
 await runMigrations(db, migrationsFolder);
+
+// AUTH_SECRET, FILES_KEY and the push keys: the settings' where set, else the ones Ferret made (or makes now).
+const secrets = await resolveSecrets({ dataDir, env: process.env, db }).catch((err: unknown) => {
+  if (!(err instanceof MissingSecret)) throw err;
+  console.error(err.message);
+  process.exit(1);
+});
+const config = loadConfig(secrets.env);
+if (secrets.made.length) {
+  const list = secrets.made.length > 1 ? `${secrets.made.slice(0, -1).join(", ")} and ${secrets.made.at(-1)}` : secrets.made[0];
+  console.log(`🔑 Made ${list}, kept in ${path.join(dataDir, SECRETS_FILE)}.`);
+}
+if (secrets.sources.FILES_KEY === "ferret") {
+  console.log("   FILES_KEY is kept in the data folder. Save a copy elsewhere (Settings → Server shows how) — without it, no photo, document or backup can be opened.");
+}
+
+// A FILES_KEY other than the one the files were sealed with: stop now, not on the first photo.
+const keys = await otherMasterKeys(db, config.FILES_KEY);
+if (keys.needed.length) {
+  console.error(
+    [
+      `FILES_KEY is not the key this server's files were sealed with.`,
+      `  Set:    ${keys.set}`,
+      `  Needed: ${keys.needed.join(", ")}`,
+      `Put the original FILES_KEY back (your password manager), or recover it from a key file:`,
+      `  node dist/cli.js key recover /path/to/ferret-key-${keys.needed[0]}.json`,
+    ].join("\n"),
+  );
+  process.exit(1);
+}
 
 // Optional integrations switch on when configured (see config.ts).
 const images = new SharpImages();
@@ -94,6 +128,7 @@ const deps = {
   homeAssistant: new HomeAssistantWebSocket(),
   recalls: watched(db, "recalls", recalls),
   tls: new NodeTls(),
+  secrets: { sources: secrets.sources, file: path.join(dataDir, SECRETS_FILE), filesKeyId: keys.set },
 };
 // Certificates the server admin added for Ferret's own connections (Settings → Server), before anything connects.
 await applyCertificates(deps, config.FILES_KEY);

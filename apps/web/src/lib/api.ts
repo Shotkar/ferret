@@ -42,6 +42,7 @@ import type {
   StockSummary,
   BackupSnapshot,
   BackupStatus,
+  ServerSecrets,
   ApiKeyInput,
   ApiKeySummary,
   AskAnswer,
@@ -252,6 +253,7 @@ export const api = {
   /** Whether you're the server admin (who sees Settings → Server). */
   me: () => request<{ serverAdmin: boolean; features: { fromWeb: boolean; homeAssistant: boolean; roomScan: boolean } }>("/me"),
   backupStatus: () => request<BackupStatus>("/backup"),
+  serverSecrets: () => request<ServerSecrets>("/server/secrets"),
   backupNow: () => request<{ queued: boolean }>("/backup", { method: "POST" }),
   backupSnapshots: () => request<{ data: BackupSnapshot[] }>("/backup/snapshots"),
   checkBackup: (name: string) => request<{ ok: boolean; summary: string }>(`/backup/snapshots/${encodeURIComponent(name)}/check`, { method: "POST" }),

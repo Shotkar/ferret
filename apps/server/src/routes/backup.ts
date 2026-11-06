@@ -1,8 +1,10 @@
 /** /api/v1/backup — the server's backups (Settings → Server, the server admin only): lib/backup.ts. */
-import type { BackupSnapshot } from "@ferret/shared";
+import type { BackupSnapshot, BackupStatus } from "@ferret/shared";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { type AppEnv, requireServerAdmin, requireUser } from "../lib/context";
+import { masterKeyId } from "../lib/files";
+import { lastKeyFile } from "../lib/key-file-log";
 import { BACKUP_JOB, backupStatus, checkSnapshot, listSnapshots, readManifest } from "../lib/backup";
 
 export const backup = new Hono<AppEnv>();
@@ -16,7 +18,9 @@ const backups = (c: { var: AppEnv["Variables"] }) => {
 
 backup.get("/", async (c) => {
   const { BACKUP_HOUR, BACKUP_KEEP } = c.var.config;
-  return c.json(await backupStatus(c.var.db, { where: c.var.deps.backups?.target.where ?? null, hour: BACKUP_HOUR, keep: BACKUP_KEEP, elsewhere: c.var.deps.backupElsewhere }));
+  const status = await backupStatus(c.var.db, { where: c.var.deps.backups?.target.where ?? null, hour: BACKUP_HOUR, keep: BACKUP_KEEP, elsewhere: c.var.deps.backupElsewhere });
+  const keyId = await masterKeyId(c.var.config.FILES_KEY);
+  return c.json({ ...status, keyId, keyFile: await lastKeyFile(c.var.db, keyId) } satisfies BackupStatus);
 });
 
 /** Starts a backup now (in the background); GET shows when it's done. */

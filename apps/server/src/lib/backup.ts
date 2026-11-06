@@ -152,7 +152,9 @@ async function fileKeys(db: Db) {
 export async function checkSnapshot(b: Pick<Backups, "snapshots" | "target" | "filesKey">, snapshot: string, prefer: string[] = []) {
   const manifest = await readManifest(b.target, snapshot);
   if (manifest.kekId !== (await masterKeyId(b.filesKey))) {
-    throw new Error(`This backup needs another FILES_KEY (${manifest.kekId}) than the one set (${await masterKeyId(b.filesKey)})`);
+    throw new Error(
+      `This backup needs another FILES_KEY (${manifest.kekId}) than the one set (${await masterKeyId(b.filesKey)}) — put that key back, or recover it from its key file (cli.js key recover ferret-key-${manifest.kekId}.json)`,
+    );
   }
   const sealed = await b.target.get(`snapshots/${snapshot}.db.enc`);
   if (!sealed) throw new Error(`The database copy ${snapshot}.db.enc is missing`);
@@ -320,7 +322,7 @@ const toRun = (r: typeof backupRun.$inferSelect | undefined): BackupRun | null =
 export async function backupStatus(
   db: Db,
   opts: { where: string | null; hour: number; keep: number; elsewhere?: BackupElsewhere },
-): Promise<BackupStatus> {
+): Promise<Omit<BackupStatus, "keyId" | "keyFile">> {
   const [last] = await db.select().from(backupRun).orderBy(desc(backupRun.startedAt)).limit(1);
   const [lastOk] = await db.select().from(backupRun).where(eq(backupRun.status, "ok")).orderBy(desc(backupRun.startedAt)).limit(1);
   const run = opts.elsewhere ? await opts.elsewhere.latest() : null;

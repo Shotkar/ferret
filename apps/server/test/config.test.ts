@@ -39,3 +39,23 @@ describe("Web Push's contact", () => {
     }
   });
 });
+
+describe("empty settings", () => {
+  it("count as unset, as Unraid's template and `KEY=` lines in .env pass them", () => {
+    const config = loadConfig({ ...base, OLLAMA_URL: "", APPRISE_URL: " ", TRUSTED_PROXIES: "", OIDC_NAME: "", BACKUP_DIR: "" });
+    expect(config.OLLAMA_URL).toBeUndefined();
+    expect(config.APPRISE_URL).toBeUndefined();
+    expect(config.BACKUP_DIR).toBeUndefined();
+    expect(config.TRUSTED_PROXIES).toBe("127.0.0.1,::1");
+    expect(config.OIDC_NAME).toBe("single sign-on");
+  });
+
+  it("except CHAT_REASONING, where empty leaves reasoning_effort out", () => {
+    expect(loadConfig({ ...base, CHAT_REASONING: "" }).CHAT_REASONING).toBe("");
+    expect(loadConfig(base).CHAT_REASONING).toBe("low");
+  });
+
+  it("still leave a required one missing", () => {
+    expect(() => loadConfig({ ...base, AUTH_SECRET: "" })).toThrow(/AUTH_SECRET/);
+  });
+});

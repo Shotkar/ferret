@@ -3,7 +3,7 @@
  * backups (status, "Back up now", the copies kept, each one's restore check, how to restore), recall checks (on or off),
  * certificates for the server's own connections, and handing the admin role to someone else. Restoring is a command on the server, not a button: see restoreCommands below.
  */
-import type { BackupRun, BackupSnapshot, ServerCertificate } from "@ferret/shared";
+import type { BackupRun, BackupSnapshot, BackupStatus, ServerCertificate, ServerSecrets } from "@ferret/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DemoSwitches, DemoUsage, HostingUsageCard } from "./Demo";
 import { type FormEvent, useState } from "react";
@@ -283,9 +283,10 @@ function Backups() {
           <>
             <LastRun last={s.last} lastOk={s.lastOk} asked={asked} />
             <Snapshots data={snapshots.data?.data} loading={snapshots.isPending} error={snapshots.error?.message} />
-            <Restoring />
           </>
         )}
+        {s && <FilesKey keyId={s.keyId} keyFile={s.keyFile} folder={s.where} commandLine={!s.elsewhere} />}
+        {s?.enabled && <Restoring />}
       </div>
     </section>
   );
@@ -366,6 +367,108 @@ function SnapshotRow({ snap }: { snap: BackupSnapshot }) {
 }
 
 /** Restoring replaces every household's data, so it's done on the server itself, with Ferret stopped. */
+/** What each secret is for, and what losing it costs — Settings → Server's Keys, and the help's table. */
+const SECRET_ROLES: Record<ServerSecrets["secrets"][number]["name"], { what: string; lost: string }> = {
+  FILES_KEY: { what: "Seals every photo, document and pairing code, and the backups.", lost: "Lost for good without a copy: nothing uploaded can be opened." },
+  AUTH_SECRET: { what: "Signs sign-ins, and seals two-step sign-in.", lost: "Can be replaced: everyone signs in again, and two-step sign-in is set up again." },
+  VAPID_PUBLIC_KEY: { what: "Push notifications: the key browsers subscribe with.", lost: "Remade by Ferret: each device turns push on again." },
+  VAPID_PRIVATE_KEY: { what: "Push notifications: signs what Ferret sends.", lost: "Remade by Ferret: each device turns push on again." },
+};
+
+/**
+ * The secrets Ferret needs: where each came from (its settings, or made by Ferret and kept in the data folder), what
+ * losing it costs, FILES_KEY's fingerprint and the newest key file — never a secret, bar the push public key. Key files
+ * are made on the command line only (lib/key-file.ts): whoever can run that can already read the server's settings; a
+ * page could be misused by anyone holding the admin's session.
+ */
+function FilesKey({
+  keyId,
+  keyFile,
+  folder,
+  commandLine,
+}: {
+  keyId: string;
+  keyFile: BackupStatus["keyFile"];
+  folder: string | null;
+  commandLine: boolean;
+}) {
+  const secrets = useQuery({ queryKey: ["server-secrets"], queryFn: api.serverSecrets });
+  const list = secrets.data?.secrets ?? [];
+  const keptByFerret = list.some((x) => x.source === "ferret");
+  const filesKeyByFerret = list.some((x) => x.name === "FILES_KEY" && x.source === "ferret");
+  return (
+    <div className="space-y-3">
+      <h3 className="font-medium">Keys</h3>
+      <p className="text-sm text-base-content/70">
+        The secrets Ferret needs. Any set in Ferret's settings are used; the rest Ferret made itself and keeps in{" "}
+        {secrets.data?.file ? <code className="break-all">{secrets.data.file}</code> : "its data folder"} — never in its backups.{" "}
+        <code>FILES_KEY</code>'s fingerprint is <code className="font-mono">{keyId}</code> (<code>cli.js key fingerprint</code> prints a
+        key's, to check a saved copy).
+      </p>
+      {secrets.isError && <div className="alert alert-soft alert-error">{secrets.error.message}</div>}
+      {list.length > 0 && (
+        <ul className="divide-y divide-base-content/10 rounded-box border border-base-content/15">
+          {list.map((x) => (
+            <li key={x.name} className="flex flex-wrap items-start justify-between gap-2 p-3">
+              <div className="min-w-0 space-y-0.5">
+                <p className="font-mono text-sm">{x.name}</p>
+                <p className="text-sm text-base-content/70">{SECRET_ROLES[x.name].what}</p>
+                <p className="text-sm text-base-content/70">If lost: {SECRET_ROLES[x.name].lost}</p>
+              </div>
+              <span className={`badge badge-soft ${x.source === "none" ? "" : x.source === "ferret" ? "badge-info" : "badge-success"}`}>
+                {x.source === "settings" ? "From the settings" : x.source === "ferret" ? "Made by Ferret" : "Not set"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {secrets.data?.pushPublicKey && (
+        <CopyField label="Push public key (public — for tools that send to Ferret's subscribers)" value={secrets.data.pushPublicKey} icon="icon-[tabler--bell]" />
+      )}
+      {filesKeyByFerret && !keyFile?.current && (
+        <div className="alert alert-soft alert-warning text-sm">
+          FILES_KEY is only in this server's data folder. If that folder is lost, so is every photo and document — the backups too.
+          Make a key file and keep it, and its passphrase, somewhere else.
+        </div>
+      )}
+      {keyFile?.current && (
+        <p className="flex items-start gap-2 text-sm">
+          <span className="icon-[tabler--circle-check] mt-0.5 size-4 shrink-0 text-success" />
+          <span>
+            Key file made {formatTime(keyFile.at)}, in <code className="break-all">{keyFile.where}</code>.
+          </span>
+        </p>
+      )}
+      {keyFile && !keyFile.current && (
+        <div className="alert alert-soft alert-warning text-sm">
+          The newest key file ({formatTime(keyFile.at)}) holds another FILES_KEY ({keyFile.keyId}), not the one in use. Make a new one.
+        </div>
+      )}
+      {!keyFile && commandLine && !filesKeyByFerret && <p className="text-sm text-base-content/70">No key file made yet.</p>}
+      {commandLine && (
+        <details className="rounded-box border border-base-content/15 p-3" open={filesKeyByFerret && !keyFile?.current}>
+          <summary className="tap cursor-pointer font-medium">Make a key file</summary>
+          <div className="mt-3 space-y-3 text-sm text-base-content/80">
+            <p>
+              A key file holds these secrets sealed with a passphrase you choose, so it can be kept beside the backups. If they're ever
+              lost, <code>cli.js key recover</code> opens the file with the passphrase and gives them back. On the server, in Ferret's
+              folder (or the container's console):
+            </p>
+            <CopyField label="Key file command" value={keyExportCommand(folder)} icon="icon-[tabler--terminal-2]" />
+            <p>
+              Use a long passphrase — a few unrelated words — and keep it in your password manager: anyone with the file can try
+              passphrases. Then copy the file off this server.
+              {keptByFerret ? " Make a new one if Ferret ever makes new keys (it says so in its log)." : ""}
+            </p>
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
+
+const keyExportCommand = (folder: string | null) => `docker compose exec -it ferret node dist/cli.js key export ${folder ?? "/data"}`;
+
 function Restoring() {
   return (
     <details className="rounded-box border border-base-content/15 p-3">
@@ -373,7 +476,7 @@ function Restoring() {
       <div className="mt-3 space-y-3 text-sm text-base-content/80">
         <p>
           On the server, in Ferret's folder (where <code>compose.yaml</code> is), with the same <code>.env</code> — its{" "}
-          <code>FILES_KEY</code> opens the backup:
+          <code>FILES_KEY</code> opens the backup (lost it? <code>cli.js key recover</code> gets it back from a key file):
         </p>
         <ol className="list-decimal space-y-3 ps-5">
           <li>

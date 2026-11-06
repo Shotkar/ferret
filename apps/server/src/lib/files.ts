@@ -11,7 +11,7 @@
  * The blob key is bound in as additional data, so ciphertext can't be moved
  * onto another attachment's (or household's) key.
  */
-import { eq } from "drizzle-orm";
+import { eq, ne } from "drizzle-orm";
 import { householdKey } from "../db/schema";
 import type { Blobs, Db } from "../ports";
 
@@ -143,6 +143,17 @@ export class FileStore {
     })();
     return this.kek;
   }
+}
+
+/**
+ * The fingerprints of master keys other than FILES_KEY that households' files were sealed with — a wrong FILES_KEY
+ * (a new one pasted after a reinstall). Empty when it's right, or when nothing has been sealed yet. Checked at start, so
+ * the server stops at once instead of running with every photo and document unreadable.
+ */
+export async function otherMasterKeys(db: Db, filesKey: string): Promise<{ set: string; needed: string[] }> {
+  const set = await masterKeyId(filesKey);
+  const rows = await db.selectDistinct({ kekId: householdKey.kekId }).from(householdKey).where(ne(householdKey.kekId, set));
+  return { set, needed: rows.map((r) => r.kekId) };
 }
 
 /** A short, non-secret name for a FILES_KEY (household_key.kek_id), so a wrong key is told apart from damage. */

@@ -431,4 +431,14 @@ export interface Deps {
   backupElsewhere?: BackupElsewhere;
   /** Certificates for Ferret's own connections (Settings → Server → Certificates) — where the runtime allows it. */
   tls?: TlsSettings;
+  /**
+   * Where each secret came from — the settings, or made by Ferret and kept in the data folder (server.ts,
+   * adapters/local/secrets.ts). Absent: all from the settings (another runtime's own).
+   */
+  secrets?: {
+    sources: Partial<Record<"AUTH_SECRET" | "FILES_KEY" | "VAPID_PUBLIC_KEY" | "VAPID_PRIVATE_KEY", "settings" | "ferret">>;
+    file: string;
+    /** FILES_KEY's fingerprint (lib/files.ts masterKeyId). */
+    filesKeyId: string;
+  };
 }

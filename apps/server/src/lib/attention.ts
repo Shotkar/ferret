@@ -12,6 +12,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { attachment, backupRun, item } from "../db/schema";
 import { listClaims } from "./claims";
 import { isServerAdmin } from "./server-admin";
+import { lastKeyFile } from "./key-file-log";
 import { certificatesEnding } from "./certificates";
 import { barcodeLookupStatus } from "./products";
 import { serviceTrouble } from "./service-errors";
@@ -242,6 +243,20 @@ export async function needsAttention(v: Caller): Promise<AttentionItem[]> {
         date: todayFor(v, new Date(c.notAfter)),
       });
     }
+  }
+
+  // FILES_KEY made by Ferret and kept only in the data folder, with no key file of it yet — for the server admin.
+  const s = v.deps.secrets;
+  if (s?.sources.FILES_KEY === "ferret" && (await isServerAdmin(v.db, v.userId)) && !(await lastKeyFile(v.db, s.filesKeyId))?.current) {
+    out.push({
+      kind: "backup",
+      severity: "soon",
+      id: `backup:key-file:${s.filesKeyId}`,
+      title: "Save a copy of Ferret's keys",
+      detail: "FILES_KEY is only in this server's data folder: lose that, and every photo, document and backup is lost too. Make a key file — Settings → Server → Keys.",
+      itemId: null,
+      date: null,
+    });
   }
 
   // Urgent first; then by kind (things with a deadline before things waiting on someone); then soonest.
