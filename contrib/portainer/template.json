@@ -1,0 +1,27 @@
+{
+  "version": "3",
+  "templates": [
+    {
+      "id": 1,
+      "type": 1,
+      "title": "Ferret",
+      "name": "ferret",
+      "description": "Self-hosted home inventory: find anything you own. Photos, barcodes, QR labels, warranties, maintenance and an insurance report, with a REST API, an MCP server and optional AI on your own models.",
+      "note": "Open it and sign up: the first account runs the server. Ferret makes its own secrets on first start; once it runs, make a key file (Settings → Server → Keys) and keep it somewhere else.",
+      "categories": ["Productivity", "Tools"],
+      "platform": "linux",
+      "logo": "https://raw.githubusercontent.com/ferret-project/ferret/main/apps/web/public/icon-512.png",
+      "image": "ferretproject/ferret:latest",
+      "restart_policy": "unless-stopped",
+      "ports": ["8787:8787/tcp"],
+      "volumes": [{ "container": "/data" }],
+      "env": [
+        {
+          "name": "PUBLIC_URL",
+          "label": "Address you open Ferret at",
+          "description": "For example http://192.168.1.10:8787 — links Ferret sends, passkeys and single sign-on use it."
+        }
+      ]
+    }
+  ]
+}
