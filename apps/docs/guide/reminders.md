@@ -10,6 +10,10 @@ say yes. Due dates show up there, kept up to date, with an alert at 9:00 on the 
 Ferret shows the steps instead (below). Google Calendar and Outlook take the **Calendar link** — under **Google
 Calendar, Outlook or another calendar**.
 
+Repeating tasks also show their next repeats for the coming year, marked **(expected)** and without an alert. That's
+where each will fall if the one before is done on time, as in Maintenance's [Month view](./maintenance#month). When
+you mark a task done, the repeats move to match at the calendar's next refresh.
+
 Treat the link like a password — anyone with it can see the list. **Reset link** makes a new one and turns the old one
 off.
 

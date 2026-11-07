@@ -4,7 +4,7 @@
  * belongs to one person in one household; the link carries a random token and
  * only its SHA-256 is stored.
  */
-import { describeInterval, type MaintenanceTask, today } from "@ferret/shared";
+import { addDays, addMonths, describeInterval, type MaintenanceTask, taskOccurrences, today } from "@ferret/shared";
 import { and, eq } from "drizzle-orm";
 import { calendarFeed } from "../db/schema";
 import type { Db } from "../ports";
@@ -74,12 +74,19 @@ function fold(line: string) {
 
 const compactDate = (iso: string) => iso.replace(/-/g, "");
 
+/** How far ahead the feed lists a task's repeats, and at most how many of each. */
+export const FEED_MONTHS = 12;
+export const FEED_REPEATS = 52;
+
 /**
- * One all-day event per open task, on its due date — overdue ones on today, so
- * they don't hide in the past — with an alert at 9:00 that morning.
+ * One all-day event per open task on its due date — overdue ones on today, so they don't hide in the past — with an
+ * alert at 9:00 that morning; then its repeats for the next year (`taskOccurrences`, as the app's Month view shows
+ * them), marked expected and without an alert: each becomes the real one once the one before is done, and if it
+ * isn't, the overdue event is already alerting.
  */
 export function toICalendar(tasks: MaintenanceTask[], opts: { name: string; appUrl: string; timeZone: string; now?: Date }) {
   const on = today(opts.now, opts.timeZone);
+  const until = addDays(addMonths(on, FEED_MONTHS), -1);
   const stamp = (opts.now ?? new Date()).toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
   const lines = [
     "BEGIN:VCALENDAR",
@@ -93,35 +100,42 @@ export function toICalendar(tasks: MaintenanceTask[], opts: { name: string; appU
   ];
   for (const t of tasks) {
     if (!t.dueOn) continue;
-    const day = t.dueOn < on ? on : t.dueOn;
-    const next = new Date(`${day}T00:00:00Z`);
-    next.setUTCDate(next.getUTCDate() + 1);
     const what = t.itemName ? `${t.title} (${t.itemName})` : t.title;
-    const details = [
-      t.status === "overdue" ? `Overdue — was due ${t.dueOn}.` : null,
+    const about = [
       `Repeats ${describeInterval(t.intervalCount, t.intervalUnit)}.`,
       t.place ? `Where: ${t.place}` : null,
       t.lastDoneOn ? `Last done ${t.lastDoneOn}.` : null,
       t.notes,
       `Mark it done in Ferret: ${opts.appUrl}/#/maintenance`,
-    ].filter(Boolean);
-    lines.push(
-      "BEGIN:VEVENT",
-      `UID:${t.id}@ferret`,
-      `DTSTAMP:${stamp}`,
-      `DTSTART;VALUE=DATE:${compactDate(day)}`,
-      `DTEND;VALUE=DATE:${compactDate(next.toISOString().slice(0, 10))}`,
-      `SUMMARY:${escape(t.status === "overdue" ? `Overdue: ${what}` : what)}`,
-      `DESCRIPTION:${escape(details.join("\n"))}`,
-      ...(t.place ? [`LOCATION:${escape(t.place)}`] : []),
-      "TRANSP:TRANSPARENT",
-      "BEGIN:VALARM",
-      "ACTION:DISPLAY",
-      `DESCRIPTION:${escape(what)}`,
-      "TRIGGER:PT9H",
-      "END:VALARM",
-      "END:VEVENT",
-    );
+    ];
+    // The real one always, however far off; repeats only within the year.
+    const occurrences = taskOccurrences(t, on, t.dueOn > until ? t.dueOn : until, on);
+    let repeats = 0;
+    for (const o of occurrences) {
+      const expected = o.kind === "expected";
+      if (expected && (o.on > until || ++repeats > FEED_REPEATS)) break;
+      const next = addDays(o.on, 1);
+      const details = [
+        o.kind === "overdue" ? `Overdue — was due ${t.dueOn}.` : null,
+        expected ? "Expected, if the one before is done on time — it moves when that one's done." : null,
+        ...about,
+      ].filter(Boolean);
+      const summary = o.kind === "overdue" ? `Overdue: ${what}` : expected ? `${what} (expected)` : what;
+      lines.push(
+        "BEGIN:VEVENT",
+        // The real one keeps the task's own id, so calendars that already have it update it in place.
+        `UID:${expected ? `${t.id}-${compactDate(o.on)}` : t.id}@ferret`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART;VALUE=DATE:${compactDate(o.on)}`,
+        `DTEND;VALUE=DATE:${compactDate(next)}`,
+        `SUMMARY:${escape(summary)}`,
+        `DESCRIPTION:${escape(details.join("\n"))}`,
+        ...(t.place ? [`LOCATION:${escape(t.place)}`] : []),
+        "TRANSP:TRANSPARENT",
+        ...(expected ? [] : ["BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${escape(what)}`, "TRIGGER:PT9H", "END:VALARM"]),
+        "END:VEVENT",
+      );
+    }
   }
   lines.push("END:VCALENDAR");
   return `${lines.map(fold).join("\r\n")}\r\n`;

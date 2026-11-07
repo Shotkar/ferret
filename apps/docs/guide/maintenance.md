@@ -23,7 +23,8 @@ from use (miles or hours) has a **~** in front of it. Tap a day to see its tasks
 tap it again, or **Show the whole month**, for the whole month's list. Ferret remembers which view you used last on
 each device.
 
-To have maintenance in Apple, Google or another calendar app, subscribe to its [calendar feed](./reminders#calendar).
+To have maintenance in Apple, Google or another calendar app, subscribe to its [calendar feed](./reminders#calendar). It
+shows the same expected repeats.
 
 ## By use {#by-use}
 

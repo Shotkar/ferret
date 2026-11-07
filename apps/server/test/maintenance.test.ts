@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { calendarFeed, member, pushSubscription } from "../src/db/schema";
 import { sendReminders } from "../src/jobs/remind";
+import { FEED_REPEATS, toICalendar } from "../src/lib/calendar";
 import { FakePush, setup } from "./helpers";
 
 type User = Awaited<ReturnType<Awaited<ReturnType<typeof setup>>["user"]>>;
@@ -118,7 +119,13 @@ describe("calendar feed", () => {
     expect(ics).toContain(`DTSTART;VALUE=DATE:${today().replace(/-/g, "")}`);
     expect(ics).toContain("SUMMARY:Overdue: Replace filter\\; check\\, clean (Furnace)");
     expect(ics).toContain(`DTSTART;VALUE=DATE:${addDays(today(), 30).replace(/-/g, "")}`);
-    expect(ics.match(/BEGIN:VALARM/g)).toHaveLength(2);
+    expect(ics.match(/BEGIN:VALARM/g)).toHaveLength(2); // repeats have none
+    // The filter's repeats for the next year, every 3 months from today (it's overdue): 3 of them; the gutters are a one-off.
+    const repeats = [3, 6, 9].map((m) => nextDue(today(), m, "month").replace(/-/g, ""));
+    for (const d of repeats) expect(ics).toContain(`DTSTART;VALUE=DATE:${d}`);
+    expect(ics.match(/^SUMMARY:Replace filter.*\(expected\)/gm)).toHaveLength(3);
+    expect(ics).toContain(`-${repeats[0]}@ferret`);
+    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(5);
     expect(ics.split("\r\n").every((line) => new TextEncoder().encode(line).length <= 75)).toBe(true);
     // Any line break in what people typed stays inside its line.
     await send(ann, "POST", "/api/v1/maintenance", { title: "Oil\rATTACH:https://example.invalid/a", notes: "a\rEND:VEVENT\u2028b", dueOn: addDays(today(), 3) });
@@ -284,5 +291,29 @@ describe("taskOccurrences (the Month view)", () => {
 
   it("has nothing for a task with no due date", () => {
     expect(taskOccurrences({ ...monthly, dueOn: null }, "2026-11-01", "2026-11-30", on)).toEqual([]);
+  });
+});
+
+describe("the calendar feed's repeats", () => {
+  const task = (over: Partial<MaintenanceTask>): MaintenanceTask => ({
+    id: "t1", title: "Filter", notes: null, itemId: null, itemName: null, locationId: null, place: null,
+    intervalCount: 1, intervalUnit: "week", dueOn: "2026-11-10", lastDoneOn: null, attachmentId: null,
+    providerId: null, providerName: null, part: null, status: "due", timeDueOn: null, usage: null, dueEstimated: false,
+    ...over,
+  });
+  const opts = { name: "Home", appUrl: "https://ferret.example.com", timeZone: "UTC", now: new Date("2026-11-07T12:00:00Z") };
+
+  it("lists at most FEED_REPEATS repeats a task, within FEED_MONTHS", () => {
+    const daily = toICalendar([task({ intervalUnit: "day" })], opts);
+    expect(daily.match(/BEGIN:VEVENT/g)).toHaveLength(1 + FEED_REPEATS);
+    const yearly = toICalendar([task({ intervalUnit: "year" })], opts);
+    expect(yearly.match(/BEGIN:VEVENT/g)).toHaveLength(1); // the next one is 2027-11-10, past the year
+  });
+
+  it("keeps a task due more than a year off", () => {
+    const ics = toICalendar([task({ intervalCount: 2, intervalUnit: "year", dueOn: "2028-01-05", status: "upcoming" })], opts);
+    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(1);
+    expect(ics).toContain("DTSTART;VALUE=DATE:20280105");
+    expect(ics).toContain("UID:t1@ferret");
   });
 });
