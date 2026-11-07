@@ -69,8 +69,9 @@ export async function listMaintenance(v: Caller, filter: MaintenanceFilter = {})
         partGone: part.disposition,
       })
       .from(maintenanceTask)
-      .leftJoin(item, eq(item.id, maintenanceTask.itemId))
-      .leftJoin(part, eq(part.id, maintenanceTask.partItemId))
+      // (The household again in the joins: what a task points at was checked when it was saved; this keeps it so.)
+      .leftJoin(item, and(eq(item.id, maintenanceTask.itemId), eq(item.householdId, v.householdId)))
+      .leftJoin(part, and(eq(part.id, maintenanceTask.partItemId), eq(part.householdId, v.householdId)))
       .leftJoin(provider, and(eq(provider.id, maintenanceTask.providerId), isNull(provider.deletedAt)))
       .where(and(...where)),
     locationPaths(v),
