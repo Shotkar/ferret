@@ -1,5 +1,5 @@
 /** Maintenance: tasks on items and places, marking them done, history, and household isolation. */
-import { addDays, type MaintenanceLogEntry, type MaintenanceTask, nextDue, type Provider, type ProviderVisit, today } from "@ferret/shared";
+import { addDays, type MaintenanceLogEntry, type MaintenanceTask, nextDue, type Provider, type ProviderVisit, taskOccurrences, today } from "@ferret/shared";
 import { describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { calendarFeed, member, pushSubscription } from "../src/db/schema";
@@ -243,5 +243,46 @@ describe("service providers", () => {
     expect((await bob.as(`/api/v1/providers/${hvac.id}`)).status).toBe(404);
     expect((await send(ann, "DELETE", `/api/v1/providers/${hvac.id}`)).status).toBe(204);
     expect((await json<MaintenanceTask>(ann.as(`/api/v1/maintenance/${service.id}`))).providerId).toBeNull();
+  });
+});
+
+describe("taskOccurrences (the Month view)", () => {
+  const on = "2026-11-07";
+  const monthly = { intervalCount: 1, intervalUnit: "month" as const };
+
+  it("puts the next due date on its day and the repeats after it as expected", () => {
+    expect(taskOccurrences({ ...monthly, dueOn: "2026-11-20" }, "2026-11-01", "2027-01-31", on)).toEqual([
+      { on: "2026-11-20", kind: "due" },
+      { on: "2026-12-20", kind: "expected" },
+      { on: "2027-01-20", kind: "expected" },
+    ]);
+  });
+
+  it("puts an overdue task on today, with its repeats counted from today", () => {
+    expect(taskOccurrences({ ...monthly, dueOn: "2026-10-01" }, "2026-10-01", "2026-12-31", on)).toEqual([
+      { on: "2026-11-07", kind: "overdue" },
+      { on: "2026-12-07", kind: "expected" },
+    ]);
+  });
+
+  it("keeps only what's in the range, also for a range months ahead", () => {
+    expect(taskOccurrences({ intervalCount: 2, intervalUnit: "week", dueOn: "2026-11-10" }, "2027-03-01", "2027-03-31", on)).toEqual([
+      { on: "2027-03-02", kind: "expected" },
+      { on: "2027-03-16", kind: "expected" },
+      { on: "2027-03-30", kind: "expected" },
+    ]);
+  });
+
+  it("repeats by use from how fast the item's used, whichever's sooner", () => {
+    const task = { intervalCount: 1, intervalUnit: "year" as const, dueOn: "2026-12-01", usage: { every: 3000, perDay: 50 } };
+    expect(taskOccurrences(task, "2026-11-01", "2027-03-31", on).map((o) => o.on)).toEqual(["2026-12-01", "2027-01-30", "2027-03-31"]);
+    // No time interval and no idea how fast it's used: just the one date.
+    expect(taskOccurrences({ intervalCount: null, intervalUnit: null, dueOn: "2026-12-01", usage: { every: 3000, perDay: null } }, "2026-11-01", "2027-12-31", on)).toEqual([
+      { on: "2026-12-01", kind: "due" },
+    ]);
+  });
+
+  it("has nothing for a task with no due date", () => {
+    expect(taskOccurrences({ ...monthly, dueOn: null }, "2026-11-01", "2026-11-30", on)).toEqual([]);
   });
 });

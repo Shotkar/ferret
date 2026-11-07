@@ -19,6 +19,8 @@ import { DialogActions, Modal } from "./Modal";
 import { HelpLink } from "./HelpLink";
 import { money } from "./Overview";
 import { Mascot } from "./Mascot";
+import { MaintenanceCalendar, thisMonth } from "./MaintenanceCalendar";
+import { navigateTo } from "./lib/navigate";
 
 export const maintenanceKey = (householdId: string) => ["maintenance", householdId];
 
@@ -37,7 +39,29 @@ function useRefresh(householdId: string) {
     ]);
 }
 
-export function Maintenance({ householdName, householdId }: { householdName: string; householdId: string }) {
+/** List or Month: the address's `view` if it has one, else this device's last choice. */
+const VIEW_KEY = "ferret.maintenance.view";
+function savedView(): "list" | "month" {
+  try {
+    return localStorage.getItem(VIEW_KEY) === "month" ? "month" : "list";
+  } catch {
+    return "list";
+  }
+}
+function maintenanceHref(view: "list" | "month", month?: string) {
+  if (view === "list") return "#/maintenance?view=list";
+  return `#/maintenance?view=month${month && month !== thisMonth() ? `&month=${month}` : ""}`;
+}
+
+export function Maintenance({ householdName, householdId, view: asked, month: askedMonth }: { householdName: string; householdId: string; view?: string; month?: string }) {
+  const view = asked === "month" || asked === "list" ? asked : savedView();
+  const month = askedMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(askedMonth) ? askedMonth : thisMonth();
+  const show = (v: "list" | "month", m?: string) => {
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {}
+    navigateTo(maintenanceHref(v, m), { replace: true });
+  };
   const tasks = useQuery({ queryKey: [...maintenanceKey(householdId), "open"], queryFn: () => api.listMaintenance() });
   const canEdit = useCanEdit(householdId);
   const [editing, setEditing] = useState<MaintenanceTask | "new" | null>(null);
@@ -77,7 +101,7 @@ export function Maintenance({ householdName, householdId }: { householdName: str
         </div>
       </nav>
 
-      <main className="mx-auto flex max-w-3xl flex-col gap-4 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <main className={`mx-auto flex ${view === "month" ? "max-w-5xl" : "max-w-3xl"} flex-col gap-4 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]`}>
         {tasks.isPending && <span className="loading loading-spinner text-primary mx-auto my-12" />}
         {tasks.isError && <div className="alert alert-soft alert-error">{tasks.error.message}</div>}
         {tasks.data && list.length === 0 && (
@@ -98,7 +122,33 @@ export function Maintenance({ householdName, householdId }: { householdName: str
             </div>
           </div>
         )}
-        {groups.map((g) => (
+        {list.length > 0 && (
+          <div className="join self-start" role="group" aria-label="Show as">
+            {(["list", "month"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={view === v}
+                className={`btn btn-sm join-item ${view === v ? "btn-primary" : "btn-soft"}`}
+                onClick={() => show(v, month)}
+              >
+                <span className={`size-4 ${v === "list" ? "icon-[tabler--list]" : "icon-[tabler--calendar-month]"}`} />
+                {v === "list" ? "List" : "Month"}
+              </button>
+            ))}
+          </div>
+        )}
+        {view === "month" && list.length > 0 && (
+          <MaintenanceCalendar
+            tasks={list}
+            month={month}
+            onMonth={(m) => show("month", m)}
+            canEdit={canEdit}
+            onDone={setDoing}
+            onEdit={setEditing}
+          />
+        )}
+        {view === "list" && groups.map((g) => (
           <section key={g.key} className="card" aria-labelledby={`group-${g.key}`}>
             <div className="card-body gap-2 p-4 sm:p-6">
               <h2 id={`group-${g.key}`} className="flex items-center gap-2 font-semibold text-base-content">
@@ -163,14 +213,14 @@ export function ItemMaintenance({ itemId, householdId }: { itemId: string; house
   );
 }
 
-const STATUS = {
+export const STATUS = {
   overdue: { dot: "bg-error", text: "text-error" },
   due: { dot: "bg-warning", text: "text-warning" },
   upcoming: { dot: "bg-primary/40", text: "text-base-content/70" },
   done: { dot: "bg-success", text: "text-success" },
 } as const;
 
-function TaskRow(props: { task: MaintenanceTask; showItem?: boolean; canEdit: boolean; onDone: () => void; onEdit: () => void }) {
+export function TaskRow(props: { task: MaintenanceTask; showItem?: boolean; canEdit: boolean; onDone: () => void; onEdit: () => void; expected?: string }) {
   const t = props.task;
   const where = [props.showItem && t.itemName, t.place && !t.itemName ? t.place : null].filter(Boolean);
   return (
@@ -190,14 +240,14 @@ function TaskRow(props: { task: MaintenanceTask; showItem?: boolean; canEdit: bo
           {scheduleText(t)}
           {t.providerName ? ` · ${t.providerName}` : ""}
         </span>
-        <span className={`block text-xs ${STATUS[t.status].text}`}>{dueText(t)}</span>
+        <span className={`block text-xs ${props.expected ? "text-base-content/70" : STATUS[t.status].text}`}>{props.expected ?? dueText(t)}</span>
         {t.part && (
           <span className={`block truncate text-xs ${t.part.left < t.part.uses ? "text-warning" : "text-base-content/70"}`}>
             Uses {t.part.uses} × {t.part.name} · {t.part.left === 0 ? "none" : t.part.left} left
           </span>
         )}
       </button>
-      {props.canEdit && t.status !== "done" && (
+      {props.canEdit && t.status !== "done" && !props.expected && (
         <button type="button" className="btn btn-soft btn-success btn-sm" onClick={props.onDone} aria-label={`Mark ${t.title} done`}>
           <span className="icon-[tabler--check] size-4" />
           Done

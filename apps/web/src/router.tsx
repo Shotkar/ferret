@@ -288,6 +288,19 @@ const collectionsRoute = createRoute({
     return <CollectionsScreen householdId={useHousehold().householdId} />;
   },
 });
+const maintenanceRoute = createRoute({
+  getParentRoute: () => screensRoute,
+  path: "maintenance",
+  staticData: { name: "maintenance" },
+  validateSearch: (search: Record<string, unknown>): { view?: string; month?: string } => ({
+    ...(typeof search.view === "string" ? { view: search.view } : {}),
+    ...(typeof search.month === "string" ? { month: search.month } : {}),
+  }),
+  component: function MaintenanceScreen() {
+    const { view, month } = maintenanceRoute.useSearch();
+    return <Maintenance {...useHousehold()} view={view} month={month} />;
+  },
+});
 const collectionRoute = createRoute({
   getParentRoute: () => screensRoute,
   path: "collection/$id",
@@ -345,7 +358,7 @@ const routeTree = rootRoute.addChildren([
     screen("categories", "categories", ({ householdId }) => <Categories householdId={householdId} />),
     screen("providers", "providers", ({ householdId }) => <Providers householdId={householdId} />),
     screen("report", "report", Report, Report),
-    screen("maintenance", "maintenance", Maintenance),
+    maintenanceRoute,
     screen("deleted", "deleted", ({ householdId }) => <Deleted householdId={householdId} />, Deleted),
     screen("shopping", "shopping", ({ householdId }) => <Shopping householdId={householdId} />, Shopping),
     screen("past", "past", ({ householdId }) => <Past householdId={householdId} />),

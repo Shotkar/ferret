@@ -14,6 +14,17 @@ actually done — so a job done late doesn't come due again too soon. A one-off 
 
 Each task keeps its history, and the item's page shows its maintenance.
 
+## By the month {#month}
+
+Switch **List** to **Month** to see the tasks on a calendar, so you can spot a busy week before it arrives. Each task
+sits on its next due date. Overdue ones sit on today. Later repeats are shown faded with a dashed outline: they're
+where the task will land if each one before it is done on time, and they move when you mark one done. A date counted
+from use (miles or hours) has a **~** in front of it. Tap a day to see its tasks below the calendar, with **Done**;
+tap it again, or **Show the whole month**, for the whole month's list. Ferret remembers which view you used last on
+each device.
+
+To have maintenance in Apple, Google or another calendar app, subscribe to its [calendar feed](./reminders#calendar).
+
 ## By use {#by-use}
 
 Some upkeep goes by how much something's used, not the calendar: *change the oil every 5,000 miles*, *service the

@@ -109,6 +109,48 @@ export function maintenanceStatus(dueOn: string | null, on = today()): Maintenan
   return dueOn <= addDays(on, MAINTENANCE_DUE_DAYS) ? "due" : "upcoming";
 }
 
+/** A day a task lands on in a calendar: `overdue` (shown on today), `due` (its real next date) or `expected` (a later repeat). */
+export interface TaskOccurrence {
+  on: string;
+  kind: "overdue" | "due" | "expected";
+}
+
+/**
+ * The days an open task lands on between `from` and `to` (inclusive): its next due date — today if that's past, as
+ * the calendar feed does — then the repeats after it, as if each were done on the day it's due. Repeats come from
+ * its time interval and, for maintenance by use, how fast the item's used (whichever's sooner, like `effectiveDue`).
+ */
+export function taskOccurrences(
+  task: {
+    dueOn: string | null;
+    intervalCount: number | null;
+    intervalUnit: IntervalUnit | null;
+    usage?: { every: number; perDay: number | null } | null;
+  },
+  from: string,
+  to: string,
+  on = today(),
+): TaskOccurrence[] {
+  if (!task.dueOn) return [];
+  const first = task.dueOn < on ? on : task.dueOn;
+  const out: TaskOccurrence[] = [];
+  if (first >= from && first <= to) out.push({ on: first, kind: task.dueOn < on ? "overdue" : "due" });
+  const usageDays = task.usage?.perDay ? Math.max(1, Math.round(task.usage.every / task.usage.perDay)) : null;
+  const after = (d: string) => {
+    const byTime = task.intervalCount && task.intervalUnit ? nextDue(d, task.intervalCount, task.intervalUnit) : null;
+    const byUse = usageDays ? addDays(d, usageDays) : null;
+    return byTime && byUse ? (byTime < byUse ? byTime : byUse) : (byTime ?? byUse);
+  };
+  let d = first;
+  for (let i = 0; i < 2000; i++) {
+    const next = after(d);
+    if (!next || next > to) break;
+    d = next;
+    if (d >= from) out.push({ on: d, kind: "expected" });
+  }
+  return out;
+}
+
 // ── Maintenance by use ("every 5,000 miles") ───────────────────────────────
 export const usageUnits = ["miles", "km", "hours", "cycles"] as const;
 export type UsageUnit = (typeof usageUnits)[number];
