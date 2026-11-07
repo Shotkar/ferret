@@ -15,19 +15,19 @@ import { navigateTo } from "./lib/navigate";
 const RECENT_MAX = 6;
 const recentKey = (householdId: string) => `ferret.recentSearches.${householdId}`;
 
-/** The `?q=` on the current hash, if any. */
+/** The `q=` on the current hash, if any — always last, after any of the screen's own (`#/items?sort=value&q=drill`). */
 export function queryInHash(hash = window.location.hash) {
-  const m = /\?q=([^&]*)$/.exec(hash);
+  const m = /[?&]q=([^&]*)$/.exec(hash);
   return m ? decodeURIComponent(m[1]!.replace(/\+/g, " ")) : "";
 }
 
-/** The hash without its `?q=` (what the router reads). */
-export const withoutQuery = (hash: string) => hash.replace(/\?q=[^&]*$/, "");
+/** The hash without its `q=` (what the router reads). */
+export const withoutQuery = (hash: string) => hash.replace(/[?&]q=[^&]*$/, "");
 
 /** Keep the search in the address without adding a history entry per keystroke. */
 function writeQuery(query: string) {
   const base = withoutQuery(window.location.hash) || "#/";
-  const next = query ? `${base}?q=${encodeURIComponent(query)}` : base;
+  const next = query ? `${base}${base.includes("?") ? "&" : "?"}q=${encodeURIComponent(query)}` : base;
   if (next !== window.location.hash) history.replaceState(history.state, "", next);
 }
 

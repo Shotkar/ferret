@@ -527,6 +527,8 @@ export const api = {
     request<WarrantyClaim>(`/warranties/${warrantyId}/claims`, { method: "POST", body: JSON.stringify(input) }),
   updateClaim: (id: string, patch: ClaimPatch) => request<WarrantyClaim>(`/claims/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteClaim: (id: string) => request<void>(`/claims/${id}`, { method: "DELETE" }),
+  /** Every warranty in the household, soonest to end first (the Warranties screen). */
+  allWarranties: () => request<{ data: (Warranty & { itemName: string })[] }>("/warranties"),
   listWarranties: (itemId: string) => request<{ data: Warranty[] }>(`/items/${itemId}/warranties`),
   addWarranty: (itemId: string, input: WarrantyInput) =>
     request<Warranty>(`/items/${itemId}/warranties`, { method: "POST", body: JSON.stringify(input) }),

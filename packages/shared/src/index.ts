@@ -684,7 +684,8 @@ export interface Overview {
   properties: number;
   locations: number;
   byProperty: ValueGroup[];
-  byRoom: ValueGroup[];
+  /** `locationId`: the room (absent for "Not placed"). */
+  byRoom: (ValueGroup & { locationId?: string })[];
   /** By top-level category — what an insurer asks for. */
   byCategory: ValueGroup[];
   mostValuable: { id: string; name: string; valueCents: number }[];

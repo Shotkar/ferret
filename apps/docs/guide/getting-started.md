@@ -28,6 +28,9 @@ checklist goes away once they all are, or when you **Hide** it.
 - **+ Add** (the round button on a phone, top right on a computer) is every way to add something: type it in, from
   photos, scan a barcode, walk through a room, import, or print blank QR labels. Looking at a room, category or tag,
   new things go there.
+- **The cards at the top of Home** open what they count: **Worth** opens everything, most valuable first; **Things**
+  opens everything; **Maintenance** opens maintenance; **Warranties** opens every warranty. Further down, each room in
+  *Worth, room by room* opens that room, and **See all** beside *Most valuable* opens the full list.
 - **Search** and **scan** stay in the top bar as you scroll, on every screen: the search box itself on the home
   screens, and a search field and scan button elsewhere that take you straight to it. Press <kbd>/</kbd> or
   <kbd>⌘</kbd> <kbd>K</kbd> to jump to it from anywhere.

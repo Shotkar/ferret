@@ -31,9 +31,10 @@ describe("overview", () => {
       { month: "2024-03", valueCents: 30000 },
       { month: today().slice(0, 7), valueCents: 20000 },
     ]);
-    expect(o.byRoom.map((r) => [r.name, r.valueCents])).toEqual([
-      ["Not placed", 30000],
-      ["Home › Garage", 20000],
+    // Each room carries its id, so the dashboard can open it.
+    expect(o.byRoom.map((r) => [r.name, r.valueCents, r.locationId])).toEqual([
+      ["Not placed", 30000, undefined],
+      ["Home › Garage", 20000, garage.id],
     ]);
     expect(o.missing).toEqual({ photo: 2, value: 1, place: 2, document: 2, category: 3 });
     expect(o.warranties).toEqual([expect.objectContaining({ itemName: "Mixer", provider: "KitchenAid", status: "expiring" })]);

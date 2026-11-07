@@ -21,6 +21,7 @@ import { authClient, useCanEdit, signOut } from "./lib/auth";
 import {
   type Route,
   COVERAGE_HREF,
+  WARRANTIES_HREF,
   DELETED_HREF,
   IMPORT_HREF,
   ITEMS_HREF,
@@ -81,6 +82,7 @@ export const NAV_GROUPS: { title: string; links: Link[] }[] = [
     links: [
       { href: REPORT_HREF, label: "Insurance report", icon: "icon-[tabler--file-description]" },
       { href: COVERAGE_HREF, label: "Insurance coverage", icon: "icon-[tabler--umbrella]" },
+      { href: WARRANTIES_HREF, label: "Warranties", icon: "icon-[tabler--shield-check]" },
     ],
   },
   {
@@ -319,7 +321,7 @@ function activeHref(route: Route["name"], hash: string, links: Link[]) {
  */
 export function Sidebar(props: { route: Route["name"]; householdName: string; householdId: string; folded: boolean; onToggle: () => void }) {
   const { route, folded } = props;
-  const hash = (window.location.hash || HOME_HREF).replace(/\?q=.*$/, "");
+  const hash = (window.location.hash || HOME_HREF).replace(/[?&]q=.*$/, "");
   const main: Link[] = [{ href: HOME_HREF, label: "Home", icon: "icon-[tabler--home]" }, ...MAIN_LINKS];
   const active = activeHref(route, hash, [...main, ...NAV_GROUPS.flatMap((g) => g.links)]);
   const item = (l: Link) => {

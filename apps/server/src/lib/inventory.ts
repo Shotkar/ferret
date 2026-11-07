@@ -905,12 +905,13 @@ export async function inventoryReport(v: Caller) {
     categoryInfo(v),
   ]);
   // Each location → its property and room.
-  const placeOf = new Map<string, { property: string; room: string }>();
+  const placeOf = new Map<string, { property: string; room: string; roomId: string }>();
   for (const p of properties) {
-    const walk = (nodes: LocationNode[], room?: string) =>
+    const walk = (nodes: LocationNode[], room?: { name: string; id: string }) =>
       nodes.forEach((n) => {
-        placeOf.set(n.id, { property: p.name, room: room ?? n.name });
-        walk(n.children, room ?? n.name);
+        const top = room ?? { name: n.name, id: n.id };
+        placeOf.set(n.id, { property: p.name, room: top.name, roomId: top.id });
+        walk(n.children, top);
       });
     walk(p.locations);
   }
@@ -925,6 +926,7 @@ export async function inventoryReport(v: Caller) {
   const total = new Map<string, Group>();
   const byProperty = new Map<string, Group>();
   const byRoom = new Map<string, Group>();
+  const roomIds = new Map<string, string>(); // "Home › Kitchen" → the kitchen's id, so the dashboard can open it
   const byCategory = new Map<string, Group>();
   const valued: { id: string; name: string; valueCents: number }[] = [];
   // When what's here now came in (bought, else added), month by month: the dashboard's "worth over time".
@@ -936,6 +938,7 @@ export async function inventoryReport(v: Caller) {
     add(total, "all", cents);
     add(byProperty, place?.property ?? "Not placed", cents);
     add(byRoom, place ? `${place.property} › ${place.room}` : "Not placed", cents);
+    if (place) roomIds.set(`${place.property} › ${place.room}`, place.roomId);
     add(byCategory, (it.categoryId && categories.get(it.categoryId)?.topName) || "No category", cents);
     if (cents != null) {
       valued.push({ id: it.id, name: it.name, valueCents: cents });
@@ -948,7 +951,7 @@ export async function inventoryReport(v: Caller) {
   return {
     total: total.get("all") ?? { valueCents: 0, items: 0, itemsWithoutValue: 0 },
     byProperty: list(byProperty),
-    byRoom: list(byRoom),
+    byRoom: list(byRoom).map((g) => ({ ...g, locationId: roomIds.get(g.name) })),
     byCategory: list(byCategory),
     mostValuable: valued.sort((a, b) => b.valueCents - a.valueCents).slice(0, 10),
     byMonth: [...byMonth].map(([month, valueCents]) => ({ month, valueCents })).sort((a, b) => a.month.localeCompare(b.month)),

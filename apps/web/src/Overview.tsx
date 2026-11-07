@@ -11,7 +11,7 @@ import { useCategories, useTags } from "./Catalog";
 import { CategoryDonut, WorthOverTime } from "./Charts";
 import { CLAIM_STATUS } from "./Claims";
 import { SetupChecklist } from "./Setup";
-import { CATEGORIES_HREF, COLLECTIONS_HREF, categoryHref, collectionHref, ITEMS_HREF, REPORT_HREF, SHOPPING_HREF, itemHref, MAINTENANCE_HREF, missingHref, tagHref } from "./lib/route";
+import { BY_VALUE_HREF, CATEGORIES_HREF, COLLECTIONS_HREF, categoryHref, collectionHref, ITEMS_HREF, REPORT_HREF, SHOPPING_HREF, WARRANTIES_HREF, itemHref, MAINTENANCE_HREF, missingHref, placeHref, tagHref } from "./lib/route";
 import { useCollections } from "./Collections";
 
 export const MISSING_LABELS: Record<MissingDetail, { label: string; filter: string; icon: string }> = {
@@ -54,6 +54,7 @@ export function OverviewSections({ householdId, places }: { householdId: string;
             note={o.total.itemsWithoutValue ? `${o.total.itemsWithoutValue} without a value` : "Everything valued"}
             icon="icon-[tabler--coin]"
             tone="primary"
+            href={BY_VALUE_HREF}
           />
           <Stat label="Things" value={o.total.items.toLocaleString()} note="See them all" icon="icon-[tabler--box]" tone="success" href={ITEMS_HREF} />
           <Stat
@@ -70,6 +71,7 @@ export function OverviewSections({ householdId, places }: { householdId: string;
             note="Ending in 60 days"
             icon="icon-[tabler--shield-check]"
             tone={soon ? "warning" : "success"}
+            href={WARRANTIES_HREF}
           />
         </div>
       </div>
@@ -92,6 +94,7 @@ export function OverviewSections({ householdId, places }: { householdId: string;
           icon="icon-[tabler--home-dollar]"
           title="Worth, room by room"
           groups={o.byRoom}
+          href={(g) => (g.locationId ? placeHref(g.locationId) : undefined)}
           label={(name) => (o.properties > 1 ? name : name.replace(/^[^›]+› /, ""))}
           aside={o.properties > 1 && <span className="text-sm text-base-content/70">{o.properties} properties</span>}
         />
@@ -323,7 +326,15 @@ function Upkeep({ o }: { o: OverviewData }) {
 
 function Warranties({ o }: { o: OverviewData }) {
   return (
-    <Section icon="icon-[tabler--shield-check]" title="Warranties to act on">
+    <Section
+      icon="icon-[tabler--shield-check]"
+      title="Warranties to act on"
+      aside={
+        <a href={WARRANTIES_HREF} className="tap link link-primary link-hover text-sm">
+          All warranties
+        </a>
+      }
+    >
       <ul className="flex flex-col gap-1">
         {o.warranties.map((w) => (
           <li key={w.id}>
@@ -362,28 +373,50 @@ function Warranties({ o }: { o: OverviewData }) {
 }
 
 /** Value per group (rooms, categories) as bars against the largest. */
-function ValueBars(props: { icon: string; title: string; groups: OverviewData["byRoom"]; label?: (name: string) => string; aside?: React.ReactNode }) {
+function ValueBars(props: {
+  icon: string;
+  title: string;
+  groups: OverviewData["byRoom"];
+  label?: (name: string) => string;
+  aside?: React.ReactNode;
+  /** Where a group opens (its room), if anywhere. */
+  href?: (group: OverviewData["byRoom"][number]) => string | undefined;
+}) {
   const groups = props.groups.filter((g) => g.valueCents > 0 || g.items > 0).slice(0, 8);
   const max = Math.max(...groups.map((g) => g.valueCents), 1);
   return (
     <Section icon={props.icon} title={props.title} aside={props.aside}>
       <ul className="flex flex-col gap-3">
-        {groups.map((g) => (
-          <li key={g.name}>
-            <div className="flex items-baseline justify-between gap-3 text-sm">
-              <span className="min-w-0 truncate text-base-content">{props.label ? props.label(g.name) : g.name}</span>
-              <span className="shrink-0 font-medium text-base-content">{money(g.valueCents)}</span>
-            </div>
-            <div className="mt-1 flex items-center gap-2">
-              <span className="progress h-1.5 flex-1" aria-hidden>
-                <span className="progress-bar progress-primary" style={{ width: `${(g.valueCents / max) * 100}%` }} />
-              </span>
-              <span className="w-16 shrink-0 text-end text-xs text-base-content/70">
-                {g.items} {g.items === 1 ? "item" : "items"}
-              </span>
-            </div>
-          </li>
-        ))}
+        {groups.map((g) => {
+          const href = props.href?.(g);
+          const body = (
+            <>
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="min-w-0 truncate text-base-content">{props.label ? props.label(g.name) : g.name}</span>
+                <span className="shrink-0 font-medium text-base-content">{money(g.valueCents)}</span>
+              </div>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="progress h-1.5 flex-1" aria-hidden>
+                  <span className="progress-bar progress-primary" style={{ width: `${(g.valueCents / max) * 100}%` }} />
+                </span>
+                <span className="w-16 shrink-0 text-end text-xs text-base-content/70">
+                  {g.items} {g.items === 1 ? "item" : "items"}
+                </span>
+              </div>
+            </>
+          );
+          return (
+            <li key={g.name}>
+              {href ? (
+                <a href={href} className="-mx-2 block rounded-field px-2 py-1 hover:bg-base-200">
+                  {body}
+                </a>
+              ) : (
+                body
+              )}
+            </li>
+          );
+        })}
       </ul>
     </Section>
   );
@@ -447,7 +480,15 @@ function Collections({ householdId }: { householdId: string }) {
 
 function MostValuable({ o }: { o: OverviewData }) {
   return (
-    <Section icon="icon-[tabler--diamond]" title="Most valuable">
+    <Section
+      icon="icon-[tabler--diamond]"
+      title="Most valuable"
+      aside={
+        <a href={BY_VALUE_HREF} className="tap link link-primary link-hover text-sm">
+          See all
+        </a>
+      }
+    >
       <ol className="flex flex-col gap-1">
         {o.mostValuable.slice(0, 5).map((it, i) => (
           <li key={it.id}>
@@ -510,7 +551,7 @@ function Activity({ o }: { o: OverviewData }) {
 const formatDate = (iso: string) =>
   new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 
-function daysLeft(endsOn: string) {
+export function daysLeft(endsOn: string) {
   const days = Math.ceil((new Date(`${endsOn}T00:00:00`).getTime() - Date.now()) / 86_400_000);
   return days <= 1 ? "Today" : `${days} days`;
 }

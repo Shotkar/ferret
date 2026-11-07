@@ -38,6 +38,7 @@ export type Route =
   | { name: "shared"; token: string }
   | { name: "borrower"; token: string }
   | { name: "loans" }
+  | { name: "warranties" }
   | { name: "coverage" }
   | { name: "more" }
   | { name: "item"; id: string }
@@ -95,6 +96,10 @@ export const MORE_HREF = "#/more";
 export const COVERAGE_HREF = "#/coverage";
 /** Lent and borrowed things (Loans.tsx). */
 export const LOANS_HREF = "#/loans";
+/** Every warranty in the household, and claims in progress (WarrantyList.tsx). */
+export const WARRANTIES_HREF = "#/warranties";
+/** Everything, most valuable first (the dashboard's Worth). */
+export const BY_VALUE_HREF = "#/items?sort=value";
 /** Importing: a spreadsheet, or Home Assistant's devices (Import.tsx). */
 export const IMPORT_HREF = "#/import";
 export const importHref = (source: "csv" | "homeassistant") => `${IMPORT_HREF}/${source === "csv" ? "csv" : "home-assistant"}`;

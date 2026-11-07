@@ -19,7 +19,7 @@ import { useRoomScanOn } from "./lib/room-scan";
 import { useRouteName } from "./lib/route-name";
 import { HouseholdContext, useHousehold } from "./lib/household";
 import { type Choice, ItemPicker } from "./Combobox";
-import { Outlet } from "@tanstack/react-router";
+import { Outlet, useSearch } from "@tanstack/react-router";
 import { Breadcrumbs, PlaceTiles, PropertyCards, PropertyHeader } from "./Browse";
 import { MISSING_LABELS, money, OverviewSections } from "./Overview";
 import { CategoryTiles, categoryIcon, flattenCategories, useCategories } from "./Catalog";
@@ -982,6 +982,8 @@ export function Home({ householdName, householdId, view }: { householdName: stri
   const labels = useQuery({ queryKey: ["labels", householdId], queryFn: () => api.labels(), enabled: view.name === "place" });
   // Everything (not searching) has its own table, filters and pages.
   const everything = !query && view.name === "items";
+  // `#/items?sort=value`: Everything in that order (the router hands the search values over as strings).
+  const itemsSort = (useSearch({ strict: false }) as { sort?: string }).sort;
   const listing = Boolean(query) || ["category", "tag"].includes(view.name) || (view.name === "place" && Boolean(place));
   const first = useQuery({
     // In a room (not searching): its boxes and loose things — not every box's contents.
@@ -1150,6 +1152,8 @@ export function Home({ householdName, householdId, view }: { householdName: stri
 
         {everything && (
           <Everything
+            key={itemsSort ?? ""}
+            sort={itemsSort}
             householdId={householdId}
             missing={missing}
             origin={origin}

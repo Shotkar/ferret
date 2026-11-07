@@ -53,12 +53,14 @@ function useWide() {
   return wide;
 }
 
-export function Everything(props: { householdId: string; missing?: MissingDetail; origin?: ItemOrigin; placeFrom?: string }) {
+/** `sort`: the order to start in, from the address (`#/items?sort=value` — the dashboard's Worth). */
+export function Everything(props: { householdId: string; missing?: MissingDetail; origin?: ItemOrigin; placeFrom?: string; sort?: string }) {
   const { householdId, missing, origin } = props;
+  const startSort = SORTS.find((s) => s.value === props.sort);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
   const [tag, setTag] = useState("");
-  const [sort, setSort] = useState<{ by: ItemSort; dir: "asc" | "desc" }>({ by: "updated", dir: "desc" });
+  const [sort, setSort] = useState<{ by: ItemSort; dir: "asc" | "desc" }>(startSort ? { by: startSort.value, dir: startSort.dir } : { by: "updated", dir: "desc" });
   const [page, setPage] = useState(0);
   const [layout, setLayoutState] = useState<Layout>(storedLayout);
   const wide = useWide();
