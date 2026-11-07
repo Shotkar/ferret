@@ -404,8 +404,11 @@ export interface MaintenanceTask {
   attachmentId: string | null;
   providerId: string | null;
   providerName: string | null;
-  /** The consumable it uses: how many each time (`uses`) and how many are in stock (`left`). */
-  part: { itemId: string; name: string; uses: number; left: number } | null;
+  /**
+   * The consumable it uses: how many each time (`uses`), how many are in stock (`left`), and `shortOn` — the first
+   * time it's due (or expected to be) without enough left, counting the other tasks that use it, within a year.
+   */
+  part: { itemId: string; name: string; uses: number; left: number; shortOn: string | null } | null;
   status: MaintenanceStatus;
   /** Due by time alone (`dueOn` may be sooner: by use). */
   timeDueOn: string | null;

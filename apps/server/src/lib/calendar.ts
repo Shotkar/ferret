@@ -4,7 +4,7 @@
  * belongs to one person in one household; the link carries a random token and
  * only its SHA-256 is stored.
  */
-import { addDays, addMonths, describeInterval, type MaintenanceTask, taskOccurrences, today } from "@ferret/shared";
+import { MAINTENANCE_AHEAD_MONTHS, addDays, addMonths, describeInterval, type MaintenanceTask, taskOccurrences, today } from "@ferret/shared";
 import { and, eq } from "drizzle-orm";
 import { calendarFeed } from "../db/schema";
 import type { Db } from "../ports";
@@ -75,7 +75,7 @@ function fold(line: string) {
 const compactDate = (iso: string) => iso.replace(/-/g, "");
 
 /** How far ahead the feed lists a task's repeats, and at most how many of each. */
-export const FEED_MONTHS = 12;
+export const FEED_MONTHS = MAINTENANCE_AHEAD_MONTHS;
 export const FEED_REPEATS = 52;
 
 /**
@@ -118,6 +118,7 @@ export function toICalendar(tasks: MaintenanceTask[], opts: { name: string; appU
       const details = [
         o.kind === "overdue" ? `Overdue — was due ${t.dueOn}.` : null,
         expected ? "Expected, if the one before is done on time — it moves when that one's done." : null,
+        t.part?.shortOn && o.on >= t.part.shortOn ? `Not enough ${t.part.name} left by then — buy more.` : null,
         ...about,
       ].filter(Boolean);
       const summary = o.kind === "overdue" ? `Overdue: ${what}` : expected ? `${what} (expected)` : what;

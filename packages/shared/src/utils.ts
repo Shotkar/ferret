@@ -151,6 +151,44 @@ export function taskOccurrences(
   return out;
 }
 
+/** How far ahead the calendar feed lists repeats, and parts are counted forward. */
+export const MAINTENANCE_AHEAD_MONTHS = 12;
+
+/**
+ * When each task's part runs short: stock is counted forward through every open task's due dates and repeats up to
+ * `until` (`taskOccurrences`), soonest first, with the tasks that share a part drawing on the same stock. A task's
+ * date is the first time it comes due with fewer than it uses left; tasks that stay covered aren't in the map.
+ */
+export function partShortfalls(
+  tasks: {
+    id: string;
+    title: string;
+    dueOn: string | null;
+    intervalCount: number | null;
+    intervalUnit: IntervalUnit | null;
+    usage?: { every: number; perDay: number | null } | null;
+    part: { itemId: string; uses: number; left: number } | null;
+  }[],
+  until: string,
+  on = today(),
+): Map<string, string> {
+  const short = new Map<string, string>();
+  const byPart = new Map<string, typeof tasks>();
+  for (const t of tasks) if (t.part) byPart.set(t.part.itemId, [...(byPart.get(t.part.itemId) ?? []), t]);
+  for (const group of byPart.values()) {
+    let left = group[0]!.part!.left;
+    const due = group
+      .flatMap((t) => taskOccurrences(t, on, until, on).map((o) => ({ t, on: o.on })))
+      .sort((a, b) => a.on.localeCompare(b.on) || a.t.title.localeCompare(b.t.title));
+    for (const { t, on: day } of due) {
+      if (short.has(t.id)) continue;
+      if (left >= t.part!.uses) left -= t.part!.uses;
+      else short.set(t.id, day);
+    }
+  }
+  return short;
+}
+
 // ── Maintenance by use ("every 5,000 miles") ───────────────────────────────
 export const usageUnits = ["miles", "km", "hours", "cycles"] as const;
 export type UsageUnit = (typeof usageUnits)[number];

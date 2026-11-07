@@ -10,7 +10,7 @@ import { addDays, barcodeVariants } from "@ferret/shared";
 import { isPairingPayload } from "@ferret/shared/utils";
 import { and, desc, eq, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import { item, label, maintenanceTask, ownLabel, stockMovement, stockRule, user } from "../db/schema";
+import { item, label, ownLabel, stockMovement, stockRule, user } from "../db/schema";
 import { type Caller, asListing, itemScope, logActivity, notFound } from "./inventory";
 import type { FileStore } from "./files";
 import { normalizeCode } from "./labels";
@@ -18,6 +18,7 @@ import { findPairing } from "./pairing";
 import { productCode } from "./products";
 import { todayFor } from "./household-time";
 import { inList } from "./sql";
+import { listMaintenance } from "./maintenance";
 
 /** How a movement came about. */
 type Reason = StockMovement["reason"];
@@ -286,23 +287,18 @@ export async function shoppingList(v: Caller): Promise<ShoppingList> {
     .select()
     .from(item)
     .where(and(itemScope(v), or(and(isNotNull(item.minQuantity), lte(item.quantity, item.minQuantity)), and(eq(item.quantity, 0), tracked))));
-  // Parts that maintenance coming up (or overdue) needs and there aren't enough of.
+  // Parts that maintenance coming up (or overdue) needs and there aren't enough of — counted across the tasks that
+  // share a part and through their repeats (`part.shortOn`, lib/maintenance.ts).
   const soon = addDays(todayFor(v), PARTS_AHEAD_DAYS);
-  const needs = await v.db
-    .select({ task: maintenanceTask, part: item })
-    .from(maintenanceTask)
-    .innerJoin(item, eq(item.id, maintenanceTask.partItemId))
-    .where(
-      and(
-        eq(maintenanceTask.householdId, v.householdId),
-        isNull(maintenanceTask.deletedAt),
-        isNotNull(maintenanceTask.dueOn),
-        lte(maintenanceTask.dueOn, soon),
-        itemScope(v),
-        sql`${item.quantity} < ${maintenanceTask.partQuantity}`,
-      ),
-    )
-    .orderBy(maintenanceTask.dueOn);
+  const shortTasks = (await listMaintenance(v))
+    .filter((t) => t.part?.shortOn && t.part.shortOn <= soon)
+    .sort((a, b) => a.part!.shortOn!.localeCompare(b.part!.shortOn!));
+  const partIds = [...new Set(shortTasks.map((t) => t.part!.itemId))];
+  const partRows = partIds.length ? await v.db.select().from(item).where(and(itemScope(v), inList(item.id, partIds))) : [];
+  const needs = shortTasks.flatMap((task) => {
+    const part = partRows.find((r) => r.id === task.part!.itemId);
+    return part ? [{ task, part }] : [];
+  });
   const rows = [...low];
   for (const n of needs) if (!rows.some((r) => r.id === n.part.id)) rows.push(n.part);
 
@@ -322,8 +318,9 @@ export async function shoppingList(v: Caller): Promise<ShoppingList> {
         place: r.place ?? null,
         quantity: r.quantity,
         minQuantity: r.minQuantity ?? null,
-        buy: packs.find((p) => p.itemId === r.id)?.step ?? Math.max(toMin, need ? need.task.partQuantity - r.quantity : 0),
-        forTask: need ? `${need.task.title}, due ${need.task.dueOn}` : null,
+        // Short of what one time uses: the difference; enough for one but not for all that share it: another time's worth.
+        buy: packs.find((p) => p.itemId === r.id)?.step ?? Math.max(toMin, need ? (r.quantity < need.task.part!.uses ? need.task.part!.uses - r.quantity : need.task.part!.uses) : 0),
+        forTask: need ? `${need.task.title}, due ${need.task.part!.shortOn}` : null,
         photoId: r.photoId,
         unitCents: r.purchasePriceCents ?? r.valueCents ?? null,
       };

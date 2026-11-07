@@ -378,7 +378,7 @@ function buildServer(v: McpCaller) {
     {
       title: "List maintenance",
       description:
-        "Maintenance tasks (replace filters, service the boiler, clean gutters…), soonest due first, each with its id, the item or place and who usually does it. Use it to see the schedule, to get a task's id for complete_maintenance, and before save_maintenance so you don't add one twice; for just what's urgent across everything, what_needs_attention.",
+        "Maintenance tasks (replace filters, service the boiler, clean gutters…), soonest due first, each with its id, the item or place and who usually does it; a task that uses a part says how many are left and, as part.shortOn, the first time it's due without enough (counting its repeats and other tasks that use the part) — buy more before then. Use it to see the schedule, to get a task's id for complete_maintenance, and before save_maintenance so you don't add one twice; for just what's urgent across everything, what_needs_attention.",
       inputSchema: z.object({
         status: z
           .enum(["open", "overdue", "due", "upcoming", "done", "all"])

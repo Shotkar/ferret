@@ -47,10 +47,14 @@ A task can use up something you keep in stock — *Replace furnace filter* uses 
 the task under **Uses a part**, with how many each time. Then:
 
 - **Done** takes them out of stock (untick **Took … from stock** if you cleaned the old one instead);
-- the list shows how many are left;
+- the list shows how many are left and, when they won't last the year, **buy more before** the first time they run
+  out. Ferret counts forward through the task's repeats and every other task that uses the same part. One filter
+  covers the next change, not the one three months later;
+- in the [Month view](#month), a cart marks each time there won't be enough;
 - if there aren't enough for the next time, the task shows up in the bell **a month ahead** instead of a week —
   *Due in 12 days — no Furnace filter left* — and the part goes on the [shopping list](./stock#shopping-list), so
-  there's time to order.
+  there's time to order. The same goes for a part shared by two tasks that are both due within the month, when there
+  are only enough for one.
 
 ## From a manual
 

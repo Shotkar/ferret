@@ -8,7 +8,8 @@ import { type TaskOccurrence, addDays, addMonths, taskOccurrences, today } from 
 import { useMemo, useState } from "react";
 import { TaskRow } from "./Maintenance";
 
-type Entry = { task: MaintenanceTask; kind: TaskOccurrence["kind"] };
+/** `short`: not enough of the task's part left by then (its `part.shortOn` or later). */
+type Entry = { task: MaintenanceTask; kind: TaskOccurrence["kind"]; short: boolean };
 
 /** The locale's first day of the week, as JS counts them (0 = Sunday). */
 function weekStart() {
@@ -64,7 +65,7 @@ export function MaintenanceCalendar(props: {
     for (const task of tasks) {
       for (const o of taskOccurrences(task, start, end, now)) {
         const list = map.get(o.on) ?? [];
-        list.push({ task, kind: o.kind });
+        list.push({ task, kind: o.kind, short: !!task.part?.shortOn && o.on >= task.part.shortOn });
         map.set(o.on, list);
       }
     }
@@ -80,6 +81,7 @@ export function MaintenanceCalendar(props: {
   const days = Array.from({ length: weeks * 7 }, (_, i) => addDays(start, i));
   // The list under the grid: the picked day, or every day of the month with something on it.
   const shown = (picked ? [picked] : days.filter((d) => d >= first && d <= last)).filter((d) => byDay.has(d));
+  const anyShort = days.some((d) => byDay.get(d)?.some((e) => e.short));
   const inMonth = [...byDay.entries()].filter(([d]) => d >= first && d <= last).reduce((n, [, l]) => n + l.length, 0);
 
   return (
@@ -151,6 +153,7 @@ export function MaintenanceCalendar(props: {
                   <span className="flex min-w-0 flex-col gap-0.5 max-sm:hidden" aria-hidden>
                     {list.slice(0, 3).map((e) => (
                       <span key={`${e.task.id}-${e.kind}`} title={e.task.title} className={`truncate rounded px-1 text-xs leading-5 ${chip(e)} ${outside ? "opacity-60" : ""}`}>
+                        {e.short && <span className="icon-[tabler--shopping-cart] me-0.5 size-3 align-[-2px]" />}
                         {e.kind === "due" && e.task.dueEstimated ? "~ " : ""}
                         {e.task.title}
                       </span>
@@ -163,7 +166,7 @@ export function MaintenanceCalendar(props: {
           </div>
           <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-base-content/70">
             <span className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-error" aria-hidden /> Overdue (on today)
+              <span className="size-2 rounded-full bg-error" aria-hidden /> Overdue
             </span>
             <span className="flex items-center gap-1.5">
               <span className="size-2 rounded-full bg-warning" aria-hidden /> Due soon
@@ -174,6 +177,11 @@ export function MaintenanceCalendar(props: {
             <span className="flex items-center gap-1.5">
               <span className="size-2 rounded-full border border-base-content/50" aria-hidden /> Expected repeat
             </span>
+            {anyShort && (
+              <span className="flex items-center gap-1.5">
+                <span className="icon-[tabler--shopping-cart] size-3.5" aria-hidden /> Not enough parts left by then
+              </span>
+            )}
           </p>
         </div>
       </section>
@@ -210,7 +218,11 @@ export function MaintenanceCalendar(props: {
                       canEdit={props.canEdit}
                       onDone={() => props.onDone(e.task)}
                       onEdit={() => props.onEdit(e.task)}
-                      expected={e.kind === "expected" ? "Expected, if the one before is done on time" : undefined}
+                      expected={
+                        e.kind === "expected"
+                          ? `Expected, if the one before is done on time${e.short ? ` · not enough ${e.task.part!.name} left by then` : ""}`
+                          : undefined
+                      }
                     />
                   ))}
                 </ul>

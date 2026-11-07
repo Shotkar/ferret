@@ -56,7 +56,10 @@ export async function needsAttention(v: Caller): Promise<AttentionItem[]> {
 
   for (const t of tasks) {
     // Short of the part it uses: show it early, while there's time to order some.
-    const short = t.part && t.part.left < t.part.uses ? t.part : null;
+    // (`shortOn` counts the other tasks using the same part, so it can be short with enough for one time.)
+    // Its next time is today when it's overdue.
+    const next = t.dueOn && t.dueOn < on ? on : t.dueOn;
+    const short = t.part?.shortOn && t.part.shortOn === next ? t.part : null;
     if (!t.dueOn || t.dueOn > addDays(on, short ? PARTS_AHEAD_DAYS : MAINTENANCE_DAYS)) continue;
     const days = dayDiff(on, t.dueOn);
     const when = days < 0 ? `${-days} ${days === -1 ? "day" : "days"} overdue` : days === 0 ? "Due today" : `Due in ${days} ${days === 1 ? "day" : "days"}`;
@@ -65,7 +68,9 @@ export async function needsAttention(v: Caller): Promise<AttentionItem[]> {
       severity: days <= 0 ? "urgent" : "soon",
       id: t.id,
       title: t.itemName ? `${t.title} (${t.itemName})` : t.title,
-      detail: short ? `${when} — ${short.left === 0 ? "no" : `only ${short.left}`} ${short.name} left` : when,
+      detail: short
+        ? `${when} — ${short.left === 0 ? `no ${short.name} left` : short.left < short.uses ? `only ${short.left} ${short.name} left` : `not enough ${short.name} left (other tasks use it too)`}`
+        : when,
       itemId: t.itemId,
       date: t.dueOn,
     });

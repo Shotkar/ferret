@@ -6,7 +6,7 @@
  */
 import { BarSearch } from "./Nav";
 import type { MaintenanceInput, MaintenanceTask } from "@ferret/shared";
-import { type IntervalUnit, describeInterval, describeUsage, intervalUnits, today } from "@ferret/shared/utils";
+import { type IntervalUnit, addDays, describeInterval, describeUsage, intervalUnits, today } from "@ferret/shared/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { api } from "./lib/api";
@@ -241,9 +241,10 @@ export function TaskRow(props: { task: MaintenanceTask; showItem?: boolean; canE
           {t.providerName ? ` · ${t.providerName}` : ""}
         </span>
         <span className={`block text-xs ${props.expected ? "text-base-content/70" : STATUS[t.status].text}`}>{props.expected ?? dueText(t)}</span>
-        {t.part && (
-          <span className={`block truncate text-xs ${t.part.left < t.part.uses ? "text-warning" : "text-base-content/70"}`}>
+        {t.part && !props.expected && (
+          <span className={`block truncate text-xs ${partSoon(t.part) ? "text-warning" : "text-base-content/70"}`}>
             Uses {t.part.uses} × {t.part.name} · {t.part.left === 0 ? "none" : t.part.left} left
+            {t.part.shortOn && t.part.left >= t.part.uses ? ` · buy more before ${formatDate(t.part.shortOn)}` : ""}
           </span>
         )}
       </button>
@@ -256,6 +257,9 @@ export function TaskRow(props: { task: MaintenanceTask; showItem?: boolean; canE
     </li>
   );
 }
+
+/** Not enough of its part for next time, or running short within a month (when the shopping list starts saying so). */
+const partSoon = (part: NonNullable<MaintenanceTask["part"]>) => part.left < part.uses || (!!part.shortOn && part.shortOn <= addDays(today(), 30));
 
 /** "every 3 months", "every 5,000 miles", "every 5,000 miles or 6 months" */
 export function scheduleText(t: MaintenanceTask) {

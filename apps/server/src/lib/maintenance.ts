@@ -11,11 +11,15 @@ import {
   type MaintenancePatch,
   type MaintenanceStatus,
   type MaintenanceTask,
+  MAINTENANCE_AHEAD_MONTHS,
+  addDays,
+  addMonths,
   describeInterval,
   describeUsage,
   effectiveDue,
   maintenanceStatus,
   nextDue,
+  partShortfalls,
   today,
   usagePerDay,
 } from "@ferret/shared";
@@ -83,7 +87,7 @@ export async function listMaintenance(v: Caller, filter: MaintenanceFilter = {})
         .orderBy(usageReading.readOn, usageReading.createdAt)
     : [];
   const readingsFor = (itemId: string) => readings.filter((r) => r.itemId === itemId);
-  return rows
+  const list: MaintenanceTask[] = rows
     .filter((r) => !r.itemDeletedAt && !r.itemGone) // tasks on removed (or sold, lost…) items go with them
     .map(({ task: t, itemName, itemUsageUnit, itemLocationId, providerName, partName, partQuantity, partDeletedAt, partGone }) => {
       const placeId = t.locationId ?? itemLocationId;
@@ -105,7 +109,7 @@ export async function listMaintenance(v: Caller, filter: MaintenanceFilter = {})
         providerName: providerName ?? null,
         part:
           t.partItemId && partName != null && !partDeletedAt && !partGone
-            ? { itemId: t.partItemId, name: partName, uses: t.partQuantity, left: partQuantity ?? 0 }
+            ? { itemId: t.partItemId, name: partName, uses: t.partQuantity, left: partQuantity ?? 0, shortOn: null as string | null }
             : null,
         status: maintenanceStatus(t.dueOn, on),
         timeDueOn: t.timeDueOn,
@@ -117,6 +121,14 @@ export async function listMaintenance(v: Caller, filter: MaintenanceFilter = {})
     })
     .filter((t) => status === "all" || (status === "open" ? t.status !== "done" : t.status === status))
     .sort((a, b) => (a.dueOn ?? "9999").localeCompare(b.dueOn ?? "9999") || a.title.localeCompare(b.title));
+  if (!list.some((t) => t.part)) return list;
+  // Parts are counted across every open task that uses them, so a filtered list asks for the whole household's.
+  // (Finished one-offs have no due date, so they never draw on stock.)
+  const narrowed = filter.itemId || filter.providerId || (status !== "open" && status !== "all");
+  const all = narrowed ? await listMaintenance(v, { status: "open" }) : list;
+  const short = partShortfalls(all, addDays(addMonths(on, MAINTENANCE_AHEAD_MONTHS), -1), on);
+  for (const t of list) if (t.part) t.part.shortOn = short.get(t.id) ?? null;
+  return list;
 }
 
 export async function getTask(v: Caller, id: string) {
@@ -203,6 +215,8 @@ export async function updateTask(v: Caller, id: string, input: MaintenancePatch)
   if (input.intervalCount === null || input.intervalUnit === null) Object.assign(changes, { intervalCount: null, intervalUnit: null });
   // Rescheduling sets the date by time; what it's due at by use stays.
   if (input.dueOn !== undefined) changes.timeDueOn = input.dueOn;
+  // A task due by time with no `timeDueOn` (written some other way) keeps its date through an unrelated change.
+  else if (before.timeDueOn == null && before.usageDueAt == null && before.dueOn) changes.timeDueOn = before.dueOn;
   // By use: off, a new amount (counted on from the same start), or now on another item (from its latest reading).
   const itemId = input.itemId !== undefined ? input.itemId : before.itemId;
   const every = input.usageEvery !== undefined ? input.usageEvery : before.usageEvery;

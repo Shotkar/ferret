@@ -1,5 +1,5 @@
 /** Scan to count: what a code does (look up, use, restock, ask), the scanner's override, several items, labels, undo. */
-import { addDays, type ScanResult, type StockSummary, today } from "@ferret/shared";
+import { addDays, nextDue, type ScanResult, type StockSummary, today } from "@ferret/shared";
 import { describe, expect, it } from "vitest";
 import { member } from "../src/db/schema";
 import { setup } from "./helpers";
@@ -187,7 +187,8 @@ describe("maintenance uses parts", () => {
     const make = (partItemId: string) => send(ann, "POST", "/api/v1/maintenance", { title: "Replace furnace filter", itemId: furnace.id, intervalCount: 3, intervalUnit: "month", dueOn, partItemId, partQuantity: 1 });
     expect((await make(theirs.id)).status).toBe(404);
     const task = await json<{ id: string; part: unknown }>(make(filters.id));
-    expect(task.part).toEqual({ itemId: filters.id, name: "Furnace filter 20x25x1", uses: 1, left: 1 });
+    // One filter: enough for this time, not for the one three months after.
+    expect(task.part).toEqual({ itemId: filters.id, name: "Furnace filter 20x25x1", uses: 1, left: 1, shortOn: nextDue(dueOn, 3, "month") });
 
     // Enough for now: nothing in the bell 12 days out, nothing to buy.
     const bell = async () => (await json<{ data: { kind: string; detail: string }[] }>(ann.as("/api/v1/attention"))).data.filter((a) => a.kind === "maintenance");
@@ -212,6 +213,36 @@ describe("maintenance uses parts", () => {
     await send(ann, "DELETE", `/api/v1/items/${filters.id}`);
     expect((await json<{ part: unknown }>(ann.as(`/api/v1/maintenance/${task.id}`))).part).toBeNull();
     expect((await send(ann, "POST", `/api/v1/maintenance/${task.id}/done`, {})).status).toBe(200);
+  });
+});
+
+describe("parts shared by several tasks", () => {
+  it("count forward through every task that uses them, also on one item's page", async () => {
+    const { user } = await setup();
+    const ann = await user("ann");
+    const up = await ann.addItem({ name: "Upstairs furnace" });
+    const down = await ann.addItem({ name: "Downstairs furnace" });
+    const filters = await ann.addItem({ name: "Filter", quantity: 1 });
+    const task = (itemId: string, days: number) =>
+      json<{ id: string }>(
+        send(ann, "POST", "/api/v1/maintenance", { title: "Replace filter", itemId, intervalCount: 3, intervalUnit: "month", dueOn: addDays(today(), days), partItemId: filters.id }),
+      );
+    await task(up.id, 5);
+    const second = await task(down.id, 10);
+
+    // The one filter goes to the first; the second has none — enough for one time, not for both.
+    const onItem = await json<{ data: { part: { left: number; shortOn: string | null } }[] }>(ann.as(`/api/v1/maintenance?itemId=${down.id}`));
+    expect(onItem.data[0]!.part).toMatchObject({ left: 1, shortOn: addDays(today(), 10) });
+    const bell = (await json<{ data: { id: string; detail: string }[] }>(ann.as("/api/v1/attention"))).data.find((a) => a.id === second.id);
+    expect(bell?.detail).toBe("Due in 10 days — not enough Filter left (other tasks use it too)");
+    const list = await json<{ items: { name: string; buy: number; forTask: string | null }[] }>(ann.as("/api/v1/shopping"));
+    expect(list.items).toEqual([expect.objectContaining({ name: "Filter", buy: 1, forTask: `Replace filter, due ${addDays(today(), 10)}` })]);
+
+    // Five more: both covered for the year (8 changes need 8 — 6 in stock runs out in the second half).
+    await send(ann, "POST", `/api/v1/items/${filters.id}/stock`, { delta: 5 });
+    const all = await json<{ data: { part: { shortOn: string | null } }[] }>(ann.as("/api/v1/maintenance"));
+    expect(all.data.every((t) => t.part.shortOn === null || t.part.shortOn > addDays(today(), 180))).toBe(true);
+    expect((await json<{ items: unknown[] }>(ann.as("/api/v1/shopping"))).items).toEqual([]);
   });
 });
 

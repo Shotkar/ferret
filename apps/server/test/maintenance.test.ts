@@ -2,7 +2,7 @@
 import { addDays, type MaintenanceLogEntry, type MaintenanceTask, nextDue, type Provider, type ProviderVisit, taskOccurrences, today } from "@ferret/shared";
 import { describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { calendarFeed, member, pushSubscription } from "../src/db/schema";
+import { calendarFeed, maintenanceTask, member, pushSubscription } from "../src/db/schema";
 import { sendReminders } from "../src/jobs/remind";
 import { FEED_REPEATS, toICalendar } from "../src/lib/calendar";
 import { FakePush, setup } from "./helpers";
@@ -253,6 +253,18 @@ describe("service providers", () => {
   });
 });
 
+describe("editing a task", () => {
+  it("keeps its due date when only something else changes, even with no date by time stored", async () => {
+    const { user, db } = await setup();
+    const ann = await user("ann");
+    const dueOn = addDays(today(), 20);
+    const task = await json<MaintenanceTask>(send(ann, "POST", "/api/v1/maintenance", { title: "Filter", intervalCount: 3, intervalUnit: "month", dueOn }));
+    await db.update(maintenanceTask).set({ timeDueOn: null }).where(eq(maintenanceTask.id, task.id));
+    const edited = await json<MaintenanceTask>(send(ann, "PATCH", `/api/v1/maintenance/${task.id}`, { notes: "16x25x1" }));
+    expect(edited).toMatchObject({ dueOn, timeDueOn: dueOn, status: "upcoming" });
+  });
+});
+
 describe("taskOccurrences (the Month view)", () => {
   const on = "2026-11-07";
   const monthly = { intervalCount: 1, intervalUnit: "month" as const };
@@ -308,6 +320,14 @@ describe("the calendar feed's repeats", () => {
     expect(daily.match(/BEGIN:VEVENT/g)).toHaveLength(1 + FEED_REPEATS);
     const yearly = toICalendar([task({ intervalUnit: "year" })], opts);
     expect(yearly.match(/BEGIN:VEVENT/g)).toHaveLength(1); // the next one is 2027-11-10, past the year
+  });
+
+  it("says when there won't be enough of its part", () => {
+    const part = { itemId: "p1", name: "Filter", uses: 1, left: 1, shortOn: "2026-11-17" };
+    const ics = toICalendar([task({ part })], opts);
+    const events = ics.split("BEGIN:VEVENT").slice(1);
+    expect(events[0]).not.toContain("buy more"); // Nov 10: the one filter
+    expect(events[1]!.replace(/\r\n /g, "")).toContain("Not enough Filter left by then — buy more.");
   });
 
   it("keeps a task due more than a year off", () => {
