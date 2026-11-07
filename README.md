@@ -151,12 +151,12 @@ can use the small bridge in [`contrib/mcp-bridge`](contrib/mcp-bridge): it forwa
 key. Ferret is also listed in the [MCP Registry](https://registry.modelcontextprotocol.io) as
 `io.github.ferret-project/ferret`.
 
-**What Claude can do** (60 tools):
+**What Claude can do** (47 tools):
 
 | | |
 |---|---|
 | Find | search by words and meaning, ask questions answered from receipts and manuals, items, places, history, recently deleted; look at an item's photos |
-| Add and change | add items (also from a photo, or a whole room's photos), update, move, delete and restore, change many at once; properties, rooms and categories; QR labels |
+| Add and change | add items (also from a photo, or a whole room's photos), update, move and restore, change many at once; properties, rooms, categories and collections; QR labels |
 | Upkeep | maintenance by date or by use (odometer, engine hours), warranties and claims, recalls, service providers |
 | Household | stock and the shopping list, lending, barcodes, collections, the insurance report and coverage limits, what needs attention |
 
@@ -164,7 +164,7 @@ key. Ferret is also listed in the [MCP Registry](https://registry.modelcontextpr
 
 **Safe by design.** A key acts for one person in one household, can be **read-only** (Claude can look and ask, but the
 tools that change things aren't offered) and can expire; revoke it any time. Viewers' keys are always read-only.
-Deleted things wait 30 days in *Recently deleted*, and nothing a model suggests from a photo or document is applied
+Removing anything goes through one tool, marked destructive, so a client can ask before each one. Deleted things wait 30 days in *Recently deleted*, and nothing a model suggests from a photo or document is applied
 until someone confirms it.
 
 ## Develop

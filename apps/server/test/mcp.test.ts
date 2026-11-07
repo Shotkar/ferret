@@ -176,17 +176,17 @@ describe("MCP server", () => {
     const ann = await user("ann");
     const { call } = await connect(app, (await makeKey(ann)).key);
 
-    expect((await call("create_location", { name: "Garage" })).text).toContain("no properties yet");
-    const home = (await call("create_property", { name: "Maple House" })).json();
+    expect((await call("save_location", { name: "Garage" })).text).toContain("no properties yet");
+    const home = (await call("save_property", { name: "Maple House" })).json();
     expect(home).toMatchObject({ name: "Maple House", type: "home" });
-    const garage = (await call("create_location", { name: "Garage", children: ["Shelf 1", "Shelf 2", "Shelf 3"] })).json();
+    const garage = (await call("save_location", { name: "Garage", children: ["Shelf 1", "Shelf 2", "Shelf 3"] })).json();
     expect(garage.path).toBe("Maple House › Garage");
     expect(garage.children.map((c: { path: string }) => c.path)).toEqual([
       "Maple House › Garage › Shelf 1",
       "Maple House › Garage › Shelf 2",
       "Maple House › Garage › Shelf 3",
     ]);
-    const kitchen = (await call("create_location", { name: "Kitchen" })).json();
+    const kitchen = (await call("save_location", { name: "Kitchen" })).json();
 
     const drill = (
       await call("create_item", { name: "Cordless drill", brand: "DeWalt", purchasePriceCents: 12999, locationId: garage.children[1].id })
@@ -203,7 +203,7 @@ describe("MCP server", () => {
     const inGarage = (await call("list_items", { locationId: garage.id })).json();
     expect(inGarage.items.map((i: { name: string }) => i.name)).toEqual(["Cordless drill"]);
 
-    const moved = (await call("move_item", { id: drill.id, locationId: kitchen.id })).json();
+    const moved = (await call("update_item", { id: drill.id, locationId: kitchen.id })).json();
     expect(moved.location).toBe("Maple House › Kitchen");
     const updated = (await call("update_item", { id: drill.id, serialNumber: "SN-42" })).json();
     expect(updated).toMatchObject({ serialNumber: "SN-42", brand: "DeWalt", location: "Maple House › Kitchen" });
@@ -223,7 +223,7 @@ describe("MCP server", () => {
     const item = (await call("get_item", { id: drill.id })).json();
     expect(item).toMatchObject({ name: "Cordless drill", warranties: [], attachments: [] });
 
-    expect((await call("delete_item", { id: drill.id })).json()).toEqual({ removed: { id: drill.id, name: "Cordless drill" } });
+    expect((await call("remove", { kind: "item", id: drill.id })).json()).toMatchObject({ removed: "item", id: drill.id, name: "Cordless drill" });
     expect((await call("get_item", { id: drill.id })).isError).toBe(true);
     // Deleted by mistake? It's in Recently deleted, and restore_item brings it back.
     expect((await call("recently_deleted")).json().items).toEqual([expect.objectContaining({ id: drill.id, name: "Cordless drill" })]);
@@ -231,7 +231,7 @@ describe("MCP server", () => {
     expect((await call("get_item", { id: drill.id })).json()).toMatchObject({ name: "Cordless drill" });
 
     const log = await db.select().from(activity).where(and(eq(activity.householdId, ann.householdId), eq(activity.via, "mcp")));
-    expect(log.map((a) => a.summary)).toContain("Moved Cordless drill to Maple House › Kitchen");
+    expect(log.map((a) => a.summary)).toContain("Moved Cordless drill: Garage › Shelf 2 → Kitchen");
   });
 
   it("only sees the key's household", async () => {
@@ -242,7 +242,7 @@ describe("MCP server", () => {
     const { call } = await connect(app, (await makeKey(ann)).key);
     expect((await call("get_item", { id: secret.id })).text).toBe("Item not found");
     expect((await call("search_inventory", { query: "safe" })).json().items).toEqual([]);
-    expect((await call("delete_item", { id: secret.id })).isError).toBe(true);
+    expect((await call("remove", { kind: "item", id: secret.id })).isError).toBe(true);
     expect((await bob.as(`/api/v1/items/${secret.id}`)).status).toBe(200);
   });
 
@@ -283,7 +283,7 @@ describe("MCP server", () => {
     const furnace = await ann.addItem({ name: "Furnace" });
     const { call } = await connect(app, (await makeKey(ann)).key);
 
-    const added = (await call("add_maintenance", { title: "Replace filter", itemId: furnace.id, intervalCount: 3, intervalUnit: "month", dueOn: "2020-01-01" })).json();
+    const added = (await call("save_maintenance", { title: "Replace filter", itemId: furnace.id, intervalCount: 3, intervalUnit: "month", dueOn: "2020-01-01" })).json();
     expect(added).toMatchObject({ title: "Replace filter", itemName: "Furnace", repeats: "every 3 months", status: "overdue" });
     expect(added).not.toHaveProperty("intervalCount");
 
@@ -296,10 +296,10 @@ describe("MCP server", () => {
     const [entry] = await db.select().from(activity).where(eq(activity.entityId, added.id)).orderBy(activity.createdAt);
     expect(entry).toMatchObject({ via: "mcp" });
 
-    expect((await call("add_maintenance", { title: "x", intervalCount: 2 })).isError).toBe(true);
+    expect((await call("save_maintenance", { title: "x", intervalCount: 2 })).isError).toBe(true);
 
-    const plumber = (await call("add_provider", { name: "Pipe Pros", trade: "Plumber", phone: "303-555-0199" })).json();
-    const flush = (await call("add_maintenance", { title: "Flush water heater", intervalCount: 1, intervalUnit: "year", providerId: plumber.id })).json();
+    const plumber = (await call("save_provider", { name: "Pipe Pros", trade: "Plumber", phone: "303-555-0199" })).json();
+    const flush = (await call("save_maintenance", { title: "Flush water heater", intervalCount: 1, intervalUnit: "year", providerId: plumber.id })).json();
     expect(flush).toMatchObject({ providerName: "Pipe Pros" });
     await call("complete_maintenance", { id: flush.id, costCents: 12000 });
     const { providers } = (await call("list_providers")).json();
@@ -331,9 +331,9 @@ describe("MCP server", () => {
     const tv = await ann.addItem({ name: "TV" });
     const w = (await (await ann.as(`/api/v1/items/${tv.id}/warranties`, { method: "POST", body: JSON.stringify({ endsOn: "2030-01-01" }) })).json()) as { id: string };
     const { call } = await connect(app, (await makeKey(ann)).key);
-    const claim = (await call("file_warranty_claim", { warrantyId: w.id, problem: "Dead pixels", reference: "LG-1" })).json();
+    const claim = (await call("save_warranty_claim", { warrantyId: w.id, problem: "Dead pixels", reference: "LG-1" })).json();
     expect(claim).toMatchObject({ status: "filed", reference: "LG-1" });
-    expect((await call("update_warranty_claim", { id: claim.id, status: "denied", resolution: "Not covered" })).json()).toMatchObject({ status: "denied" });
+    expect((await call("save_warranty_claim", { id: claim.id, status: "denied", resolution: "Not covered" })).json()).toMatchObject({ status: "denied" });
     const got = (await call("get_item", { id: tv.id })).json();
     expect(got.warranties[0].claims[0]).toMatchObject({ problem: "Dead pixels", status: "denied", resolution: "Not covered" });
   });

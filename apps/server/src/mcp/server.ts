@@ -23,6 +23,8 @@ import {
   propertyInput,
   propertyPatch,
   providerInput,
+  providerPatch,
+  categoryPatch,
   locationPatch,
   maintenancePatch,
   warrantyInput,
@@ -141,7 +143,7 @@ function buildServer(v: McpCaller) {
     {
       title: "Get an item",
       description:
-        "Everything about one item: all its fields, where it's kept (and which box), warranties and claims, its photos and documents with what the vision model read in them, and any suggested fields waiting for the person to confirm (item fields go through update_item, a warranty through add_warranty, a schedule through add_maintenance). Use it after search_inventory or list_items has found the item, when you need the details; for what happened to it over time use item_history, and for a quick look at many items list_items is enough.",
+        "Everything about one item: all its fields, where it's kept (and which box), warranties and claims, its photos and documents with what the vision model read in them, and any suggested fields waiting for the person to confirm (item fields go through update_item, a warranty through save_warranty, a schedule through save_maintenance). Use it after search_inventory or list_items has found the item, when you need the details; for what happened to it over time use item_history, and for a quick look at many items list_items is enough.",
       inputSchema: z.object({ id: z.string().min(1).describe("The item's id, from search_inventory or list_items") }),
       annotations: read,
     },
@@ -224,7 +226,7 @@ function buildServer(v: McpCaller) {
     {
       title: "List places",
       description:
-        "Every property (home, cabin, storage unit…) with its locations as a tree (rooms › closets › shelves), their ids and how many items each holds. Call it to get a locationId or propertyId before create_item, move_item, list_items or create_location, and to check a place exists before adding it again. Read-only; the whole tree in one call.",
+        "Every property (home, cabin, storage unit…) with its locations as a tree (rooms › closets › shelves), their ids and how many items each holds. Call it to get a locationId or propertyId before create_item, update_item, list_items or save_location, and to check a place exists before adding it again. Read-only; the whole tree in one call.",
       inputSchema: z.object({}),
       annotations: read,
     },
@@ -279,7 +281,7 @@ function buildServer(v: McpCaller) {
     {
       title: "Insurance coverage",
       description:
-        "Checks the household's insurance limits against the inventory: each limit (contents cover, or a special limit on one category or tag such as jewelry or firearms) next to what those things are worth, how much short it is, and how many have no value recorded. Use it for \"are we insured enough?\"; for what everything is worth by room or property, use inventory_report. Each limit has its id and fields for set_coverage_limit (to change it) and remove_coverage_limit. Amounts are in cents. Empty when no limits are set.",
+        "Checks the household's insurance limits against the inventory: each limit (contents cover, or a special limit on one category or tag such as jewelry or firearms) next to what those things are worth, how much short it is, and how many have no value recorded. Use it for \"are we insured enough?\"; for what everything is worth by room or property, use inventory_report. Each limit has its id and fields for save_coverage_limit (to change it) and remove. Amounts are in cents. Empty when no limits are set.",
       inputSchema: z.object({}),
       annotations: read,
     },
@@ -296,7 +298,7 @@ function buildServer(v: McpCaller) {
     {
       title: "Lent and borrowed",
       description:
-        "Things lent out (who has them, since when, when they're due back) and things borrowed from others, still out, overdue ones marked, each with its loanId. Use it for \"who has the ladder?\" or \"what have I lent out?\", and to get the loanId for loan_returned. Only open loans; returned ones are in each item's item_history.",
+        "Things lent out (who has them, since when, when they're due back) and things borrowed from others, still out, overdue ones marked, each with its loanId. Use it for \"who has the ladder?\" or \"what have I lent out?\", and to get the loanId (pass it as id) for return_loan or save_loan. Only open loans; returned ones are in each item's item_history.",
       inputSchema: z.object({}),
       annotations: read,
     },
@@ -376,7 +378,7 @@ function buildServer(v: McpCaller) {
     {
       title: "List maintenance",
       description:
-        "Maintenance tasks (replace filters, service the boiler, clean gutters…), soonest due first, each with its id, the item or place and who usually does it. Use it to see the schedule, to get a task's id for complete_maintenance, and before add_maintenance so you don't add one twice; for just what's urgent across everything, what_needs_attention.",
+        "Maintenance tasks (replace filters, service the boiler, clean gutters…), soonest due first, each with its id, the item or place and who usually does it. Use it to see the schedule, to get a task's id for complete_maintenance, and before save_maintenance so you don't add one twice; for just what's urgent across everything, what_needs_attention.",
       inputSchema: z.object({
         status: z
           .enum(["open", "overdue", "due", "upcoming", "done", "all"])
@@ -410,7 +412,7 @@ function buildServer(v: McpCaller) {
     {
       title: "List service providers",
       description:
-        "The household's service providers (plumber, HVAC company, electrician…) with contact details, how many maintenance tasks they do, how often they've come, when they last did and what's been spent with them. Use it for \"who did we use for the furnace?\", to get a providerId for add_maintenance or complete_maintenance, and before add_provider so you don't add one twice.",
+        "The household's service providers (plumber, HVAC company, electrician…) with contact details, how many maintenance tasks they do, how often they've come, when they last did and what's been spent with them. Use it for \"who did we use for the furnace?\", to get a providerId for save_maintenance or complete_maintenance, and before save_provider so you don't add one twice.",
       inputSchema: z.object({}),
       annotations: read,
     },
@@ -508,7 +510,7 @@ function buildServer(v: McpCaller) {
     {
       title: "List item templates",
       description:
-        "The household's item templates — kinds of things with their own fields (a coin's year and mint mark, a record's label and pressing) — each with its id, fields and how many things use it. Use it to pick a templateId for create_collection, or to see which fields to fill in (customFields on create_item) for that kind of thing. Changes nothing.",
+        "The household's item templates — kinds of things with their own fields (a coin's year and mint mark, a record's label and pressing) — each with its id, fields and how many things use it. Use it to pick a templateId for save_collection, or to see which fields to fill in (customFields on create_item) for that kind of thing. Changes nothing.",
       inputSchema: z.object({}),
       annotations: read,
     },
@@ -517,33 +519,6 @@ function buildServer(v: McpCaller) {
   );
 
   if (v.readOnly) return server;
-
-  server.registerTool(
-    "lend_item",
-    {
-      title: "Lend or borrow a thing",
-      description:
-        "Records that one of the household's items was lent to someone (direction \"lent\") or that something was borrowed from them (\"borrowed\"), optionally with a due-back date. Use it when the person says \"I lent the drill to Sam\"; get the item's id from search_inventory first. An item can have one open loan at a time; loan_returned closes it. Reminder emails to a borrower: their email and remindEvery, here or later with update_loan. Returns the loan with its id (for loan_returned) and due date.",
-      inputSchema: z.object({ itemId: z.string().min(1).describe("The item's id, from search_inventory"), ...loanInput.pick({ direction: true, person: true, since: true, dueOn: true, note: true, email: true, remindEvery: true }).shape }),
-      annotations: write,
-    },
-    async ({ itemId, ...input }) => run(async () => compact(await loans.createLoan(v, v.files, itemId, input))),
-  );
-
-  server.registerTool(
-    "loan_returned",
-    {
-      title: "It's back",
-      description:
-        "Closes a loan: a lent thing is back, or a borrowed one was given back. Use it when the person says so (\"Sam returned the ladder\"); the loanId comes from list_loans. The loan stays in the item's history and the borrower's reminder emails stop; nothing else about the item changes. Calling it again for the same loan is refused (it's already back).",
-      inputSchema: z.object({
-        loanId: z.string().min(1).describe("The loan's id, from list_loans"),
-        on: z.iso.date().optional().describe("The day it came back, yyyy-mm-dd; today if left out"),
-      }),
-      annotations: write,
-    },
-    async ({ loanId, on }) => run(async () => compact(await loans.returnLoan(v, loanId, on))),
-  );
 
   const photoData = {
     data: z.string().min(16).describe("The image (or PDF, for a document) as base64; no data: prefix"),
@@ -643,42 +618,6 @@ function buildServer(v: McpCaller) {
       }),
   );
 
-  server.registerTool(
-    "file_warranty_claim",
-    {
-      title: "File a warranty claim",
-      description:
-        "Records a claim made under one of an item's warranties: what went wrong, the provider's claim number (reference) and its status (filed by default, today by default). Use it when the person says they've contacted the maker or seller about a fault; get the warrantyId from get_item. Follow it up later with update_warranty_claim. Claims with no news for two weeks show in what_needs_attention.",
-      inputSchema: claimInput.extend({ warrantyId: z.string().min(1).describe("The warranty's id, from get_item") }),
-      annotations: write,
-    },
-    async ({ warrantyId, ...input }) => run(async () => compact(await claims.fileClaim(v, warrantyId, input))),
-  );
-
-  server.registerTool(
-    "update_warranty_claim",
-    {
-      title: "Update a warranty claim",
-      description:
-        "Changes a warranty claim: its status (filed, in_progress, approved, denied, resolved), the resolution, what it cost (cents), the claim number. Use it when the person hears back about a claim; the claim's id is in get_item. Closing it (denied or resolved) dates it today unless resolvedOn is given. Fields left out stay as they are.",
-      inputSchema: claimPatch.extend({ id: z.string().min(1).describe("The claim's id, from get_item") }),
-      annotations: { ...write, idempotentHint: true },
-    },
-    async ({ id, ...patch }) => run(async () => compact(await claims.updateClaim(v, id, patch))),
-  );
-
-  server.registerTool(
-    "add_provider",
-    {
-      title: "Add a service provider",
-      description:
-        "Adds a service provider — a plumber, the HVAC company, an electrician — with their trade and contact details, so maintenance can name who does it. Check list_providers first so you don't add one twice; then use its id as providerId on add_maintenance or complete_maintenance. Returns the new provider with its id.",
-      inputSchema: providerInput,
-      annotations: write,
-    },
-    async (input) => run(async () => compact(await providers.createProvider(v, input))),
-  );
-
   // ── Changing things ───────────────────────────────────────────────────────
   server.registerTool(
     "create_item",
@@ -701,7 +640,7 @@ function buildServer(v: McpCaller) {
     {
       title: "Update an item",
       description:
-        "Changes some of an item's fields — name, brand, value, category, notes, the box it's in… — after the person has said what to change (or confirmed suggestions from get_item). Fields left out stay as they are; send null to clear one. `tags` and `links` replace the whole list (send the old ones you want to keep). For just moving it use move_item; for using some up or restocking use adjust_stock, which logs the change; for a counter reading use record_reading. Returns the updated item.",
+        "Changes some of an item's fields — name, brand, value, category, notes, the box it's in… — after the person has said what to change (or confirmed suggestions from get_item). Fields left out stay as they are; send null to clear one. `tags` and `links` replace the whole list (send the old ones you want to keep). To move it, set locationId (from list_locations; null: nowhere in particular) — moving a box takes what's inside along, and moving something that was in a box takes it out of the box; to put it into a box, containerItemId. For using some up or restocking use adjust_stock, which logs the change; for a counter reading use record_reading. Returns the updated item.",
       inputSchema: itemPatch.extend({ id: z.string().min(1).describe("The item's id, from search_inventory or list_items") }),
       annotations: { ...write, idempotentHint: true },
     },
@@ -751,103 +690,15 @@ function buildServer(v: McpCaller) {
   );
 
   server.registerTool(
-    "move_item",
-    {
-      title: "Move an item",
-      description:
-        "Records that an item now lives somewhere else: a location from list_locations, or null for nowhere in particular. Use it for \"I put the drill in the basement\"; moving a box takes what's inside it along, and moving something that was in a box takes it out of the box. To put something into a box, use update_item with containerItemId. The move shows in item_history.",
-      inputSchema: z.object({
-        id: z.string().min(1).describe("The item's id, from search_inventory"),
-        locationId: z.string().min(1).nullable().describe("Where it is now, from list_locations; null: nowhere in particular"),
-      }),
-      annotations: { ...write, idempotentHint: true },
-    },
-    async ({ id, locationId }) =>
-      run(async () => {
-        const paths = await svc.locationPaths(v);
-        const to = locationId ? (paths.get(locationId) ?? "?") : "no particular place";
-        const it = await svc.updateItem(v, id, { locationId }, (name) => `Moved ${name} to ${to}`);
-        return itemView(it, paths);
-      }),
-  );
-
-  server.registerTool(
-    "delete_item",
-    {
-      title: "Remove an item",
-      description:
-        "Removes an item from the inventory — only when it was added by mistake or the person wants it gone from the records. For something sold, given away, thrown out, lost or stolen, prefer update_item with disposition, which keeps it for insurance and history. It stays in Recently deleted for 30 days (restore_item brings it back), then goes for good with its photos and documents. Confirm with the person first.",
-      inputSchema: z.object({ id: z.string().min(1).describe("The item's id, from search_inventory") }),
-      annotations: { ...write, destructiveHint: true },
-    },
-    async ({ id }) =>
-      run(async () => {
-        const removed = await svc.deleteItem(v, id);
-        return { removed };
-      }),
-  );
-
-  server.registerTool(
     "restore_item",
     {
       title: "Restore a deleted item",
       description:
-        "Brings back an item from Recently deleted (ids from recently_deleted), with its photos, documents, warranties and maintenance. Use it when the person wants a deleted thing back within 30 days. If its place or box was removed meanwhile, it comes back without one — move_item can put it somewhere. Returns the restored item's id and name.",
+        "Brings back an item from Recently deleted (ids from recently_deleted), with its photos, documents, warranties and maintenance. Use it when the person wants a deleted thing back within 30 days. If its place or box was removed meanwhile, it comes back without one — update_item can put it somewhere. Returns the restored item's id and name.",
       inputSchema: z.object({ id: z.string().min(1).describe("The deleted item's id, from recently_deleted") }),
       annotations: write,
     },
     async ({ id }) => run(async () => ({ restored: await restoreItem(v, id) })),
-  );
-
-  server.registerTool(
-    "create_property",
-    {
-      title: "Add a property",
-      description:
-        "Adds a property — a home, vacation home, rental, storage unit or vehicle — the top level of where things are kept. Only name is required (type defaults to home); the address is optional and only used for its map picture. Check list_locations first so you don't add one twice. Rooms, closets and shelves are locations inside it: add them next with create_location. Returns the new property with its id.",
-      inputSchema: propertyInput,
-      annotations: write,
-    },
-    async (input) => run(async () => compact({ ...(await svc.createProperty(v, input)), householdId: undefined })),
-  );
-
-  server.registerTool(
-    "create_location",
-    {
-      title: "Add a location",
-      description:
-        "Adds a location — a room, closet or shelf — to a property, optionally inside another location (parentId), and optionally with locations inside it in one go: \"a garage with three shelves\" is name \"Garage\", children [\"Shelf 1\", \"Shelf 2\", \"Shelf 3\"]. Check list_locations first so you don't add one twice. propertyId can be left out when there's only one property; a new property itself is create_property. Returns the new locations with their ids.",
-      inputSchema: locationInput.extend({
-        propertyId: z.string().min(1).optional().describe("The property, from list_locations; can be left out when there's only one"),
-        children: z.array(z.string().trim().min(1).max(120)).max(50).optional().describe('Names of locations to make inside it in one go: ["Shelf 1", "Shelf 2"]'),
-      }),
-      annotations: write,
-    },
-    async ({ children = [], propertyId, ...input }) =>
-      run(async () => {
-        const property = propertyId ?? (await onlyProperty(v));
-        const created = await svc.createLocation(v, { ...input, propertyId: property });
-        const nested = [];
-        for (const name of children) nested.push(await svc.createLocation(v, { propertyId: property, parentId: created.id, name }));
-        const paths = await svc.locationPaths(v);
-        return {
-          id: created.id,
-          path: paths.get(created.id),
-          children: nested.map((l) => ({ id: l.id, path: paths.get(l.id) })),
-        };
-      }),
-  );
-
-  server.registerTool(
-    "add_maintenance",
-    {
-      title: "Add a maintenance task",
-      description:
-        "Adds upkeep to track: on an item (itemId), a place (locationId) or the whole household. Give intervalCount + intervalUnit for something that repeats (\"every 3 months\"), or neither for a one-off. dueOn defaults to one interval from today (today for a one-off). By use (\"every 5,000 miles\"): usageEvery, on an item that counts something — set the item's usageUnit (update_item) and log a reading (record_reading) first; it can have a time interval too (whichever comes first). Check list_maintenance first so you don't add it twice. Due tasks show in what_needs_attention and the household's reminders.",
-      inputSchema: maintenanceInput,
-      annotations: write,
-    },
-    async (input) => run(async () => taskView(await upkeep.createTask(v, input))),
   );
 
   server.registerTool(
@@ -862,127 +713,13 @@ function buildServer(v: McpCaller) {
     async ({ id, ...done }) => run(async () => taskView(await upkeep.markDone(v, id, done))),
   );
 
-  server.registerTool(
-    "delete_maintenance",
-    {
-      title: "Remove a maintenance task",
-      description:
-        "Deletes a maintenance task the household no longer needs (the item is gone, or it was added by mistake), so it stops coming due and leaves reminders. This is not for a task that was just done — use complete_maintenance, which schedules the next one. The past times it was done stay in the item's history; the task itself can't be brought back with these tools. Confirm with the person first.",
-      inputSchema: z.object({ id: z.string().min(1).describe("The task's id, from list_maintenance") }),
-      annotations: { ...write, destructiveHint: true },
-    },
-    async ({ id }) => run(async () => ({ removed: await upkeep.deleteTask(v, id) })),
-  );
-
-  // ── Warranties ────────────────────────────────────────────────────────────
-  server.registerTool(
-    "add_warranty",
-    {
-      title: "Add a warranty",
-      description:
-        "Records a warranty on an item: who stands behind it, when cover starts and ends, what it covers. Use it when the person tells you about one, or to accept a warranty the vision model read off a receipt or warranty card (get_item's suggestions) once the person has confirmed it — pass that document's id as attachmentId. Check get_item first so you don't add one twice. Warranties ending within 30 days show in what_needs_attention. Returns the warranty with its id and status.",
-      inputSchema: warrantyInput.safeExtend({ itemId: z.string().min(1).describe("The item's id, from search_inventory") }),
-      annotations: write,
-    },
-    async ({ itemId, ...input }) => run(async () => warrantyView(await warranties.createWarranty(v, itemId, input))),
-  );
-
-  server.registerTool(
-    "update_warranty",
-    {
-      title: "Change a warranty",
-      description:
-        "Changes a warranty's provider, dates, what it covers or notes — say it was extended, or a date was wrong. The id comes from get_item's warranties or list_warranties. Fields left out stay as they are; null clears one. A warranty can't end before it starts. Returns the warranty with its status.",
-      inputSchema: warrantyPatch.extend({ id: z.string().min(1).describe("The warranty's id, from get_item or list_warranties") }),
-      annotations: { ...write, idempotentHint: true },
-    },
-    async ({ id, ...patch }) => run(async () => warrantyView(await warranties.updateWarranty(v, id, patch))),
-  );
-
-  server.registerTool(
-    "remove_warranty",
-    {
-      title: "Remove a warranty",
-      description:
-        "Removes a warranty added by mistake (or twice). Not for one that has simply ended — ended warranties stay on record as expired. Its claims go with it. Confirm with the person first.",
-      inputSchema: z.object({ id: z.string().min(1).describe("The warranty's id, from get_item or list_warranties") }),
-      annotations: { ...write, destructiveHint: true },
-    },
-    async ({ id }) =>
-      run(async () => {
-        await warranties.deleteWarranty(v, id);
-        return { removed: id };
-      }),
-  );
-
-  // ── Places ────────────────────────────────────────────────────────────────
-  server.registerTool(
-    "update_property",
-    {
-      title: "Change a property",
-      description:
-        "Renames a property or changes its kind, address, year built, value or notes. The id comes from list_locations. Fields left out stay as they are; null clears one. Returns the property.",
-      inputSchema: propertyPatch.extend({ id: z.string().min(1).describe("The property's id, from list_locations") }),
-      annotations: { ...write, idempotentHint: true },
-    },
-    async ({ id, ...patch }) => run(async () => compact({ ...(await svc.updateProperty(v, id, patch)), householdId: undefined })),
-  );
-
-  server.registerTool(
-    "remove_property",
-    {
-      title: "Remove a property",
-      description:
-        "Removes a property that's empty — no things kept anywhere in it (its empty rooms go with it). If things are still there it's refused: move them first (bulk_update_items with action move). Confirm with the person first.",
-      inputSchema: z.object({ id: z.string().min(1).describe("The property's id, from list_locations") }),
-      annotations: { ...write, destructiveHint: true },
-    },
-    async ({ id }) =>
-      run(async () => {
-        await svc.deleteProperty(v, id);
-        return { removed: id };
-      }),
-  );
-
-  server.registerTool(
-    "update_location",
-    {
-      title: "Rename or move a location",
-      description:
-        "Renames a room, closet or shelf, or moves it inside another location of the same property (parentId; null: straight in the property) — everything kept there moves with it. The id comes from list_locations. Fields left out stay as they are. Returns the location with its new path.",
-      inputSchema: locationPatch.extend({ id: z.string().min(1).describe("The location's id, from list_locations") }),
-      annotations: { ...write, idempotentHint: true },
-    },
-    async ({ id, ...patch }) =>
-      run(async () => {
-        const updated = await svc.updateLocation(v, id, patch);
-        return compact({ id: updated.id, name: updated.name, path: (await svc.locationPaths(v)).get(updated.id), notes: updated.notes });
-      }),
-  );
-
-  server.registerTool(
-    "remove_location",
-    {
-      title: "Remove a location",
-      description:
-        "Removes a room, closet or shelf that's empty — nothing kept in it or in any location inside it. If things are still there it's refused: move them first (bulk_update_items with action move). Confirm with the person first.",
-      inputSchema: z.object({ id: z.string().min(1).describe("The location's id, from list_locations") }),
-      annotations: { ...write, destructiveHint: true },
-    },
-    async ({ id }) =>
-      run(async () => {
-        await svc.deleteLocation(v, id);
-        return { removed: id };
-      }),
-  );
-
   // ── Many things at once ───────────────────────────────────────────────────
   server.registerTool(
     "bulk_update_items",
     {
       title: "Change many things at once",
       description:
-        "Makes one change to up to 200 items in one go: move them to a location (action move, locationId; null: no location), give them a category (category, categoryId; null: none), or add or remove a tag (tag / untag, tag). Use it for \"move everything on the garage shelf to the basement\" — get the ids from list_items or search_inventory first, and say what you're about to change before doing it. Things inside a box move with the box; move the box itself. Returns how many were changed and which failed, and why. To delete items use delete_item, one at a time.",
+        "Makes one change to up to 200 items in one go: move them to a location (action move, locationId; null: no location), give them a category (category, categoryId; null: none), or add or remove a tag (tag / untag, tag). Use it for \"move everything on the garage shelf to the basement\" — get the ids from list_items or search_inventory first, and say what you're about to change before doing it. Things inside a box move with the box; move the box itself. Returns how many were changed and which failed, and why. To delete items use remove, one at a time.",
       inputSchema: z.object({
         action: z.enum(["move", "category", "tag", "untag"]).describe("What to do to every one of them"),
         ids: z.array(z.string().min(1)).min(1).max(200).describe("The items' ids, from list_items or search_inventory"),
@@ -1003,20 +740,6 @@ function buildServer(v: McpCaller) {
       }),
   );
 
-  // ── Maintenance ───────────────────────────────────────────────────────────
-  server.registerTool(
-    "update_maintenance",
-    {
-      title: "Change a maintenance task",
-      description:
-        "Changes a maintenance task: its title, notes, how often it repeats, what it's on, who does it, its part, or when it's next due (dueOn reschedules it, and re-opens a finished one-off). The id comes from list_maintenance. Fields left out stay as they are; null clears one. Not for recording that it was done — that's complete_maintenance. Returns the task with its due date.",
-      inputSchema: maintenancePatch.safeExtend({ id: z.string().min(1).describe("The task's id, from list_maintenance") }),
-      annotations: { ...write, idempotentHint: true },
-    },
-    async ({ id, ...patch }) => run(async () => taskView(await upkeep.updateTask(v, id, patch))),
-  );
-
-  // ── Recalls, categories, loans, labels, coverage, collections ─────────────
   server.registerTool(
     "set_recall_status",
     {
@@ -1034,33 +757,6 @@ function buildServer(v: McpCaller) {
         await recalls.resolveRecall(v, id, status);
         return { id, status };
       }),
-  );
-
-  server.registerTool(
-    "create_category",
-    {
-      title: "Add a category",
-      description:
-        "Adds a category, optionally inside another one (parentId) — \"Power tools\" under \"Tools\". Check list_categories first so you don't add one twice; then use its id as categoryId on create_item, update_item or bulk_update_items. Returns the category with its id and path.",
-      inputSchema: z.object({
-        name: categoryInput.shape.name,
-        parentId: categoryInput.shape.parentId,
-      }),
-      annotations: write,
-    },
-    async (input) => run(async () => compact({ ...(await catalog.createCategory(v, input)), householdId: undefined, photoId: undefined })),
-  );
-
-  server.registerTool(
-    "update_loan",
-    {
-      title: "Change a loan",
-      description:
-        "Changes an open loan: who has it, when it went, when it's due back, the note — or, for something lent, the borrower's email and how often they're reminded. The loanId comes from list_loans. Fields left out stay as they are; null clears one. For it coming back use loan_returned. Returns the loan.",
-      inputSchema: loanPatch.extend({ loanId: z.string().min(1).describe("The loan's id, from list_loans") }),
-      annotations: { ...write, idempotentHint: true },
-    },
-    async ({ loanId, ...patch }) => run(async () => compact(await loans.updateLoan(v, v.files, loanId, patch))),
   );
 
   server.registerTool(
@@ -1084,57 +780,257 @@ function buildServer(v: McpCaller) {
       }),
   );
 
+  // ── Adding and changing by kind: save_* (no id: add one; with id: change it) ──────────────────────────────────
+  // One tool per kind of thing keeps the list short; removing is the one `remove` tool, so only it is destructive.
+  const idOf = (what: string, from: string) => z.string().min(1).optional().describe(`The ${what} to change, from ${from}; leave out to add a new one`);
+
   server.registerTool(
-    "set_coverage_limit",
+    "save_property",
+    {
+      title: "Add or change a property",
+      description:
+        "Adds a property — a home, vacation home, rental, storage unit or vehicle, the top level of where things are kept — or, with id, changes one (rename, kind, address, year built, value, notes). To add: only name is needed (type defaults to home); check list_locations first so you don't add one twice. To change: fields left out stay as they are; null clears one. Rooms, closets and shelves inside it are save_location. Returns the property with its id.",
+      inputSchema: propertyPatch.extend({ id: idOf("property", "list_locations") }),
+      annotations: write,
+    },
+    async ({ id, ...fields }) =>
+      run(async () => {
+        const saved = id ? await svc.updateProperty(v, id, parseAs(propertyPatch, fields, "change a property")) : await svc.createProperty(v, parseAs(propertyInput, fields, "add a property"));
+        return compact({ ...saved, householdId: undefined });
+      }),
+  );
+
+  server.registerTool(
+    "save_location",
+    {
+      title: "Add or change a location",
+      description:
+        "Adds a location — a room, closet or shelf — to a property, or, with id, renames one or moves it inside another location of the same property (everything kept there moves with it). To add: name, optionally parentId (inside another location) and children to make inside it in one go — \"a garage with three shelves\" is name \"Garage\", children [\"Shelf 1\", \"Shelf 2\", \"Shelf 3\"]; propertyId can be left out when there's only one property. Check list_locations first so you don't add one twice. A new property is save_property. Returns the location (and any children) with ids and paths.",
+      inputSchema: locationPatch.extend({
+        id: idOf("location", "list_locations"),
+        propertyId: z.string().min(1).optional().describe("To add: the property, from list_locations; can be left out when there's only one"),
+        children: z.array(z.string().trim().min(1).max(120)).max(50).optional().describe('To add: names of locations to make inside it in one go, ["Shelf 1", "Shelf 2"]'),
+      }),
+      annotations: write,
+    },
+    async ({ id, propertyId, children = [], ...fields }) =>
+      run(async () => {
+        if (id) {
+          const updated = await svc.updateLocation(v, id, parseAs(locationPatch, fields, "change a location"));
+          return compact({ id: updated.id, name: updated.name, path: (await svc.locationPaths(v)).get(updated.id), notes: updated.notes });
+        }
+        const property = propertyId ?? (await onlyProperty(v));
+        const created = await svc.createLocation(v, parseAs(locationInput, { ...fields, propertyId: property }, "add a location"));
+        const nested = [];
+        for (const name of children) nested.push(await svc.createLocation(v, { propertyId: property, parentId: created.id, name }));
+        const paths = await svc.locationPaths(v);
+        return compact({ id: created.id, path: paths.get(created.id), children: nested.length ? nested.map((l) => ({ id: l.id, path: paths.get(l.id) })) : undefined });
+      }),
+  );
+
+  server.registerTool(
+    "save_maintenance",
+    {
+      title: "Add or change a maintenance task",
+      description:
+        "Adds upkeep to track — on an item (itemId), a place (locationId) or the whole household — or, with id, changes a task (title, notes, how often, what it's on, who does it, its part, or dueOn to reschedule; that also re-opens a finished one-off). To add: title, plus intervalCount + intervalUnit for something that repeats (\"every 3 months\") or neither for a one-off; dueOn defaults to one interval from today. By use (\"every 5,000 miles\"): usageEvery, on an item with a usageUnit and a reading (record_reading) — it can have a time interval too, whichever comes first. Check list_maintenance first so you don't add it twice. Not for recording that it was done: that's complete_maintenance. Returns the task with its due date.",
+      inputSchema: maintenancePatch.safeExtend({
+        id: idOf("task", "list_maintenance"),
+        attachmentId: maintenanceInput.shape.attachmentId,
+      }),
+      annotations: write,
+    },
+    async ({ id, ...fields }) =>
+      run(async () =>
+        taskView(id ? await upkeep.updateTask(v, id, parseAs(maintenancePatch, fields, "change a task")) : await upkeep.createTask(v, parseAs(maintenanceInput, fields, "add a task"))),
+      ),
+  );
+
+  server.registerTool(
+    "save_warranty",
+    {
+      title: "Add or change a warranty",
+      description:
+        "Records a warranty on an item — who stands behind it, when cover starts and ends, what it covers — or, with id, changes one (it was extended, a date was wrong). To add: itemId and endsOn; use it when the person tells you about one, or to accept a warranty the vision model read off a receipt or warranty card (get_item's suggestions) once the person has confirmed it — pass that document's id as attachmentId. Check get_item first so you don't add one twice. To change: fields left out stay as they are; null clears one. A warranty can't end before it starts. Warranties ending within 30 days show in what_needs_attention. Returns the warranty with its id and status.",
+      inputSchema: warrantyPatch.extend({
+        id: idOf("warranty", "get_item or list_warranties"),
+        itemId: z.string().min(1).optional().describe("To add: the item's id, from search_inventory"),
+      }),
+      annotations: write,
+    },
+    async ({ id, itemId, ...fields }) =>
+      run(async () => {
+        if (id) return warrantyView(await warranties.updateWarranty(v, id, parseAs(warrantyPatch, fields, "change a warranty")));
+        if (!itemId) throw new HTTPException(422, { message: "To add a warranty, give the item's itemId" });
+        return warrantyView(await warranties.createWarranty(v, itemId, parseAs(warrantyInput, fields, "add a warranty")));
+      }),
+  );
+
+  server.registerTool(
+    "save_warranty_claim",
+    {
+      title: "File or update a warranty claim",
+      description:
+        "Records a claim under one of an item's warranties — what went wrong, the provider's claim number (reference), its status (filed by default, today by default) — or, with id, updates one when the person hears back: status (filed, in_progress, approved, denied, resolved), the resolution, what it cost (cents). To file: warrantyId (from get_item) and the problem. Closing it (denied or resolved) dates it today unless resolvedOn is given. Claims with no news for two weeks show in what_needs_attention. Returns the claim with its id.",
+      inputSchema: claimPatch.extend({
+        id: idOf("claim", "get_item"),
+        warrantyId: z.string().min(1).optional().describe("To file: the warranty's id, from get_item"),
+      }),
+      annotations: write,
+    },
+    async ({ id, warrantyId, ...fields }) =>
+      run(async () => {
+        if (id) return compact(await claims.updateClaim(v, id, parseAs(claimPatch, fields, "update a claim")));
+        if (!warrantyId) throw new HTTPException(422, { message: "To file a claim, give the warranty's warrantyId" });
+        return compact(await claims.fileClaim(v, warrantyId, parseAs(claimInput, fields, "file a claim")));
+      }),
+  );
+
+  server.registerTool(
+    "save_loan",
+    {
+      title: "Lend, borrow, or change a loan",
+      description:
+        "Records that one of the household's items was lent to someone (direction \"lent\") or that something was borrowed from them (\"borrowed\"), optionally with a due-back date — or, with id, changes an open loan (who has it, when it's due back, the note, the borrower's email and how often they're reminded). To add: itemId (from search_inventory), direction and person; an item has one open loan at a time. For it coming back use return_loan. Returns the loan with its id and due date.",
+      inputSchema: loanPatch.extend({
+        id: idOf("loan", "list_loans"),
+        itemId: z.string().min(1).optional().describe("To add: the item's id, from search_inventory"),
+        direction: loanInput.shape.direction.optional().describe('To add: "lent" (the household\'s thing is with someone) or "borrowed" (someone else\'s thing is here)'),
+      }),
+      annotations: write,
+    },
+    async ({ id, itemId, direction, ...fields }) =>
+      run(async () => {
+        if (id) return compact(await loans.updateLoan(v, v.files, id, parseAs(loanPatch, fields, "change a loan")));
+        if (!itemId) throw new HTTPException(422, { message: "To record a loan, give the item's itemId" });
+        return compact(await loans.createLoan(v, v.files, itemId, parseAs(loanInput, { ...fields, direction }, "record a loan")));
+      }),
+  );
+
+  server.registerTool(
+    "return_loan",
+    {
+      title: "It's back",
+      description:
+        "Closes a loan: a lent thing is back, or a borrowed one was given back. Use it when the person says so (\"Sam returned the ladder\"); the id comes from list_loans. The loan stays in the item's history and the borrower's reminder emails stop; nothing else about the item changes. Calling it again for the same loan is refused (it's already back).",
+      inputSchema: z.object({
+        id: z.string().min(1).describe("The loan's id, from list_loans"),
+        on: z.iso.date().optional().describe("The day it came back, yyyy-mm-dd; today if left out"),
+      }),
+      annotations: write,
+    },
+    async ({ id, on }) => run(async () => compact(await loans.returnLoan(v, id, on))),
+  );
+
+  server.registerTool(
+    "save_provider",
+    {
+      title: "Add or change a service provider",
+      description:
+        "Adds a service provider — a plumber, the HVAC company, an electrician — with their trade and contact details, or, with id, changes one (a new phone number, a different contact). To add: name; check list_providers first so you don't add one twice, then use its id as providerId on save_maintenance or complete_maintenance. To change: fields left out stay as they are; null clears one. Returns the provider with its id.",
+      inputSchema: providerPatch.extend({ id: idOf("provider", "list_providers") }),
+      annotations: write,
+    },
+    async ({ id, ...fields }) =>
+      run(async () => compact(id ? await providers.updateProvider(v, id, parseAs(providerPatch, fields, "change a provider")) : await providers.createProvider(v, parseAs(providerInput, fields, "add a provider")))),
+  );
+
+  server.registerTool(
+    "save_category",
+    {
+      title: "Add or change a category",
+      description:
+        "Adds a category, optionally inside another one (parentId) — \"Power tools\" under \"Tools\" — or, with id, renames one or moves it under another parent (null: top level). To add: name; check list_categories first so you don't add one twice, then use its id as categoryId on create_item, update_item or bulk_update_items. Returns the category with its id.",
+      inputSchema: z.object({
+        id: idOf("category", "list_categories"),
+        name: categoryInput.shape.name.optional(),
+        parentId: categoryInput.shape.parentId,
+      }),
+      annotations: write,
+    },
+    async ({ id, ...fields }) =>
+      run(async () => {
+        const saved = id ? await catalog.updateCategory(v, id, parseAs(categoryPatch, fields, "change a category")) : await catalog.createCategory(v, parseAs(categoryInput, fields, "add a category"));
+        return compact({ ...saved, householdId: undefined, photoId: undefined });
+      }),
+  );
+
+  server.registerTool(
+    "save_collection",
+    {
+      title: "Start or change a collection",
+      description:
+        "Starts a collection — coins, records, trading cards, LEGO sets — optionally of one kind of thing (templateId, from list_templates) whose fields become its columns, or, with id, renames one or changes its description or kind. To add: name; check list_collections first so you don't start one twice. Then add things to it with create_item (collectionId; wanted: true for its want list) or update_item. Returns the collection with its id.",
+      inputSchema: collectionPatch.extend({ id: idOf("collection", "list_collections") }),
+      annotations: write,
+    },
+    async ({ id, ...fields }) =>
+      run(async () => {
+        const saved = id ? await collections.updateCollection(v, id, parseAs(collectionPatch, fields, "change a collection")) : await collections.createCollection(v, parseAs(collectionInput, fields, "start a collection"));
+        return compact({ ...saved, householdId: undefined });
+      }),
+  );
+
+  server.registerTool(
+    "save_coverage_limit",
     {
       title: "Set an insurance limit",
       description:
         "Records what an insurance policy pays at most — for everything (scope all), one category (jewelry, electronics…) or one tag — optionally for one property, so coverage_check can say when the things it covers are worth more. Without id it adds a limit; with id it replaces that limit (send every field). Amounts in cents. Check coverage_check first so you don't add one twice. Returns the limit with its id.",
-      inputSchema: coverageInput.safeExtend({ id: z.string().min(1).optional().describe("A limit to replace, from coverage_check; left out: add a new one") }),
+      inputSchema: coverageInput.safeExtend({ id: z.string().min(1).optional().describe("A limit to replace, from coverage_check; leave out to add a new one") }),
       annotations: write,
     },
     async ({ id, ...input }) => run(async () => compact(id ? await updateCoverage(v, id, input) : await addCoverage(v, input))),
   );
 
+  // ── Removing ──────────────────────────────────────────────────────────────
   server.registerTool(
-    "remove_coverage_limit",
+    "remove",
     {
-      title: "Remove an insurance limit",
-      description: "Removes an insurance limit that no longer applies (the policy changed) or was added by mistake. The id comes from coverage_check. Confirm with the person first.",
-      inputSchema: z.object({ id: z.string().min(1).describe("The limit's id, from coverage_check") }),
+      title: "Remove something",
+      description: `Removes one thing from the household's records, by kind and id. Confirm with the person first. What each kind does:
+- item: only when it was added by mistake or should be gone from the records — for something sold, given away, thrown out, lost or stolen use update_item with disposition, which keeps it for insurance. It stays in Recently deleted for ${TRASH_DAYS} days (restore_item brings it back), then goes for good with its photos and documents.
+- warranty: one added by mistake or twice (an ended warranty stays on record as expired); its claims go with it. claim: a warranty claim filed by mistake.
+- maintenance: a task no longer needed — not one just done (that's complete_maintenance); its past times done stay in the item's history.
+- property / location: only when empty (no things anywhere in it, empty rooms inside go with it); otherwise refused — move the things first with bulk_update_items.
+- category: its things and subcategories move up to its parent. provider: their past visits stay, without the name. collection: its owned things stay (out of the collection); its want-list entries go. coverage_limit: a limit that no longer applies.
+Only remove (item) can be undone. Returns what was removed.`,
+      inputSchema: z.object({
+        kind: z
+          .enum(["item", "warranty", "claim", "maintenance", "property", "location", "category", "provider", "collection", "coverage_limit"])
+          .describe("What it is"),
+        id: z.string().min(1).describe("Its id, from the tool that lists that kind (search_inventory, get_item, list_maintenance, list_locations…)"),
+      }),
       annotations: { ...write, destructiveHint: true },
     },
-    async ({ id }) =>
+    async ({ kind, id }) =>
       run(async () => {
-        await deleteCoverage(v, id);
-        return { removed: id };
+        const remove: Record<typeof kind, () => Promise<unknown>> = {
+          item: () => svc.deleteItem(v, id),
+          warranty: () => warranties.deleteWarranty(v, id),
+          claim: () => claims.deleteClaim(v, id),
+          maintenance: () => upkeep.deleteTask(v, id),
+          property: () => svc.deleteProperty(v, id),
+          location: () => svc.deleteLocation(v, id),
+          category: () => catalog.deleteCategory(v, id),
+          provider: () => providers.deleteProvider(v, id),
+          collection: () => collections.deleteCollection(v, id),
+          coverage_limit: () => deleteCoverage(v, id),
+        };
+        const done = (await remove[kind]()) as { name?: string } | undefined;
+        return compact({ removed: kind, id, name: done?.name, restore: kind === "item" ? `restore_item within ${TRASH_DAYS} days` : undefined });
       }),
   );
 
-  server.registerTool(
-    "create_collection",
-    {
-      title: "Start a collection",
-      description:
-        "Starts a collection — coins, records, trading cards, LEGO sets — optionally of one kind of thing (templateId, from list_templates), whose fields become its columns. Check list_collections first so you don't start one twice. Then add things to it with create_item (collectionId; wanted: true for its want list) or update_item. Returns the collection with its id.",
-      inputSchema: collectionInput,
-      annotations: write,
-    },
-    async (input) => run(async () => compact({ ...(await collections.createCollection(v, input)), householdId: undefined })),
-  );
-
-  server.registerTool(
-    "update_collection",
-    {
-      title: "Change a collection",
-      description: "Renames a collection or changes its description or kind of thing (templateId). The id comes from list_collections. Fields left out stay as they are. Returns the collection.",
-      inputSchema: collectionPatch.extend({ id: z.string().min(1).describe("The collection's id, from list_collections") }),
-      annotations: { ...write, idempotentHint: true },
-    },
-    async ({ id, ...patch }) => run(async () => compact({ ...(await collections.updateCollection(v, id, patch)), householdId: undefined })),
-  );
-
   return server;
+}
+
+/** A save_* tool's fields checked against the schema the REST route uses — the full one to add, the patch to change. */
+function parseAs<T>(schema: z.ZodType<T>, data: unknown, doing: string): T {
+  const parsed = schema.safeParse(data);
+  if (parsed.success) return parsed.data;
+  const issue = parsed.error.issues[0];
+  throw new HTTPException(422, { message: `To ${doing}: ${issue?.path.length ? `${issue.path.join(".")} — ` : ""}${issue?.message ?? "invalid input"}` });
 }
 
 /** Base64 from a tool call → bytes, within the upload limit. */
@@ -1202,7 +1098,7 @@ async function onlyProperty(v: Caller) {
   throw new HTTPException(422, {
     message: properties.length
       ? "There's more than one property — say which one with propertyId (see list_locations)"
-      : "There are no properties yet — add one with create_property first",
+      : "There are no properties yet — add one with save_property first",
   });
 }
 
