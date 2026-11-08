@@ -19,11 +19,11 @@ concurrency:
 jobs:
   check:
     name: Typecheck, test, build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 26
           cache: pnpm
@@ -36,32 +36,32 @@ jobs:
     name: Build & push image
     needs: check
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # the release tags, for the version
       - id: version
         run: echo "version=$(scripts/version.sh)" >> "$GITHUB_OUTPUT"
       # arm64 (Apple Silicon, Raspberry Pi, ARM servers): only the native dependencies' install runs emulated.
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       # Docker Hub too, once the repository variable DOCKERHUB_NAMESPACE (and the secret DOCKERHUB_TOKEN) are set.
       - if: vars.DOCKERHUB_NAMESPACE != ''
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ vars.DOCKERHUB_NAMESPACE }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ghcr.io/${{ github.repository_owner }}/ferret
@@ -70,7 +70,7 @@ jobs:
             type=raw,value=latest
             type=sha,format=short
             type=raw,value=${{ steps.version.outputs.version }},enable=${{ !contains(steps.version.outputs.version, '-g') }}
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           push: true
@@ -90,7 +90,7 @@ jobs:
             -e 's#\]\(([^):#]+)\)#](https://github.com/${{ github.repository }}/blob/main/\1)#g' \
             README.md > "$RUNNER_TEMP/README.dockerhub.md"
       - if: vars.DOCKERHUB_NAMESPACE != ''
-        uses: peter-evans/dockerhub-description@v4
+        uses: peter-evans/dockerhub-description@v5
         with:
           readme-filepath: ${{ runner.temp }}/README.dockerhub.md
           username: ${{ vars.DOCKERHUB_NAMESPACE }}
