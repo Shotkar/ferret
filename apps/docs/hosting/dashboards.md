@@ -36,7 +36,7 @@ Ferret's [Heimdall](https://heimdall.site) app shows **Things** and **Attention*
 ```yaml
 - Ferret:
     href: https://ferret.example.lan
-    icon: https://ferret.example.lan/favicon.svg
+    icon: ferret.png
     widget:
       type: customapi
       url: https://ferret.example.lan/api/v1/summary
@@ -56,5 +56,9 @@ Ferret's [Heimdall](https://heimdall.site) app shows **Things** and **Attention*
           format: number
 ```
 
+`icon: ferret.png` is Ferret's icon from [Dashboard Icons](https://dashboardicons.com), which Homepage finds by name
+(`ferret.svg` works too).
+
 Any other dashboard that can read JSON with a header (Homarr, Dashy, Glance…) works the same way: the address, and
-`X-Api-Key` (or `Authorization: Bearer`) with the key.
+`X-Api-Key` (or `Authorization: Bearer`) with the key. Most of them can use the same icon, as `ferret` from Dashboard
+Icons or straight from `https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ferret.svg`.
