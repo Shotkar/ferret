@@ -80,6 +80,8 @@ export interface AuthHooks {
 
 /** Households are small: generous, but finite. */
 export const MEMBERSHIP_LIMIT = 50;
+/** The longest name a household can be renamed to. */
+export const HOUSEHOLD_NAME_MAX = 100;
 
 /** Header the web app sends the invitation's id in when signing up from an invitation link. */
 export const INVITATION_HEADER = "x-invitation-id";
@@ -206,6 +208,18 @@ export function createAuth(db: Db, config: Config, opts: AuthHooks = {}) {
             if ((members?.n ?? 0) + (pending?.n ?? 0) >= limit) {
               throw new APIError("FORBIDDEN", { message: `This household's plan has room for ${limit} ${limit === 1 ? "person" : "people"} — upgrade to invite more.` });
             }
+          },
+          // Renaming (Settings → Household, owners and admins): the name is all that changes through Better Auth's
+          // update — nothing in Ferret reads the slug, logo or metadata, so nobody gets to set them.
+          beforeUpdateOrganization: async ({ organization: changes }) => {
+            if (Object.entries(changes).some(([key, value]) => key !== "name" && value !== undefined)) {
+              throw new APIError("BAD_REQUEST", { message: "Only a household's name can be changed" });
+            }
+            const name = typeof changes.name === "string" ? changes.name.trim() : "";
+            if (!name || name.length > HOUSEHOLD_NAME_MAX) {
+              throw new APIError("BAD_REQUEST", { message: `A household's name is 1 to ${HOUSEHOLD_NAME_MAX} characters` });
+            }
+            return { data: { name } };
           },
           beforeUpdateMemberRole: async ({ newRole }) => oneRole(newRole),
           // An invitation is only as good as its sender's place in the household now.

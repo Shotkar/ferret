@@ -1,5 +1,5 @@
 /**
- * Settings → Household: who's in it, their roles, and invitations. An invitation
+ * Settings → Household: its name (Rename, owners and admins), who's in it, their roles, and invitations. An invitation
  * is a link that only works for the address it was made for; when the server can
  * send email, Ferret emails it too (and Send again), else it says plainly that
  * the link has to be sent by hand (Messages, email…).
@@ -39,6 +39,7 @@ export function Household({ householdName }: { householdName: string }) {
   const { data: session } = authClient.useSession();
   const org = authClient.useActiveOrganization();
   const [inviting, setInviting] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const [invited, setInvited] = useState<{ id: string; email: string; justNow?: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -80,10 +81,16 @@ export function Household({ householdName }: { householdName: string }) {
             <p className="text-sm text-base-content/70">Everyone here shares the same inventory.</p>
           </div>
           {canManage && (
-            <button type="button" className="btn btn-primary" onClick={() => setInviting(true)}>
-              <span className="icon-[tabler--user-plus] size-5" />
-              Invite
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="btn btn-secondary btn-soft" onClick={() => setRenaming(true)}>
+                <span className="icon-[tabler--pencil] size-5" />
+                Rename
+              </button>
+              <button type="button" className="btn btn-primary" onClick={() => setInviting(true)}>
+                <span className="icon-[tabler--user-plus] size-5" />
+                Invite
+              </button>
+            </div>
           )}
         </div>
 
@@ -187,6 +194,7 @@ export function Household({ householdName }: { householdName: string }) {
           }}
         />
       )}
+      {renaming && org.data && <RenameModal householdId={org.data.id} householdName={householdName} onClose={() => setRenaming(false)} />}
       {invited && <InviteLinkModal invitation={invited} emailOn={emailOn} householdName={householdName} onClose={() => setInvited(null)} />}
     </section>
   );
@@ -283,6 +291,67 @@ function mayResend(emails: InvitationEmails | undefined, id: string) {
   const row = emails?.data.find((e) => e.id === id);
   if (!row || row.error) return true;
   return Boolean(row.sentAt) && Date.now() - new Date(row.sentAt!).getTime() > RESEND_AFTER_MS;
+}
+
+/** The longest household name the server takes (HOUSEHOLD_NAME_MAX in auth.ts). */
+const NAME_MAX = 100;
+
+/** Rename: owners and admins. Better Auth refreshes the household list and the active household itself, so the new name shows everywhere. */
+function RenameModal(props: { householdId: string; householdName: string; onClose: () => void }) {
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const name = String(new FormData(e.currentTarget).get("name")).trim();
+    if (name === props.householdName) return props.onClose();
+    setBusy(true);
+    setError(null);
+    try {
+      await run(authClient.organization.update({ organizationId: props.householdId, data: { name } }));
+      props.onClose();
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(false);
+    }
+  }
+  return (
+    <Modal id="rename-household" onClose={props.onClose}>
+      <form className="flex flex-col gap-6" onSubmit={onSubmit}>
+        <div className="space-y-1 text-center">
+          <h3 id="rename-household-title" className="text-2xl font-semibold text-base-content">
+            Rename household
+          </h3>
+          <p className="text-base-content/80">Everyone in it sees the new name. Nothing else changes.</p>
+        </div>
+        <div>
+          <label className="label-text" htmlFor="rename-household-name">
+            Household name
+          </label>
+          <input
+            id="rename-household-name"
+            name="name"
+            className="input"
+            defaultValue={props.householdName}
+            maxLength={NAME_MAX}
+            required
+            pattern=".*\S.*"
+            title="A name with at least one letter or number"
+            autoFocus
+          />
+        </div>
+        {error && <div className="alert alert-soft alert-error">{error}</div>}
+        <div className="flex flex-wrap items-center justify-end gap-4">
+          <button type="button" className="btn btn-secondary btn-soft" onClick={props.onClose}>
+            Cancel
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={busy}>
+            {busy && <span className="loading loading-spinner loading-sm" />}
+            Save
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
 }
 
 function InviteModal(props: { householdName: string; emailOn: boolean; onClose: () => void; onInvited: (i: { id: string; email: string }) => void }) {

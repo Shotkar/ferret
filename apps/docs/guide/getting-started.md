@@ -41,6 +41,9 @@ Everything in Ferret belongs to a **household**: its properties, rooms, items, w
 a household sees the same inventory. You can be in more than one (say, your home and your parents'); the household's
 name is shown in the top bar, and the menu (or its name in the top bar) switches between them.
 
+To change a household's name, **Household & settings → Household → Rename** (the owner and admins). Only the name
+changes: everything in it stays as it is, and everyone in it sees the new name.
+
 Each household has a **time zone** (**Household & settings → Time zone**): what "today" means for due dates, overdue
 and ending soon, and when reminders arrive. A new household starts with the time zone of the device that made it; the
 owner and admins can change it.
