@@ -5,6 +5,8 @@
  * anything is saved; the server checks every row again.
  */
 
+import { amazonProduct } from "./amazon";
+
 /** RFC 4180-ish: quoted fields with "" escapes and line breaks, a BOM, CRLF or LF; `;` or tab if that's what it uses. */
 export function parseCsv(text: string): string[][] {
   const src = text.replace(/^﻿/, "");
@@ -272,6 +274,12 @@ export function draftRows(table: string[][], mapping: ColumnMapping, today?: str
   );
   const col = (k: string) => (preset === "amazon" ? headers.findIndex((h) => key(h) === k) : -1);
   const statusCol = col("orderstatus");
+  // Which Amazon the order was on ("Amazon.de", "Amazon.co.uk"…) — the product link goes there, not always to .com.
+  const websiteCol = col("website");
+  const siteOf = (cells: string[]) => {
+    const w = (cells[websiteCol] ?? "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
+    return /^amazon\.[a-z.]{2,6}$/.test(w) ? `www.${w}` : null;
+  };
   // Amazon's lines: the order and the product, whatever the columns are mapped to. The same product can be on several
   // lines of one order (shipped in parts) — numbered in the file's order, so a newer export numbers them the same.
   const [orderCol, asinCol] = [col("orderid"), col("asin")];
@@ -292,6 +300,7 @@ export function draftRows(table: string[][], mapping: ColumnMapping, today?: str
     const d: Partial<ImportDraft> = {};
     const notes: string[] = [];
     let total: number | null = null;
+    let asin: string | null = null;
     mapping.forEach((field, col) => {
       const value = (cells[col] ?? "").trim();
       if (!field || !value || /^(n\/?a|none|null|-|not (available|applicable)|unknown)$/i.test(value)) return;
@@ -374,10 +383,19 @@ export function draftRows(table: string[][], mapping: ColumnMapping, today?: str
           else problems.push(`${header} isn't a web address`);
           break;
         case "asin":
-          if (/^[A-Z0-9]{10}$/i.test(value)) (d.links ??= []).push({ url: `https://www.amazon.com/dp/${value.toUpperCase()}`, label: "On Amazon" });
+          if (/^[A-Z0-9]{10}$/i.test(value)) asin = value.toUpperCase();
           break;
       }
     });
+    // The product page on the order's own Amazon: a link to it already in the row gives the site, else the Website
+    // column, else amazon.com. Not added twice when the row already links to that product.
+    if (asin) {
+      const already = (d.links ?? []).map((l) => amazonProduct(l.url)).find((p) => p !== null);
+      if (already?.asin !== asin) {
+        const site = already?.site ?? siteOf(cells) ?? "www.amazon.com";
+        (d.links ??= []).push({ url: `https://${site}/dp/${asin}`, label: "On Amazon" });
+      }
+    }
     if (total != null && d.purchasePriceCents == null) d.purchasePriceCents = Math.round(total / Math.max(1, d.quantity ?? 1));
     if (preset === "amazon") notes.unshift("Bought on Amazon");
     if (notes.length) d.notes = clip(notes.join("\n"), 10000);

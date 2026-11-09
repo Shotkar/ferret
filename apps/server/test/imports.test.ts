@@ -105,6 +105,13 @@ describe("reading a spreadsheet", () => {
     expect(detectPreset(parseCsv(csv)[0]!)).toBe("amazon");
     expect(drafts(csv).map((r) => r.draft!.importKey)).toEqual(["amazon:111-1:B0ABCDEFGH:1", "amazon:111-1:B0ABCDEFGH:2", "amazon:222-2:B0ABCDEFGH:1", undefined]);
     // With today's date, a recent order can still go back: 30 days from the order date (not cancelled ones, not old ones).
+    // The order's own Amazon (its Website column) — not always .com; a row already linking the product isn't linked twice.
+    const de = 'Website,Order ID,Order Date,ASIN,Product Name,Product URL\nAmazon.de,302-1,2026-01-05T10:00:00Z,B0G1LXSKJB,Wasserkocher,\nAmazon.co.uk,202-1,2026-01-05T10:00:00Z,B0ABCDEFGH,Kettle,https://www.amazon.co.uk/dp/B0ABCDEFGH\nnonsense,302-2,2026-01-05T10:00:00Z,B0ABCDEFGI,Mug,\n';
+    expect(drafts(de).map((r) => r.draft!.links)).toEqual([
+      [{ url: "https://www.amazon.de/dp/B0G1LXSKJB", label: "On Amazon" }],
+      [{ url: "https://www.amazon.co.uk/dp/B0ABCDEFGH" }],
+      [{ url: "https://www.amazon.com/dp/B0ABCDEFGI", label: "On Amazon" }],
+    ]);
     const recent = `ASIN,"Order Date","Order ID","Product Name","Order Status"\nB0ABCDEFGH,2026-11-01T10:00:00Z,333-3,Kettle,Closed\nB0ABCDEFGI,2026-11-01T10:00:00Z,333-4,Toaster,Cancelled\nB0ABCDEFGJ,2026-09-01T10:00:00Z,333-5,Old mug,Closed\n`;
     const t = parseCsv(recent);
     const [kettle, toaster, mug] = draftRows(t, guessMapping(t[0]!), "2026-11-08");
