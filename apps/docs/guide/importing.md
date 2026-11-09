@@ -13,7 +13,8 @@ Any list with a header row, saved as CSV — from Numbers, Excel or Google Sheet
    the notes (each as *"Column: value"*).
 3. **Tick what to import.** Every row is ticked to start with, except ones that can't be (no name). Rows with something
    Ferret couldn't read — a date like *"someday"* — say so, and come in without it. **Leave out under** an amount drops cheap
-   things in one go.
+   things in one go. **Sort with AI** unticks lines that look like consumables and picks categories from yours
+   ([AI helpers](./ai#sorting-an-import)).
 4. **Import.**
 
 **Where it is** can be a room (*Kitchen*) or a path (*Garage › Shelf 2*, *Garage / Shelf 2*). Places you already have

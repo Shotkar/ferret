@@ -58,8 +58,10 @@ the task under **Uses a part**, with how many each time. Then:
 
 ## From a manual
 
-Upload a product's manual as a document and Ferret may suggest the maintenance it recommends. Nothing is added until
-you tap it.
+Upload a product's manual as a document and Ferret may suggest the maintenance it recommends. These collect under
+**Suggested maintenance**, at the top of the Maintenance screen and on the thing's page: **Add** opens the task filled in,
+to adjust; **Not needed** is remembered. Nothing is added until you tap it. Ferret can also suggest the
+[typical upkeep](./ai#suggested-maintenance) for things like yours.
 
 ## Service providers
 

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { type AppEnv, body, callerOf, requireHousehold, requireUser, requireWriter } from "../lib/context";
 import * as svc from "../lib/maintenance";
 import { dismissSuggestedTask, listSuggestedTasks } from "../lib/suggested-tasks";
+import { askTypicalUpkeep } from "../lib/typical-upkeep";
 
 export const maintenance = new Hono<AppEnv>();
 maintenance.use(requireUser, requireHousehold);
@@ -22,6 +23,11 @@ maintenance.get("/", async (c) => c.json({ data: await svc.listMaintenance(calle
 maintenance.get("/suggestions", async (c) =>
   c.json({ data: await listSuggestedTasks(callerOf(c), z.string().min(1).optional().parse(c.req.query("itemId"))) }),
 );
+/** Typical upkeep for one thing (`itemId`), or for the household's things not asked about yet: into Suggested maintenance. */
+maintenance.post("/typical", requireWriter, async (c) => {
+  const { itemId } = await body(c.req.raw, z.object({ itemId: z.string().min(1).optional() }));
+  return c.json(await askTypicalUpkeep(callerOf(c), itemId), 202);
+});
 maintenance.post("/suggestions/:id/dismiss", requireWriter, async (c) => c.json(await dismissSuggestedTask(callerOf(c), c.req.param("id"))));
 
 maintenance.post("/", requireWriter, async (c) => c.json(await svc.createTask(callerOf(c), await body(c.req.raw, maintenanceInput)), 201));

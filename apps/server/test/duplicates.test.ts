@@ -28,12 +28,25 @@ describe("possible duplicates", () => {
     const { user, jobs } = await setup({ ai, vectors });
     const pat = await user("pat");
     await pat.addItem({ name: "DeWalt drill" });
-    await pat.addItem({ name: "Drill driver" });
+    await pat.addItem({ name: "Drill" });
+    await pat.addItem({ name: "Workbench" });
     await pat.addItem({ name: "KitchenAid mixer" });
     await jobs.drain();
     const pairs = ((await (await pat.as("/api/v1/duplicates")).json()) as { data: Pair[] }).data;
-    expect(pairs.map((p) => [p.a.name, p.b.name].sort())).toEqual([["DeWalt drill", "Drill driver"]]);
+    expect(pairs.map((p) => [p.a.name, p.b.name].sort())).toEqual([["DeWalt drill", "Drill"]]); // not the mixer or the workbench
+    expect(pairs).toHaveLength(1);
     expect(pairs[0]!.reasons[0]).toMatch(/^Described alike/);
+  });
+
+  it("needs the names to agree, not just the meaning", async () => {
+    const { namesAlike } = await import("../src/lib/duplicates");
+    const f = (name: string, more: Record<string, string> = {}) => ({ name, brand: null, model: null, serialNumber: null, ...more });
+    expect(namesAlike(f("Drill"), f("Cordless drill", { brand: "DeWalt" }))).toBe(true);
+    expect(namesAlike(f("Chair"), f("Sofa"))).toBe(false);
+    expect(namesAlike(f("Floor lamp"), f("Table lamp"))).toBe(false);
+    expect(namesAlike(f("TV"), f("TV stand"))).toBe(false);
+    expect(namesAlike(f("Furnace filter 20x25x1 (basement)"), f("Furnace filter 20x25x1"))).toBe(true);
+    expect(namesAlike(f("Drill", { model: "A1" }), f("Drill", { model: "B2" }))).toBe(false);
   });
 
   it("merges: fields fill gaps, files, warranties, tasks and tags move, and the old link says where it went", async () => {

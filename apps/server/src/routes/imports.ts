@@ -4,6 +4,8 @@
  * someone typed, usually on the LAN, so that's for the household's owner and admins, signed in (not an API key).
  */
 import { homeAssistantApply, homeAssistantConnect, importInput, importKnownInput } from "@ferret/shared";
+import { importTriageInput } from "@ferret/shared";
+import { startImportTriage } from "../lib/ai-runs";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { type AppEnv, body, callerOf, requireHousehold, requireSession, requireUser, requireWriter } from "../lib/context";
@@ -23,6 +25,9 @@ imports.post("/known", async (c) => {
   const { keys } = await body(c.req.raw, importKnownInput);
   return c.json({ known: [...(await knownImportKeys(callerOf(c), keys))] });
 });
+
+/** Sort the lines with AI before importing (AI-1): which look worth keeping, and a category from the household's own. */
+imports.post("/triage", requireWriter, async (c) => c.json(await startImportTriage(callerOf(c), await body(c.req.raw, importTriageInput)), 202));
 
 imports.post("/:id/undo", requireWriter, async (c) => c.json(await undoImport(callerOf(c), c.req.param("id"))));
 

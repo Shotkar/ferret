@@ -19,6 +19,9 @@ import { PRODUCT_JOB, productLookupJob } from "../lib/products";
 import { aboutServer, alertServiceErrors, recordServiceError } from "../lib/service-errors";
 import type { Deps, JobHandler, Jobs } from "../ports";
 import { DOCUMENT_JOB, PHOTO_JOB, analyzeAttachment } from "./analyze";
+import { IMPORT_TRIAGE_JOB, importTriageJob } from "../lib/ai-runs";
+import { REPLACEMENT_JOB, replacementJob } from "../lib/replacement";
+import { TYPICAL_UPKEEP_JOB, typicalUpkeepJob } from "../lib/typical-upkeep";
 import { ROOM_SCAN_JOB, analyzeRoomScan } from "../lib/room-scans";
 import { BACKFILL_JOB, INDEX_JOB, backfillIndex, indexItem } from "./index-item";
 import { PDF_BACKFILL_JOB, PDF_THUMB_JOB, pdfThumbnail, pdfThumbnailBackfill } from "./pdf-thumbnail";
@@ -118,6 +121,12 @@ export function jobSchedule({
     handlers[PDF_BACKFILL_JOB] = pdfThumbnailBackfill({ db, jobs });
   }
   if (deps.products) handlers[PRODUCT_JOB] = productLookupJob(deps);
+  // The AI helpers that read words (lib/text-ai.ts).
+  if (deps.chat ?? deps.ai) {
+    handlers[IMPORT_TRIAGE_JOB] = importTriageJob(deps);
+    handlers[REPLACEMENT_JOB] = replacementJob(deps);
+    handlers[TYPICAL_UPKEEP_JOB] = typicalUpkeepJob(deps);
+  }
   if (search) {
     handlers[INDEX_JOB] = indexItem({ db, ai: deps.ai!, vectors: deps.vectors!, profile: deps.searchProfile });
     handlers[BACKFILL_JOB] = backfillIndex({ db, jobs });

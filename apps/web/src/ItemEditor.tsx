@@ -85,6 +85,7 @@ export function ItemEditor({ item, householdId, onClose }: { item: ItemListing; 
       returnBy: text("returnBy"),
       purchasePriceCents: toCents(f.get("purchasePrice")),
       valueCents: toCents(f.get("value")),
+      replacementCents: toCents(f.get("replacement")),
       // In a box, it's wherever the box is (the server keeps that in step).
       ...(box ? { containerItemId: box.id } : { containerItemId: null, locationId: text("locationId") }),
       isContainer: isBox,
@@ -168,6 +169,7 @@ export function ItemEditor({ item, householdId, onClose }: { item: ItemListing; 
             <Money label="Paid" name="purchasePrice" cents={item.purchasePriceCents} />
             <Money label="Worth now" name="value" cents={item.valueCents} />
             <Field label="Quantity" name="quantity" type="number" min={0} defaultValue={String(item.quantity)} inputMode="numeric" />
+            <Money label="To replace new" name="replacement" cents={item.replacementCents} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

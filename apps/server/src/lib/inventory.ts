@@ -340,6 +340,12 @@ export interface ItemFilter {
    * its id (gone: "include") includes it too.
    */
   wanted?: "include" | "only";
+  /** Worth (value, else price paid) at least / at most this, in cents. */
+  minWorthCents?: number;
+  maxWorthCents?: number;
+  /** Bought on or after / on or before this day (yyyy-mm-dd). */
+  boughtFrom?: string;
+  boughtTo?: string;
 }
 
 export function itemScope(v: Caller, filter: ItemFilter = {}) {
@@ -369,6 +375,11 @@ export function itemScope(v: Caller, filter: ItemFilter = {}) {
   // A UPC-A and its EAN-13 spelling are the same code (and items keep whatever was typed or scanned).
   if (filter.barcode) where.push(inArray(item.barcode, [filter.barcode, ...barcodeVariants(filter.barcode)]));
   if (filter.missing) where.push(lacks(v, filter.missing));
+  const worth = sql`coalesce(${item.valueCents}, ${item.purchasePriceCents})`;
+  if (filter.minWorthCents != null) where.push(sql`${worth} >= ${filter.minWorthCents}`);
+  if (filter.maxWorthCents != null) where.push(sql`${worth} <= ${filter.maxWorthCents}`);
+  if (filter.boughtFrom) where.push(sql`${item.purchaseDate} >= ${filter.boughtFrom}`);
+  if (filter.boughtTo) where.push(sql`${item.purchaseDate} <= ${filter.boughtTo}`);
   if (filter.notScannedSince) {
     const since = startOfDayIn(filter.notScannedSince, v.timeZone);
     where.push(
@@ -822,7 +833,7 @@ async function describeChanges(
     out.push(a == null ? `${label} set to ${b}` : b == null ? `${label} removed` : `${label} ${a} → ${b}`);
   }
   const dollars = (c: number | null) => (c == null ? null : moneyText(v, c, { exact: true }));
-  for (const [k, label] of [["purchasePriceCents", "price paid"], ["valueCents", "value"]] as const) {
+  for (const [k, label] of [["purchasePriceCents", "price paid"], ["valueCents", "value"], ["replacementCents", "replacement cost"]] as const) {
     const [a, b] = [was[k] ?? null, now[k] ?? null];
     if (a !== b) out.push(a == null ? `${label} set to ${dollars(b)}` : b == null ? `${label} removed` : `${label} ${dollars(a)} → ${dollars(b)}`);
   }

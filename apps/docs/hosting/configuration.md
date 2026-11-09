@@ -93,6 +93,7 @@ and check **Settings → Server → Keys** says "From the settings". The copy in
 | `DOCLING_URL`, `DOCLING_VLM_URL`, `DOCLING_OPTIONS` | Reading PDFs and scanned documents; `DOCLING_VLM_URL` reads pages with granite-docling (an OpenAI-compatible endpoint) instead of docling's standard pipeline. |
 | `QDRANT_URL`, `QDRANT_API_KEY`, `QDRANT_COLLECTION` | Smart search's vector store. |
 | `RERANK_URL`, `RERANK_MODEL` | Better ordering of search results. |
+| `SPEECH_URL`, `SPEECH_MODEL` | Speech to text (an OpenAI-compatible `/v1/audio/transcriptions`: a Whisper server such as speaches, or vLLM): say a thing's name on a walkthrough. `SPEECH_MODEL` defaults to `whisper-1`. |
 
 ## Other
 

@@ -26,6 +26,7 @@ import { HomeAssistantWebSocket } from "./adapters/local/home-assistant";
 import { CpscRecalls } from "./adapters/local/cpsc";
 import { QdrantVectors } from "./adapters/local/qdrant";
 import { VllmReranker } from "./adapters/local/reranker";
+import { OpenAiSpeech } from "./adapters/local/speech";
 import { docsScriptHashes, mountDocs, mountWebApp } from "./adapters/local/web";
 import { markAuthProxy, proxyList, withClientAddress } from "./adapters/local/proxy";
 import { NodeTls } from "./adapters/local/certificates";
@@ -96,6 +97,7 @@ const documents = config.DOCLING_URL ? new DoclingDocuments(config.DOCLING_URL, 
 const vectors =
   config.QDRANT_URL && ai ? new QdrantVectors(config.QDRANT_URL, config.QDRANT_API_KEY, config.QDRANT_COLLECTION) : undefined;
 const reranker = config.RERANK_URL ? new VllmReranker(config.RERANK_URL, config.RERANK_MODEL) : undefined;
+const speech = config.SPEECH_URL ? new OpenAiSpeech(config.SPEECH_URL, config.SPEECH_MODEL) : undefined;
 const push =
   config.VAPID_PUBLIC_KEY && config.VAPID_PRIVATE_KEY
     ? new WebCryptoPush(config.VAPID_PUBLIC_KEY, config.VAPID_PRIVATE_KEY, vapidSubject(config))
@@ -124,6 +126,7 @@ const deps = {
   documents: watched(db, "documents", documents),
   vectors: watched(db, "vectors", vectors),
   reranker: watched(db, "reranker", reranker),
+  speech: watched(db, "speech", speech),
   push: watched(db, "push", push),
   notifier: watched(db, "notifier", notifier),
   products: watched(db, "products", products),
@@ -190,6 +193,7 @@ serve(
     `   Smart search:   ${on(vectors, `${config.EMBED_MODEL} → Qdrant ${config.QDRANT_COLLECTION}`, "set QDRANT_URL and OLLAMA_URL")}`,
   );
   console.log(`   Reranking:      ${on(vectors && reranker, `${config.RERANK_MODEL} at ${config.RERANK_URL}`, "set RERANK_URL")}`);
+  console.log(`   Speech to text: ${on(speech, `${config.SPEECH_MODEL} at ${config.SPEECH_URL}`, "set SPEECH_URL")}`);
   console.log("   Recalls:        the US CPSC's recalls, if the server admin switches them on (Settings → Server)");
   console.log(`   Barcode lookup: ${on(products, `UPCitemdb${config.UPCITEMDB_KEY ? " (paid key)" : " (free: 100 a day)"}`, "set BARCODE_LOOKUP=upcitemdb")} + Ferret's own barcode book`);
   console.log(`   Push reminders: ${on(push, `daily from ${config.REMIND_HOUR}:00 (TZ ${process.env.TZ ?? "system"})`, "set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY")}`);

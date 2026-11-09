@@ -20,7 +20,8 @@ save too; untick what's wrong (tap the photo to see it full screen and zoom in o
 - **Skip** — it stays a *New item* (the bell keeps reminding you), to do later;
 - **Not worth keeping** — delete it (it's in [Recently deleted](./recently-deleted) for 30 days).
 
-If a photo is still being read, the card says so and fills itself in when it's done — or just type the name.
+If a photo is still being read, the card says so and fills itself in when it's done — or just type the name, or say
+it with the microphone when your server has [speech to text](./ai#saying-it-instead-of-typing).
 
 Reading photos needs the AI features (see [AI features](../hosting/ai)); without them you name each one yourself, which is
 still quick.

@@ -22,6 +22,7 @@ export const SERVICE_NAMES: Record<string, string> = {
   documents: "Document reader (docling)",
   vectors: "Vector store (Qdrant)",
   reranker: "Reranker",
+  speech: "Speech to text",
   notifier: "Apprise",
   push: "Web Push",
   products: "Barcode lookup (UPCitemdb)",

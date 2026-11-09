@@ -308,6 +308,7 @@ export function ReportDocument({
                             <td className="whitespace-nowrap py-1.5 pe-2 text-gray-700 max-sm:hidden print:table-cell">
                               {r.purchaseDate && <p>{shortDate(r.purchaseDate)}</p>}
                               {r.purchasePriceCents != null && <p>{money(r.purchasePriceCents)} each</p>}
+                              {r.replacementCents != null && <p>{money(r.replacementCents)} to replace</p>}
                             </td>
                             <td className="whitespace-nowrap py-1.5 text-end font-semibold">
                               {r.totalValueCents != null ? money(r.totalValueCents) : <span className="font-normal text-gray-400">—</span>}

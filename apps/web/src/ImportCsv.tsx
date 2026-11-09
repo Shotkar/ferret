@@ -12,6 +12,8 @@ import { ImportStatus, useImportRun } from "./Import";
 import { usePlaces } from "./lib/places";
 import { PLACES_HREF } from "./lib/route";
 import { decimalMark, money, currencySymbol, toCents } from "./lib/money";
+import { useFeatures } from "./lib/features";
+import type { ImportTriageRow } from "@ferret/shared";
 
 const PRESET_NAMES = { ferret: "Ferret's own export", amazon: "Amazon order history" } as const;
 const SHOWN = 300;
@@ -110,6 +112,8 @@ function Mapper({
   const [filter, setFilter] = useState("");
   const [under, setUnder] = useState("");
   const { run, progress } = useImportRun(householdId);
+  const sorted = useAiSort(rows, (skip) => setUnticked((prev) => new Set([...prev, ...skip])));
+  const features = useFeatures();
 
   const below = (toCents(under) ?? 0) > 0 ? toCents(under) : null;
   const ticked = (r: DraftRow, i: number) => Boolean(r.draft) && !unticked.has(i) && !(below != null && (r.draft!.purchasePriceCents ?? r.draft!.valueCents ?? 0) < below);
@@ -160,7 +164,9 @@ function Mapper({
   };
 
   function start() {
-    run.mutate({ source: "csv", name: file.name, parts: [{ propertyId: needsProperty ? property : null, rows: chosen.map(({ r }) => r.draft!) }] });
+    // A category the AI picked (from the household's own) for lines whose file gave none.
+    const withCategory = ({ r, i }: { r: DraftRow; i: number }) => (r.draft!.category || !sorted.result[i]?.category ? r.draft! : { ...r.draft!, category: sorted.result[i]!.category! });
+    run.mutate({ source: "csv", name: file.name, parts: [{ propertyId: needsProperty ? property : null, rows: chosen.map(withCategory) }] });
   }
 
   if (run.isPending || run.isSuccess) {
@@ -261,7 +267,23 @@ function Mapper({
             <button type="button" className="btn btn-text btn-sm" onClick={() => setUnticked(new Set(rows.map((_, i) => i)))}>
               Untick all
             </button>
+            {features?.textAi && (
+              <button type="button" className="btn btn-soft btn-primary btn-sm" disabled={sorted.busy || sorted.done} onClick={sorted.start}>
+                <span className="icon-[tabler--sparkles] size-4" />
+                {sorted.busy ? `Sorting… ${sorted.progress}` : sorted.done ? "Sorted with AI" : "Sort with AI"}
+              </button>
+            )}
           </div>
+          {sorted.error && <div className="alert alert-soft alert-error text-sm">{sorted.error}</div>}
+          {sorted.done && (
+            <div className="alert alert-soft alert-info flex items-start gap-2 text-sm">
+              <span className="icon-[tabler--sparkles] size-5 shrink-0" />
+              <span>
+                {sorted.skipped} {sorted.skipped === 1 ? "line looks" : "lines look"} like consumables or not worth a record, so {sorted.skipped === 1 ? "it's" : "they're"} unticked;{" "}
+                {sorted.categorised} got a category from yours. Check before importing — tick anything it got wrong.
+              </span>
+            </div>
+          )}
           {knownQuery.isLoading && <p className="text-sm text-base-content/70">Checking what's already in Ferret…</p>}
           {knownCount > 0 && (
             <div className="alert alert-soft alert-info flex items-start gap-2 text-sm">
@@ -287,6 +309,8 @@ function Mapper({
                         r.draft?.returnBy ? `return by ${r.draft.returnBy}` : null,
                         isKnown(r) ? "already in Ferret" : null,
                         r.unlikely ? "cancelled or returned" : null,
+                        !r.draft?.category && sorted.result[i]?.category ? `AI: ${sorted.result[i]!.category}` : null,
+                        sorted.result[i]?.keep === false ? "AI: probably a consumable" : null,
                       ]
                         .filter(Boolean)
                         .join(" · ") || " "}
@@ -311,4 +335,44 @@ function Mapper({
       </section>
     </>
   );
+}
+
+/**
+ * "Sort with AI" (AI-1): the lines' names go to the server, a job asks the text model which look worth keeping and
+ * which of the household's own categories fits each; the ones that don't are unticked here. Nothing is saved until
+ * Import, and anything can be ticked again.
+ */
+function useAiSort(rows: DraftRow[], untick: (indexes: number[]) => void) {
+  const [result, setResult] = useState<(ImportTriageRow | null)[]>([]);
+  const [state, setState] = useState<{ busy: boolean; done: boolean; progress: string; error: string | null }>({ busy: false, done: false, progress: "", error: null });
+  const indexes = rows.flatMap((r, i) => (r.draft ? [i] : []));
+  async function start() {
+    setState({ busy: true, done: false, progress: "", error: null });
+    try {
+      const { id } = await api.importTriage({ rows: indexes.slice(0, 3000).map((i) => ({ name: rows[i]!.draft!.name, category: rows[i]!.draft!.category ?? undefined })) });
+      for (;;) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const run = await api.importTriageRun(id);
+        if (run.status === "failed") throw new Error(run.error ?? "Sorting didn't work");
+        if (run.status === "done") {
+          const byRow: (ImportTriageRow | null)[] = [];
+          (run.result ?? []).forEach((r, n) => (byRow[indexes[n]!] = r));
+          setResult(byRow);
+          untick(byRow.flatMap((r, i) => (r?.keep === false ? [i] : [])));
+          setState({ busy: false, done: true, progress: "", error: null });
+          return;
+        }
+        setState((s) => ({ ...s, progress: run.total ? `${run.done ?? 0} of ${run.total}` : "" }));
+      }
+    } catch (err) {
+      setState({ busy: false, done: false, progress: "", error: (err as Error).message });
+    }
+  }
+  return {
+    ...state,
+    start,
+    result,
+    skipped: result.filter((r) => r?.keep === false).length,
+    categorised: result.filter((r, i) => r?.category && !rows[i]?.draft?.category).length,
+  };
 }

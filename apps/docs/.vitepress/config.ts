@@ -84,6 +84,7 @@ export default defineConfig({
             { text: "Stock: scan to count", link: "/guide/stock" },
             { text: "HomeKit and Matter codes", link: "/guide/pairing-codes" },
             { text: "Finding things", link: "/guide/finding-things" },
+            { text: "AI helpers", link: "/guide/ai" },
             { text: "Lending and borrowing", link: "/guide/lending" },
             { text: "Past things", link: "/guide/past-things" },
             { text: "Recently deleted", link: "/guide/recently-deleted" },

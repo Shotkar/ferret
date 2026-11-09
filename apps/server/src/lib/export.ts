@@ -70,6 +70,7 @@ export async function exportRows(v: Caller, opts: { propertyId?: string; gone?: 
         purchasePriceCents: r.purchasePriceCents,
         valueCents: r.valueCents,
         totalValueCents: each == null ? null : each * Math.max(1, r.quantity),
+        replacementCents: r.replacementCents ?? null,
         photos: photos.get(r.id) ?? 0,
         documents: documents.get(r.id) ?? 0,
         photoId: r.photoId,
@@ -96,6 +97,7 @@ const COLUMNS: [string, (r: ExportRow, currency: string) => string | number | nu
   ["Price paid (each)", (r, cur) => amount(r.purchasePriceCents, cur)],
   ["Value (each)", (r, cur) => amount(r.valueCents, cur)],
   ["Total value", (r, cur) => amount(r.totalValueCents, cur)],
+  ["Replacement cost (each)", (r, cur) => amount(r.replacementCents, cur)],
   // The amounts are plain numbers (a spreadsheet adds them up): which money they're in.
   ["Currency", (_r, cur) => cur],
   ["Photos", (r) => r.photos],

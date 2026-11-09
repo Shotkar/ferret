@@ -19,6 +19,7 @@ import { useCanEdit } from "./lib/auth";
 import { findLocation, usePlaces } from "./lib/places";
 import { WALKTHROUGH_HREF, placeHref, walkthroughHref } from "./lib/route";
 import { pendingSuggestions } from "./Suggestions";
+import { SpeakButton } from "./SpeakButton";
 
 /** What "Add from photos" and the walkthrough call a thing until someone names it (lib/attention.ts knows it too). */
 const PLACEHOLDER = "New item";
@@ -339,7 +340,10 @@ function ReviewCard({
           <label className="label-text" htmlFor={`walk-name-${item.id}`}>
             What is it?
           </label>
-          <input id={`walk-name-${item.id}`} className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder={reading ? "Wait for a suggestion, or type it" : "e.g. Cordless drill"} maxLength={200} />
+          <div className="flex items-start gap-2">
+            <input id={`walk-name-${item.id}`} className="input min-w-0 flex-1" value={name} onChange={(e) => setName(e.target.value)} placeholder={reading ? "Wait for a suggestion, or type it" : "e.g. Cordless drill"} maxLength={200} />
+            <SpeakButton label="Say what it is" onText={(t) => setName(t.slice(0, 200))} />
+          </div>
         </div>
         {others.length > 0 && (
           <fieldset className="space-y-1">

@@ -62,7 +62,7 @@ describe("insurance export", () => {
     const lines = text.trim().split("\r\n");
     expect(lines).toHaveLength(5);
     expect(lines.find((l) => l.startsWith("TV,"))).toContain('"Mounted, ""wall"" bracket"');
-    expect(lines.find((l) => l.startsWith("TV,"))).toContain(",1500.00,1500.00,USD,1,1,2028-05-01,electronics,");
+    expect(lines.find((l) => l.startsWith("TV,"))).toContain(",1500.00,1500.00,,USD,1,1,2028-05-01,electronics,");
     // A formula-looking name is defused for spreadsheets.
     expect(lines.at(-1)).toMatch(/^"'=HYPERLINK\(""x""\)"/);
   });

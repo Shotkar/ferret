@@ -269,6 +269,12 @@ export const listQuery = z.object({
   origin: z.enum(itemOrigins).optional(),
   /** Not scanned since this day (yyyy-mm-dd) — never scanned counts: "what hasn't been seen in a year?" */
   notScannedSince: z.iso.date().optional(),
+  /** Worth (value, else price paid) at least / at most this many cents. */
+  minWorth: z.coerce.number().int().min(0).optional(),
+  maxWorth: z.coerce.number().int().min(0).optional(),
+  /** Bought on or after / on or before this day (yyyy-mm-dd). */
+  boughtFrom: z.iso.date().optional(),
+  boughtTo: z.iso.date().optional(),
   /** Lists (not searches): the order — last changed (default), name, value, when bought, when added, when last scanned. */
   sort: z.enum(itemSorts).optional(),
   dir: z.enum(["asc", "desc"]).optional(),
@@ -745,6 +751,8 @@ export interface ExportRow {
   valueCents: number | null | undefined;
   /** Value (or price paid) × quantity. */
   totalValueCents: number | null;
+  /** What replacing one new would cost (set by a person — maybe from the AI's estimate). */
+  replacementCents?: number | null;
   photos: number;
   documents: number;
   /** For the report's thumbnail. */

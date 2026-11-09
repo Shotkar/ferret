@@ -15,6 +15,7 @@ import { DialogActions, Modal } from "./Modal";
 import { MISSING_LABELS } from "./Overview";
 import { money } from "./lib/money";
 import { api } from "./lib/api";
+import { type ExtraFilters, PlainWordsFilter } from "./PlainWordsFilter";
 import { useCanEdit } from "./lib/auth";
 import { ORIGIN_FILTER, itemOriginList } from "./lib/origin";
 import { findLocation, usePlaces } from "./lib/places";
@@ -69,7 +70,11 @@ function useWide() {
 
 /** `sort`: the order to start in, from the address (`#/items?sort=value` — the dashboard's Worth). */
 export function Everything(props: { householdId: string; missing?: MissingDetail; origin?: ItemOrigin; placeFrom?: string; sort?: string }) {
-  const { householdId, missing, origin } = props;
+  const { householdId } = props;
+  // Filters from plain words (AI-2) that the filter bar has no control for, shown as chips.
+  const [extra, setExtra] = useState<ExtraFilters>({});
+  const missing = props.missing ?? extra.missing;
+  const origin = props.origin ?? extra.origin;
   const startSort = SORTS.find((s) => s.value === props.sort);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
@@ -95,20 +100,24 @@ export function Everything(props: { householdId: string; missing?: MissingDetail
     missing,
     origin,
     notScannedSince: unscanned ? monthsAgo(Number(unscanned)) : undefined,
+    minWorth: extra.minWorth,
+    maxWorth: extra.maxWorth,
+    boughtFrom: extra.boughtFrom,
+    boughtTo: extra.boughtTo,
   };
   // A new filter or order starts again at the first page.
   const filterKey = JSON.stringify([filters, sort]);
   useEffect(() => setPage(0), [filterKey]);
   const items = useQuery({
-    queryKey: ["items", householdId, "everything", filters, sort, page],
-    queryFn: () => api.listItems(undefined, { ...filters, sort: sort.by, dir: sort.dir, limit: PAGE, offset: page * PAGE }),
+    queryKey: ["items", householdId, "everything", filters, extra.q, sort, page],
+    queryFn: () => api.listItems(extra.q, { ...filters, sort: sort.by, dir: sort.dir, limit: PAGE, offset: page * PAGE }),
     placeholderData: (previous) => previous,
   });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [peek, setPeek] = useState<ItemListing | null>(null);
   // What the last bulk change did.
   const [result, setResult] = useState<ItemsBulkResult | null>(null);
-  const filtered = Boolean(categoryId || locationId || tag || missing || origin || unscanned);
+  const filtered = Boolean(categoryId || locationId || tag || missing || origin || unscanned || Object.keys(extra).length);
   const total = items.data?.total ?? 0;
   const rows = items.data?.data ?? [];
 
@@ -144,6 +153,16 @@ export function Everything(props: { householdId: string; missing?: MissingDetail
         )}
       </div>
 
+      <PlainWordsFilter
+        extra={extra}
+        onExtra={setExtra}
+        onFilters={(f) => {
+          setCategoryId(f.categoryId ?? null);
+          setLocationId(f.locationId ?? null);
+          setTag(f.tag ?? "");
+          setUnscanned(f.unscanned ?? "");
+        }}
+      />
       <FilterBar
         householdId={householdId}
         missing={missing}
@@ -166,7 +185,8 @@ export function Everything(props: { householdId: string; missing?: MissingDetail
                 setLocationId(null);
                 setTag("");
                 setUnscanned("");
-                if (missing || origin) navigateTo(ITEMS_HREF);
+                setExtra({});
+                if (props.missing || props.origin) navigateTo(ITEMS_HREF);
               }
             : undefined
         }

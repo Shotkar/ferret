@@ -353,6 +353,12 @@ export const api = {
       offset?: number;
       /** Not scanned since this day (yyyy-mm-dd); never scanned counts. */
       notScannedSince?: string;
+      /** Worth (value, else price paid) at least / at most, in cents. */
+      minWorth?: string;
+      maxWorth?: string;
+      /** Bought between these days (yyyy-mm-dd). */
+      boughtFrom?: string;
+      boughtTo?: string;
       /** Lists only: the order (last changed first, unless asked). */
       sort?: ItemSort;
       dir?: "asc" | "desc";
@@ -377,6 +383,7 @@ export const api = {
     if (filter.collectionId) params.set("collectionId", filter.collectionId);
     if (filter.wanted) params.set("wanted", filter.wanted);
     if (filter.notScannedSince) params.set("notScannedSince", filter.notScannedSince);
+    for (const k of ["minWorth", "maxWorth", "boughtFrom", "boughtTo"] as const) if (filter[k]) params.set(k, filter[k]!);
     return request<ItemSearch>(`/items${params.size ? `?${params}` : ""}`);
   },
   getItem: (id: string) => request<ItemListing>(`/items/${id}`),

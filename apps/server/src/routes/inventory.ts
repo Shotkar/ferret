@@ -122,7 +122,7 @@ inventory.delete("/locations/:id", requireWriter, async (c) => {
 
 // ── Items ───────────────────────────────────────────────────────────────────
 inventory.get("/items", async (c) => {
-  const { q, locationId, barcode, missing, categoryId, tag, containerItemId, topLevel, boxes, gone, collectionId, wanted, judge, origin, notScannedSince, sort, dir, limit, offset } = listQuery.parse(c.req.query());
+  const { q, locationId, barcode, missing, categoryId, tag, containerItemId, topLevel, boxes, gone, collectionId, wanted, judge, origin, notScannedSince, minWorth, maxWorth, boughtFrom, boughtTo, sort, dir, limit, offset } = listQuery.parse(c.req.query());
   const v = callerOf(c);
   // A location or category includes everything nested inside it ("what's in the garage?").
   const tagged = tag ? await findTag(v, tag) : undefined;
@@ -141,6 +141,10 @@ inventory.get("/items", async (c) => {
     wanted,
     origin,
     notScannedSince,
+    minWorthCents: minWorth,
+    maxWorthCents: maxWorth,
+    boughtFrom,
+    boughtTo,
   };
   // A search the app checks twice (judge=later, then judge=now) is counted once.
   if (q && judge !== "now") countEvent(v.deps, "search");

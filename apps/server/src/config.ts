@@ -217,6 +217,9 @@ const schema = z.object({
   /** Reranker with a /v1/rerank API (vLLM), e.g. http://gpu.lan:8002. Refines smart search. */
   RERANK_URL: z.url().optional(),
   RERANK_MODEL: z.string().default("reranker"),
+  /** Speech to text with an OpenAI-compatible /v1/audio/transcriptions API (a Whisper server), e.g. http://gpu.lan:8003. Names things aloud on a walkthrough. */
+  SPEECH_URL: z.url().optional(),
+  SPEECH_MODEL: z.string().default("whisper-1"),
 });
 
 function base64Length(value: string) {

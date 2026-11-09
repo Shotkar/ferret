@@ -60,7 +60,8 @@ Ferret answers from your inventory and its documents, with the items it used. (N
 
 **Filter** by where things came from, what they're missing, category, place, tag or when they were last scanned, and
 choose the **order** — last changed, newest, name, most valuable, bought most recently or scanned most recently. On a
-phone these are under **Filter and sort**.
+phone these are under **Filter and sort**. Or [describe it in plain words](./ai#describe-what-you-re-looking-for):
+*tools bought last year over $100*.
 
 On a computer or tablet, Everything is a **table** (switch to **List** at the top right if you'd rather). Click a column
 heading — Name, Value, Bought — to sort by it; click again to reverse. Click a row to see the thing **at a glance** beside

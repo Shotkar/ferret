@@ -18,10 +18,37 @@ import type { Db } from "../ports";
 import { type Caller, asListing, getItem, itemChanged, itemScope, logActivity, notFound, updateItem, withTags } from "./inventory";
 import { inList } from "./sql";
 
-/** Embedding similarity above which two items' summaries read as the same thing (home models; uncalibrated). */
-export const DUPLICATE_SCORE = 0.92;
+/**
+ * Embedding similarity above which two items' summaries read as the same thing — with `namesAlike` as well: on the home
+ * models a chair and a sofa in the same room score 0.94, so the score alone says little (checked on the dev house).
+ */
+export const DUPLICATE_SCORE = 0.9;
 /** …and in the same place, a little less is enough. */
-export const DUPLICATE_SCORE_SAME_PLACE = 0.88;
+export const DUPLICATE_SCORE_SAME_PLACE = 0.85;
+
+const STOP = new Set(["a", "an", "the", "of", "and", "with", "for", "set", "new", "old", "my", "our"]);
+const wordList = (name: string) => name.toLowerCase().match(/[\p{L}\p{N}]+/gu)?.filter((w) => w.length > 1 && !STOP.has(w)) ?? [];
+const words = (name: string) => new Set(wordList(name));
+type Facts = { name: string; brand: string | null; model: string | null; serialNumber: string | null };
+/**
+ * Whether two things' own words say they could be the same — a meaning match alone isn't enough (summaries share the
+ * room, the category…): one name's words all in the other's and the same last word ("Drill" / "DeWalt cordless
+ * drill", not "TV" / "TV stand"), or most of their words shared; and
+ * not two different models or serial numbers.
+ */
+export function namesAlike(a: Facts, b: Facts) {
+  const differ = (x: string | null, y: string | null) => Boolean(x?.trim() && y?.trim() && x.replace(/[\s-]/g, "").toLowerCase() !== y.replace(/[\s-]/g, "").toLowerCase());
+  if (differ(a.serialNumber, b.serialNumber) || differ(a.model, b.model)) return false;
+  const [x, y] = [words([a.brand, a.name].filter(Boolean).join(" ")), words([b.brand, b.name].filter(Boolean).join(" "))];
+  const [nx, ny] = [words(a.name), words(b.name)];
+  if (!nx.size || !ny.size) return false;
+  // The last word is what it is ("cordless drill" is a drill; a "TV stand" isn't a TV): it has to agree.
+  const sameKind = wordList(a.name).at(-1) === wordList(b.name).at(-1);
+  const inOther = (from: Set<string>, to: Set<string>) => [...from].every((w) => to.has(w));
+  if (sameKind && (inOther(nx, y) || inOther(ny, x))) return true;
+  const shared = [...x].filter((w) => y.has(w)).length;
+  return shared / new Set([...x, ...y]).size >= 0.6;
+}
 
 const ordered = (x: string, y: string) => (x < y ? ([x, y] as const) : ([y, x] as const));
 
@@ -41,15 +68,19 @@ export async function recordNeighbours(
   // Forget this item's earlier meaning pairs; keep remembered "not a duplicate"s.
   await db.delete(itemPair).where(and(eq(itemPair.householdId, it.householdId), or(eq(itemPair.itemA, it.id), eq(itemPair.itemB, it.id)), isNull(itemPair.notDuplicateAt)));
   if (!others.length) return;
+  const facts = { id: item.id, locationId: item.locationId, name: item.name, brand: item.brand, model: item.model, serialNumber: item.serialNumber };
+  const [self] = await db.select(facts).from(item).where(and(eq(item.id, it.id), eq(item.householdId, it.householdId)));
+  if (!self) return;
   const rows = await db
-    .select({ id: item.id, locationId: item.locationId })
+    .select(facts)
     .from(item)
     .where(and(eq(item.householdId, it.householdId), isNull(item.deletedAt), inList(item.id, others.map((o) => String(o.payload.itemId ?? o.id)))));
-  const place = new Map(rows.map((r) => [r.id, r.locationId]));
+  const byId = new Map(rows.map((r) => [r.id, r]));
   for (const o of others) {
     const otherId = String(o.payload.itemId ?? o.id);
-    if (!place.has(otherId)) continue;
-    const samePlace = it.locationId != null && place.get(otherId) === it.locationId;
+    const other = byId.get(otherId);
+    if (!other || !namesAlike(self, other)) continue;
+    const samePlace = it.locationId != null && other.locationId === it.locationId;
     if (o.score < (samePlace ? threshold.samePlace : threshold.any)) continue;
     const [a, b] = ordered(it.id, otherId);
     await db.insert(itemPair).values({ householdId: it.householdId, itemA: a, itemB: b, score: o.score }).onConflictDoNothing();
@@ -95,12 +126,19 @@ async function findPairs(v: Caller): Promise<Found[]> {
   const a = alias(item, "a");
   const b = alias(item, "b");
   const meaning = await v.db
-    .select({ a: itemPair.itemA, b: itemPair.itemB, score: itemPair.score })
+    .select({
+      a: itemPair.itemA,
+      b: itemPair.itemB,
+      score: itemPair.score,
+      aFacts: { name: a.name, brand: a.brand, model: a.model, serialNumber: a.serialNumber },
+      bFacts: { name: b.name, brand: b.brand, model: b.model, serialNumber: b.serialNumber },
+    })
     .from(itemPair)
     .innerJoin(a, and(eq(a.id, itemPair.itemA), isNull(a.deletedAt), isNull(a.disposition), eq(a.wanted, false)))
     .innerJoin(b, and(eq(b.id, itemPair.itemB), isNull(b.deletedAt), isNull(b.disposition), eq(b.wanted, false)))
     .where(and(eq(itemPair.householdId, v.householdId), isNull(itemPair.notDuplicateAt)));
-  for (const m of meaning) add(m.a, m.b, `Described alike (${Math.round(m.score * 100)}%)`);
+  // Checked again here: an edit since may have told them apart.
+  for (const m of meaning) if (namesAlike(m.aFacts, m.bFacts)) add(m.a, m.b, `Described alike (${Math.round(m.score * 100)}%)`);
 
   // Not a duplicate: remembered.
   const dismissed = await v.db

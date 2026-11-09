@@ -34,6 +34,7 @@ import { money } from "./lib/money";
 import { CollectionBanner } from "./Collections";
 import { ItemMaintenance, maintenanceKey } from "./Maintenance";
 import { AiFilledCard } from "./AiFill";
+import { ReplacementCard } from "./Replacement";
 import { ClaimDialog } from "./Claims";
 import { ProductSuggestions } from "./Product";
 import { Suggestions } from "./Suggestions";
@@ -295,6 +296,7 @@ export function ItemPage({ itemId, householdId }: { itemId: string; householdId:
 
       {/* What the AI filled in by itself: until someone checks it. */}
       <AiFilledCard item={item.data} householdId={householdId} />
+      <ReplacementCard item={item.data} householdId={householdId} />
       {/* A recall that matches it: before anything else. */}
       <RecallCard itemId={itemId} householdId={householdId} />
       <JumpLinks

@@ -72,7 +72,7 @@ export const LABEL_PAGE_STYLE_HASHES = [
 export const YOUTUBE_EMBED = "https://www.youtube-nocookie.com";
 
 /** The /api routes that take files: an item's uploads, and a room scan's photos (each has its own limit). */
-const UPLOAD_PATH = /^\/api\/v1\/(items\/[^/]+\/attachments|room-scans)$/;
+const UPLOAD_PATH = /^\/api\/v1\/(items\/[^/]+\/attachments|room-scans|transcribe)$/;
 
 export interface AppOptions {
   /** The help at /docs (VitePress): the sha256 of its inline scripts, from its build's csp.json. */
