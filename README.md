@@ -189,8 +189,8 @@ pnpm typecheck
 ## Translations
 
 Ferret is written in English, and English is the only language kept up in this repository. Other languages are made
-by the people who use Ferret, in [ferret-translations](https://github.com/ferret-project/ferret-translations), and
-every build includes them. Anything not translated yet shows in English.
+by the people who use Ferret, on [Weblate](https://hosted.weblate.org/projects/ferret/) and in
+[ferret-translations](https://github.com/ferret-project/ferret-translations), and every build includes them. Anything not translated yet shows in English.
 
 To make text translatable, wrap it with Lingui's macros: `` t`Add to cart` `` or `<Trans>Add to cart</Trans>`
 (`@lingui/react/macro`). Write the English only. CI sends the new text to the translations repository by itself.
