@@ -217,7 +217,18 @@ export function switchHousehold(id: string, current: string) {
 }
 
 /** The household's name, opening a menu: the households to switch between, and "New household…". Wide screens (phones: the More page). */
-export function HouseholdBadge({ householdName, householdId, align = "end" }: { householdName: string; householdId: string; align?: "start" | "end" }) {
+export function HouseholdBadge({
+  householdName,
+  householdId,
+  align = "end",
+  compact = false,
+}: {
+  householdName: string;
+  householdId: string;
+  align?: "start" | "end";
+  /** The name's first letter only, the full name as its label and tooltip — the folded sidebar. */
+  compact?: boolean;
+}) {
   const { data: households } = authClient.useListOrganizations();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -233,13 +244,29 @@ export function HouseholdBadge({ householdName, householdId, align = "end" }: { 
       document.removeEventListener("keydown", close);
     };
   }, [open]);
-  if (!households) return <span className="badge badge-soft badge-primary hidden sm:inline-flex">{householdName}</span>;
+  if (!households) return compact ? null : <span className="badge badge-soft badge-primary hidden sm:inline-flex">{householdName}</span>;
   return (
     <div id="household-switch" className={`dropdown relative hidden sm:inline-flex ${open ? "open" : ""}`}>
-      <button type="button" className="btn btn-soft btn-primary btn-sm gap-1" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
-        {householdName}
-        <span className="icon-[tabler--selector] size-4" />
-      </button>
+      {compact ? (
+        <button
+          type="button"
+          className="btn btn-soft btn-primary btn-square btn-sm"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label={`Household: ${householdName}`}
+          title={householdName}
+          onClick={() => setOpen(!open)}
+        >
+          <span className="font-semibold" aria-hidden>
+            {householdName.slice(0, 1).toUpperCase()}
+          </span>
+        </button>
+      ) : (
+        <button type="button" className="btn btn-soft btn-primary btn-sm gap-1" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {householdName}
+          <span className="icon-[tabler--selector] size-4" />
+        </button>
+      )}
       {open && (
         <ul className={`dropdown-menu dropdown-open:opacity-100 absolute top-full w-60 ${align === "end" ? "end-0" : "start-0"}`} role="menu" aria-label="Households">
           {households.map((h) => (
@@ -380,11 +407,9 @@ export function Sidebar(props: { route: Route["name"]; householdName: string; ho
           {folded ? <PawMark className="size-7" /> : <Logo className="text-lg" />}
         </a>
       </div>
-      {!folded && (
-        <div className="px-4 pb-2 [&>*]:inline-flex">
-          <HouseholdBadge householdName={props.householdName} householdId={props.householdId} align="start" />
-        </div>
-      )}
+      <div className={`pb-2 [&>*]:inline-flex ${folded ? "flex justify-center" : "px-4"}`}>
+        <HouseholdBadge householdName={props.householdName} householdId={props.householdId} align="start" compact={folded} />
+      </div>
       <nav className={`flex-1 overflow-y-auto pb-4 ${folded ? "px-2" : "px-3"}`}>
         <ul className="flex flex-col gap-0.5">{main.map(item)}</ul>
         {NAV_GROUPS.map((g) => {
