@@ -7,7 +7,7 @@
  */
 import type { ScanCandidate, ScanInput, ScanResult, ShoppingItem, ShoppingList, StockAdjust, StockBehaviour, StockMovement, StockRuleInput, StockSummary } from "@ferret/shared";
 import { addDays, barcodeVariants } from "@ferret/shared";
-import { isPairingPayload } from "@ferret/shared/utils";
+import { amazonProductOf, isPairingPayload } from "@ferret/shared/utils";
 import { and, desc, eq, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { item, label, ownLabel, stockMovement, stockRule, user } from "../db/schema";
@@ -323,6 +323,7 @@ export async function shoppingList(v: Caller): Promise<ShoppingList> {
         forTask: need ? `${need.task.title}, due ${need.task.part!.shortOn}` : null,
         photoId: r.photoId,
         unitCents: r.purchasePriceCents ?? r.valueCents ?? null,
+        amazon: amazonProductOf(rows.find((x) => x.id === r.id)?.links),
       };
     })
     .sort((a, b) => Number(b.quantity === 0) - Number(a.quantity === 0) || a.name.localeCompare(b.name));

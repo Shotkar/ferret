@@ -958,6 +958,8 @@ export interface ShoppingItem {
   photoId: string | null;
   /** What one cost (the price paid, else its value) — the list's rough total. */
   unitCents: number | null;
+  /** Its Amazon product, from its links (an imported order's "On Amazon") — to put it in the cart again. */
+  amazon: { site: string; asin: string } | null;
 }
 
 export interface ShoppingList {

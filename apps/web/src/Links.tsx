@@ -4,6 +4,7 @@
  * and edited in the item editor. http(s) only; the server checks it too.
  */
 import type { ItemLink } from "@ferret/shared";
+import { amazonCartUrl, amazonProductOf } from "@ferret/shared/utils";
 
 /** "dewalt.com" from "https://www.dewalt.com/product/…". */
 export const siteOf = (url: string) => {
@@ -28,6 +29,9 @@ export function asWebAddress(typed: string): string | null {
 }
 
 export function ItemLinks({ links }: { links: ItemLink[] }) {
+  // An Amazon product page also offers to buy it again: one in the cart.
+  const product = amazonProductOf(links);
+  const cart = product && amazonCartUrl(product.site, [{ asin: product.asin, quantity: 1 }]);
   return (
     <ul className="mt-2 flex flex-wrap gap-2" aria-label="Links">
       {links.map((l) => (
@@ -38,6 +42,14 @@ export function ItemLinks({ links }: { links: ItemLink[] }) {
           </a>
         </li>
       ))}
+      {cart && (
+        <li>
+          <a href={cart} target="_blank" rel="noopener noreferrer" className="btn btn-soft btn-secondary btn-sm" title="Puts one in your Amazon cart (Amazon asks you to sign in if you aren't)">
+            <span className="icon-[tabler--shopping-cart-plus] size-4 shrink-0" />
+            Add to Amazon cart
+          </a>
+        </li>
+      )}
     </ul>
   );
 }

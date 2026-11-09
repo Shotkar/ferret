@@ -300,6 +300,7 @@ export const NOTIFICATION_SERVICES: Record<string, string> = {
 
 export * from "./pairing";
 export * from "./import";
+export * from "./amazon";
 
 /** The plan features that are simply on or off (PlanLimits in the shared schemas). */
 export type PlanFeature = "apiKeys" | "shareLinks" | "calendarFeeds";

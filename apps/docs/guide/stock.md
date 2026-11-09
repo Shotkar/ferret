@@ -55,6 +55,11 @@ in the trolley, then **Bought these** adds them all to stock and takes them off 
 cost last time (its price paid, or its value), the list shows a rough total. **Copy list** and **Share** send it as
 text — to a message, Notes, Reminders. Restocking by scan takes things off by itself.
 
+Things with an Amazon product link (anything from an [Amazon import](./importing#files-ferret-recognises), or a link
+you added) get a cart button: each row's puts that many in your Amazon cart, and **Add the … from Amazon to your cart**
+puts all of them in at once, in the numbers shown. Amazon asks you to sign in if you aren't; nothing is bought until you
+check out there.
+
 When something has run out, the bell says so and it's in the [daily reminder](./reminders).
 
 ## History

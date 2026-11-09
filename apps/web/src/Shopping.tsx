@@ -5,6 +5,7 @@
  */
 import { BarSearch } from "./Nav";
 import type { ShoppingItem } from "@ferret/shared";
+import { amazonCartUrl } from "@ferret/shared/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { HelpLink } from "./HelpLink";
@@ -27,6 +28,12 @@ export function Shopping({ householdId }: { householdId: string }) {
   const ticked = items.filter((i) => inCart.has(i.id));
   const estimate = (rows: ShoppingItem[]) => rows.reduce((n, i) => n + (i.unitCents ?? 0) * countOf(i), 0);
   const priced = items.some((i) => i.unitCents != null);
+  // Things bought on Amazon, in one cart link per Amazon (almost always one), each in the number to buy.
+  const sites = [...new Set(items.flatMap((i) => (i.amazon ? [i.amazon.site] : [])))];
+  const amazonCarts = sites.map((site) => {
+    const rows = items.filter((i) => i.amazon?.site === site);
+    return { site, count: rows.length, url: amazonCartUrl(site, rows.map((i) => ({ asin: i.amazon!.asin, quantity: countOf(i) }))) };
+  });
   const bought = useMutation({
     // One at a time: each is a stock movement (and its undo) of its own.
     mutationFn: async (rows: ShoppingItem[]) => {
@@ -134,6 +141,20 @@ export function Shopping({ householdId }: { householdId: string }) {
                     {bought.isError && <p className="text-sm text-error">{bought.error.message}</p>}
                   </>
                 )}
+                {amazonCarts.map((c) => (
+                  <a
+                    key={c.site}
+                    href={c.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-soft btn-secondary btn-wrap"
+                    title="Puts them in your Amazon cart, as many as above (Amazon asks you to sign in if you aren't)"
+                  >
+                    <span className="icon-[tabler--shopping-cart-plus] size-5" />
+                    {c.count === 1 ? "Add the Amazon one to your cart" : `Add the ${c.count} from Amazon to your cart`}
+                    {amazonCarts.length > 1 ? ` (${c.site.replace(/^www\./, "")})` : ""}
+                  </a>
+                ))}
                 <div className="flex flex-wrap gap-2 border-t border-base-content/10 pt-3">
                   <button type="button" className="btn btn-soft btn-primary btn-sm" onClick={() => void copy()}>
                     <span className={`${copied ? "icon-[tabler--check]" : "icon-[tabler--copy]"} size-4`} />
@@ -205,6 +226,18 @@ function Row(props: { item: ShoppingItem; canEdit: boolean; count: number; onCou
           <span className="text-sm text-base-content/70">Buy {count}</span>
         )}
         {item.unitCents != null && <span className="w-16 text-end text-sm font-medium tabular-nums">{money(item.unitCents * count)}</span>}
+        {item.amazon && (
+          <a
+            href={amazonCartUrl(item.amazon.site, [{ asin: item.amazon.asin, quantity: count }])}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-text btn-sm btn-square"
+            aria-label={`Add ${count} ${item.name} to your Amazon cart`}
+            title="Add to Amazon cart"
+          >
+            <span className="icon-[tabler--shopping-cart-plus] size-5" />
+          </a>
+        )}
       </div>
     </li>
   );

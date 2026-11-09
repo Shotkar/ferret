@@ -32,7 +32,8 @@ everything twice.
 - **Amazon order history**: Amazon → Account → *Request your data* → *Your orders*, then use
   `Order History.csv` from the download's *Your Amazon Orders* folder (older downloads call it
   `Retail.OrderHistory.1.csv`). Each line becomes a thing with the price you paid, the order date, the order number in
-  its notes and a link to the product. Cancelled and returned orders start unticked — and since an order history is
+  its notes and a link to the product, with **Add to Amazon cart** beside it to buy it again (and on the
+  [shopping list](./stock#shopping-list) when it runs low). Cancelled and returned orders start unticked — and since an order history is
   mostly batteries and phone cases, **Leave out under $** is your friend.
 
   Ask for a newer download whenever you like and import it the same way: lines Ferret already has (by order number
