@@ -30,9 +30,14 @@ everything twice.
   a *sold on* / *sold for* column brings sold things in as [past things](./past-things), and a *warranty expires*
   column becomes a warranty.
 - **Amazon order history**: Amazon → Account → *Request your data* → *Your orders*, then use
-  `Retail.OrderHistory.1.csv` from the download. Each line becomes a thing with the price you paid, the order date, the
-  order number in its notes and a link to the product. Cancelled and returned orders start unticked — and since an
-  order history is mostly batteries and phone cases, **Leave out under $** is your friend.
+  `Order History.csv` from the download's *Your Amazon Orders* folder (older downloads call it
+  `Retail.OrderHistory.1.csv`). Each line becomes a thing with the price you paid, the order date, the order number in
+  its notes and a link to the product. Cancelled and returned orders start unticked — and since an order history is
+  mostly batteries and phone cases, **Leave out under $** is your friend.
+
+  Ask for a newer download whenever you like and import it the same way: lines Ferret already has (by order number
+  and product) start unticked as *already in Ferret*, so only the new orders come in. That includes things you've since
+  sold or deleted; undo an import under *Recent imports* and its lines can be imported again.
 
 ## Home Assistant
 

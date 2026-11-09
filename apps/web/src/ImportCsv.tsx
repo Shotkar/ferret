@@ -5,7 +5,9 @@
  */
 import { Steps } from "./Steps";
 import { type ColumnMapping, type DraftRow, detectPreset, draftRows, guessMapping, IMPORT_FIELDS, type ImportField, parseCsv } from "@ferret/shared/utils";
-import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { api } from "./lib/api";
 import { ImportStatus, useImportRun } from "./Import";
 import { usePlaces } from "./lib/places";
 import { PLACES_HREF } from "./lib/route";
@@ -45,7 +47,10 @@ export function ImportCsv({ householdId }: { householdId: string }) {
           </p>
           <ul className="list-inside list-disc space-y-1 text-sm text-base-content/70">
             <li>Numbers, Excel or Google Sheets: File → Export / Download → CSV.</li>
-            <li>Amazon: Account → Request your data → Your orders; use <code>Retail.OrderHistory.1.csv</code> from the download.</li>
+            <li>
+              Amazon: Account → Request your data → Your orders; use <code>Order History.csv</code> from the download (older ones:{" "}
+              <code>Retail.OrderHistory.1.csv</code>). A newer download later brings in only the new orders.
+            </li>
           </ul>
           <label className="btn btn-primary w-fit">
             <span className="icon-[tabler--file-upload] size-5" />
@@ -82,6 +87,21 @@ function Mapper({
   const [propertyId, setPropertyId] = useState<string | null>(null);
   const property = propertyId ?? properties[0]?.id ?? null;
   const [unticked, setUnticked] = useState<Set<number>>(() => new Set(rows.flatMap((r, i) => (r.unlikely ? [i] : []))));
+  // Lines already in Ferret from an earlier copy of the file (Amazon's order + product): unticked once known.
+  const keys = useMemo(() => rows.flatMap((r) => (r.draft?.importKey ? [r.draft.importKey] : [])), [rows]);
+  const knownQuery = useQuery({
+    queryKey: ["import-known", householdId, file.name, keys.length],
+    queryFn: () => api.importKnown(keys),
+    enabled: keys.length > 0,
+    staleTime: Infinity,
+  });
+  const known = knownQuery.data;
+  const isKnown = (r: DraftRow) => Boolean(known && r.draft?.importKey && known.has(r.draft.importKey));
+  const knownCount = known ? rows.filter(isKnown).length : 0;
+  useEffect(() => {
+    if (!known?.size) return;
+    setUnticked((prev) => new Set([...prev, ...rows.flatMap((r, i) => (r.draft?.importKey && known.has(r.draft.importKey) ? [i] : []))]));
+  }, [known]); // eslint-disable-line react-hooks/exhaustive-deps
   const [filter, setFilter] = useState("");
   const [under, setUnder] = useState("");
   const { run, progress } = useImportRun(householdId);
@@ -225,13 +245,27 @@ function Mapper({
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn btn-text btn-sm" onClick={() => setUnticked(new Set())}>
+            <button
+              type="button"
+              className="btn btn-text btn-sm"
+              onClick={() => setUnticked(new Set(rows.flatMap((r, i) => (isKnown(r) ? [i] : []))))}
+              title={knownCount ? "Everything not already in Ferret" : undefined}
+            >
               Tick all
             </button>
             <button type="button" className="btn btn-text btn-sm" onClick={() => setUnticked(new Set(rows.map((_, i) => i)))}>
               Untick all
             </button>
           </div>
+          {knownQuery.isLoading && <p className="text-sm text-base-content/70">Checking what's already in Ferret…</p>}
+          {knownCount > 0 && (
+            <div className="alert alert-soft alert-info flex items-start gap-2 text-sm">
+              <span className="icon-[tabler--copy-check] size-5 shrink-0" />
+              <span>
+                {knownCount} {knownCount === 1 ? "line is" : "lines are"} already in Ferret from an earlier import of this file, so they're left out.
+              </span>
+            </div>
+          )}
           <ul className="divide-y divide-base-content/10">
             {visible.slice(0, SHOWN).map(({ r, i }) => (
               <li key={i}>
@@ -245,6 +279,7 @@ function Mapper({
                         r.draft?.place,
                         r.draft?.purchasePriceCents != null ? money(r.draft.purchasePriceCents) : null,
                         r.draft?.purchaseDate,
+                        isKnown(r) ? "already in Ferret" : null,
                         r.unlikely ? "cancelled or returned" : null,
                       ]
                         .filter(Boolean)
@@ -262,7 +297,7 @@ function Mapper({
             <span className="text-sm text-base-content/70">
               {chosen.length} of {rows.length} ticked
             </span>
-            <button type="button" className="btn btn-primary" disabled={!chosen.length || (needsProperty && !property)} onClick={start}>
+            <button type="button" className="btn btn-primary" disabled={!chosen.length || (needsProperty && !property) || knownQuery.isLoading} onClick={start}>
               Import {chosen.length} {chosen.length === 1 ? "thing" : "things"}
             </button>
           </div>

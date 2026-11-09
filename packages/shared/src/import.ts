@@ -197,6 +197,8 @@ export interface ImportDraft {
   warrantyEnds?: string;
   soldOn?: string;
   soldCents?: number;
+  /** What the file says this line is, so a newer copy of the file skips it (Amazon: "amazon:<order>:<ASIN>:<n>"). */
+  importKey?: string;
 }
 
 export interface DraftRow {
@@ -215,8 +217,23 @@ const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).trim
 export function draftRows(table: string[][], mapping: ColumnMapping): DraftRow[] {
   const [headers = [], ...body] = table;
   const preset = detectPreset(headers);
-  const statusCol = preset === "amazon" ? headers.findIndex((h) => key(h) === "orderstatus") : -1;
+  const col = (k: string) => (preset === "amazon" ? headers.findIndex((h) => key(h) === k) : -1);
+  const statusCol = col("orderstatus");
+  // Amazon's lines: the order and the product, whatever the columns are mapped to. The same product can be on several
+  // lines of one order (shipped in parts) — numbered in the file's order, so a newer export numbers them the same.
+  const [orderCol, asinCol] = [col("orderid"), col("asin")];
+  const seen = new Map<string, number>();
+  const lineKey = (cells: string[]) => {
+    const order = (cells[orderCol] ?? "").trim();
+    const asin = (cells[asinCol] ?? "").trim().toUpperCase();
+    if (orderCol < 0 || asinCol < 0 || !order || !/^[A-Z0-9]{10}$/.test(asin)) return undefined;
+    const base = `amazon:${order}:${asin}`;
+    const n = (seen.get(base) ?? 0) + 1;
+    seen.set(base, n);
+    return clip(`${base}:${n}`, 200);
+  };
   return body.map((cells, i) => {
+    const importKey = lineKey(cells);
     const problems: string[] = [];
     const d: Partial<ImportDraft> = {};
     const notes: string[] = [];
@@ -307,6 +324,7 @@ export function draftRows(table: string[][], mapping: ColumnMapping): DraftRow[]
     if (total != null && d.purchasePriceCents == null) d.purchasePriceCents = Math.round(total / Math.max(1, d.quantity ?? 1));
     if (preset === "amazon") notes.unshift("Bought on Amazon");
     if (notes.length) d.notes = clip(notes.join("\n"), 10000);
+    if (importKey) d.importKey = importKey;
     if (d.soldCents != null && !d.soldOn) problems.push("Sold for a price but no date — kept as still yours");
     const unlikely = statusCol >= 0 && /cancel|return/i.test(cells[statusCol] ?? "");
     if (!d.name) return { line: i + 2, draft: null, problems: ["No name"], unlikely };

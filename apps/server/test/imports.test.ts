@@ -69,8 +69,23 @@ describe("reading a spreadsheet", () => {
     });
     expect(charger!.draft!.purchaseDate).toMatch(/^2024-03-0[45]$/);
     expect(cancelled!.unlikely).toBe(true);
+    expect([charger!.draft!.importKey, cancelled!.draft!.importKey]).toEqual(["amazon:112-1:B0ABCDEFGH:1", "amazon:112-2:B0ZZZZZZZZ:1"]);
     // Every guess is a field the screen can show.
     for (const f of guessMapping(parseCsv(amazon)[0]!)) if (f) expect(IMPORT_FIELDS[f]).toBeTruthy();
+  });
+
+  it("keys each Amazon line by its order and product, numbering a product shipped in parts", () => {
+    // Amazon's newer export ("Order History.csv"): the same columns, more of them.
+    const csv =
+      'ASIN,"Order Date","Order ID","Original Quantity","Product Name","Unit Price","Order Status","Ship Date"\n' +
+      "b0abcdefgh,2022-01-10T10:00:00Z,111-1,1,Mug,4.99,Closed,2022-01-12T00:00:00Z\n" +
+      "B0ABCDEFGH,2022-01-10T10:00:00Z,111-1,1,Mug,4.99,Closed,2022-01-15T00:00:00Z\n" +
+      "B0ABCDEFGH,2023-02-01T10:00:00Z,222-2,1,Mug,5.49,Closed,2023-02-02T00:00:00Z\n" +
+      "Not an ASIN,2023-02-01T10:00:00Z,222-2,1,Gift card,25,Closed,\n";
+    expect(detectPreset(parseCsv(csv)[0]!)).toBe("amazon");
+    expect(drafts(csv).map((r) => r.draft!.importKey)).toEqual(["amazon:111-1:B0ABCDEFGH:1", "amazon:111-1:B0ABCDEFGH:2", "amazon:222-2:B0ABCDEFGH:1", undefined]);
+    // Any other spreadsheet has no key.
+    expect(drafts("Name,Order ID,ASIN\nLamp,1,B0ABCDEFGH\n")[0]!.draft!.importKey).toBeUndefined();
   });
 
   it("splits place paths only where they're meant to be split", () => {
@@ -132,6 +147,37 @@ describe("importing", () => {
     expect((await json<{ data: { name: string }[] }>(ann.as("/api/v1/trash/items"))).data.map((i) => i.name).sort()).toEqual(["Drill", "Hammer", "Mixer", "Saw"]);
     expect((await send(ann, "POST", `/api/v1/import/${result.batchId}/undo`)).status).toBe(409);
     expect((await send(ann, "POST", "/api/v1/import", { source: "csv", name: "x", batchId: result.batchId, rows: [{ name: "Late" }] })).status).toBe(409);
+  });
+
+  it("skips the lines of a file it already imported: on a newer copy, in the preview, after deleting — not after undoing", async () => {
+    const { user } = await setup();
+    const ann = await user("ann");
+    const bob = await user("bob");
+    type Result = { batchId: string; created: number; skipped: { index: number; reason: string }[] };
+    const row = (n: number) => ({ name: `Thing ${n}`, importKey: `amazon:111-${n}:B0ABCDEFGH:1` });
+    const first = await json<Result>(send(ann, "POST", "/api/v1/import", { source: "csv", name: "Order History.csv", rows: [row(1), row(2), row(3)] }));
+    expect(first.created).toBe(3);
+
+    // A newer export: the old lines are known, and skipped if sent anyway (also twice in one file).
+    const known = (u: User, keys: string[]) => json<{ known: string[] }>(send(u, "POST", "/api/v1/import/known", { keys }));
+    expect((await known(ann, [row(1), row(2), row(4)].map((r) => r.importKey))).known.sort()).toEqual([row(1).importKey, row(2).importKey]);
+    const second = await json<Result>(send(ann, "POST", "/api/v1/import", { source: "csv", name: "Order History.csv", rows: [row(1), row(4), row(4)] }));
+    expect(second).toMatchObject({ created: 1, skipped: [{ index: 0, reason: "Already in Ferret" }, { index: 2, reason: "Already in Ferret" }] });
+
+    // Gone, or deleted on purpose, it stays known; another household knows nothing of it.
+    const items = await json<{ data: { id: string; name: string }[] }>(ann.as("/api/v1/items?limit=50"));
+    const id = (name: string) => items.data.find((i) => i.name === name)!.id;
+    expect((await send(ann, "PATCH", `/api/v1/items/${id("Thing 1")}`, { disposition: "sold", disposedOn: "2024-01-01" })).status).toBe(200);
+    expect((await send(ann, "DELETE", `/api/v1/items/${id("Thing 2")}`)).status).toBe(204);
+    expect((await json<{ data: unknown[] }>(ann.as("/api/v1/items?limit=50"))).data).toHaveLength(2);
+    expect((await known(ann, [row(1).importKey, row(2).importKey])).known).toHaveLength(2);
+    expect((await known(bob, [row(1).importKey])).known).toEqual([]);
+    expect((await json<Result>(send(bob, "POST", "/api/v1/import", { source: "csv", name: "x.csv", rows: [row(1)] }))).created).toBe(1);
+
+    // Undone, an import can be done again.
+    await send(ann, "POST", `/api/v1/import/${first.batchId}/undo`);
+    expect((await known(ann, [row(1).importKey, row(2).importKey, row(3).importKey, row(4).importKey])).known).toEqual([row(4).importKey]);
+    expect((await json<Result>(send(ann, "POST", "/api/v1/import", { source: "csv", name: "Order History.csv", rows: [row(1), row(2), row(3)] }))).created).toBe(3);
   });
 
   it("keeps imports to the household, and away from viewers", async () => {

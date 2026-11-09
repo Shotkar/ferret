@@ -199,6 +199,11 @@ export const item = sqliteTable(
     importBatchId: text("import_batch_id").references((): AnySQLiteColumn => importBatch.id, { onDelete: "set null" }),
     /** Home Assistant's device id, for things imported from it: the same device isn't imported twice. */
     haDeviceId: text("ha_device_id"),
+    /**
+     * What a spreadsheet said this line was ("amazon:<order>:<ASIN>:<n>", n for the same product shipped twice in one
+     * order), so importing a newer copy of the file skips what's already here (lib/imports.ts).
+     */
+    importKey: text("import_key"),
     /** What Home Assistant said about it when last imported — a re-import offers only what HA changed since. */
     haSnapshot: text("ha_snapshot", { mode: "json" }).$type<HaSnapshot>(),
     /** Last time the item was embedded for semantic search (null = never; stale if older than updatedAt). */
@@ -211,6 +216,7 @@ export const item = sqliteTable(
     index("item_barcode_idx").on(t.householdId, t.barcode),
     index("item_category_idx").on(t.householdId, t.categoryId),
     index("item_ha_device_idx").on(t.householdId, t.haDeviceId),
+    index("item_import_key_idx").on(t.householdId, t.importKey),
   ],
 );
 

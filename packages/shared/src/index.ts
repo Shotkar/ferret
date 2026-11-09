@@ -1217,6 +1217,8 @@ export const importRow = z.object({
   soldCents: cents,
   /** Home Assistant's device id — so the same device isn't imported twice. */
   haDeviceId: z.string().min(1).max(64).optional().nullable(),
+  /** What the file says this line is (draftRows: "amazon:<order>:<ASIN>:<n>") — a newer copy of the file skips it. */
+  importKey: z.string().min(1).max(200).optional().nullable(),
   /** Home Assistant's area: the place made (or chosen) for it. Takes the place of `place`. */
   haAreaId: z.string().min(1).max(64).optional().nullable(),
 });
@@ -1235,6 +1237,10 @@ export const importPlace = z
   })
   .refine((p) => p.path || p.locationId, { message: "A place needs a path or a locationId" });
 export type ImportPlace = z.infer<typeof importPlace>;
+
+/** A file's lines (importKey) to check before importing: which are already in Ferret. */
+export const importKnownInput = z.object({ keys: z.array(z.string().min(1).max(200)).max(5000) });
+export type ImportKnownInput = z.infer<typeof importKnownInput>;
 
 export const importInput = z.object({
   source: z.enum(importSources),

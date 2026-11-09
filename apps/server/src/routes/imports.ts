@@ -3,12 +3,12 @@
  * Anyone who can edit can import (and undo an import). Reading Home Assistant makes the server connect to an address
  * someone typed, usually on the LAN, so that's for the household's owner and admins, signed in (not an API key).
  */
-import { homeAssistantApply, homeAssistantConnect, importInput } from "@ferret/shared";
+import { homeAssistantApply, homeAssistantConnect, importInput, importKnownInput } from "@ferret/shared";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { type AppEnv, body, callerOf, requireHousehold, requireSession, requireUser, requireWriter } from "../lib/context";
 import { homeAssistantDevices } from "../lib/home-assistant";
-import { applyHomeAssistant, importItems, listImports, undoImport } from "../lib/imports";
+import { applyHomeAssistant, importItems, knownImportKeys, listImports, undoImport } from "../lib/imports";
 import { HomeAssistantError } from "../ports";
 
 export const imports = new Hono<AppEnv>();
@@ -17,6 +17,12 @@ imports.use(requireUser, requireHousehold);
 imports.get("/", async (c) => c.json({ data: await listImports(callerOf(c)) }));
 
 imports.post("/", requireWriter, async (c) => c.json(await importItems(callerOf(c), await body(c.req.raw, importInput)), 201));
+
+/** Before importing a file: which of its lines are already here, so they start unticked. Only looks. */
+imports.post("/known", async (c) => {
+  const { keys } = await body(c.req.raw, importKnownInput);
+  return c.json({ known: [...(await knownImportKeys(callerOf(c), keys))] });
+});
 
 imports.post("/:id/undo", requireWriter, async (c) => c.json(await undoImport(callerOf(c), c.req.param("id"))));
 

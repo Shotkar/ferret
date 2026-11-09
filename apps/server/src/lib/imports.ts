@@ -6,12 +6,13 @@
  */
 import { itemsRoom } from "./plan";
 import type { HomeAssistantApply, ImportBatchSummary, ImportInput, ImportResult, ImportRow, ItemPatch } from "@ferret/shared";
-import { and, count, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { category, importBatch, item, location, property, user, warranty } from "../db/schema";
 import { setItemTags } from "./catalog";
 import { type Caller, deleteItem, itemChanged, logActivity, notFound, updateItem } from "./inventory";
 import { rememberBarcode } from "./products";
+import { inList } from "./sql";
 
 /** "Main › Kitchen", "Garage / Shelf 2", "Basement > Storage" — `/` and `>` only between spaces ("A/V closet" is one name). */
 export const splitPath = (path: string) =>
@@ -70,6 +71,20 @@ async function batchFor(v: Caller, input: ImportInput) {
   return b!.id;
 }
 
+/**
+ * Which of these lines (importKey) are already in Ferret: its things, gone ones too, and ones in Recently deleted —
+ * deleted on purpose — unless their import was undone (undoing an import to do it again brings them back).
+ */
+export async function knownImportKeys(v: Caller, keys: string[]) {
+  if (!keys.length) return new Set<string>();
+  const rows = await v.db
+    .select({ k: item.importKey })
+    .from(item)
+    .leftJoin(importBatch, eq(importBatch.id, item.importBatchId))
+    .where(and(eq(item.householdId, v.householdId), inList(item.importKey, keys), or(isNull(item.deletedAt), isNull(importBatch.undoneAt))));
+  return new Set(rows.map((r) => r.k!));
+}
+
 export async function importItems(v: Caller, input: ImportInput): Promise<ImportResult> {
   let propertyRow: { id: string; name: string } | undefined;
   if (input.propertyId) {
@@ -117,6 +132,7 @@ export async function importItems(v: Caller, input: ImportInput): Promise<Import
         ).map((r) => r.s)
       : [],
   );
+  const keysHere = await knownImportKeys(v, input.rows.map((r) => r.importKey).filter((x): x is string => Boolean(x)));
 
   const result: ImportResult = { batchId, created: 0, skipped: [], placesCreated: 0, categoriesCreated: 0 };
   const placeCache = new Map<string, string | null>();
@@ -204,6 +220,10 @@ export async function importItems(v: Caller, input: ImportInput): Promise<Import
         result.skipped.push({ index, reason: "Already in Ferret" });
         continue;
       }
+      if (row.importKey && keysHere.has(row.importKey)) {
+        result.skipped.push({ index, reason: "Already in Ferret" });
+        continue;
+      }
       const serial = row.serialNumber?.trim().toLowerCase();
       if (serial && serialsHere.has(serial)) {
         result.skipped.push({ index, reason: `Already in Ferret (serial number ${row.serialNumber})` });
@@ -233,6 +253,7 @@ export async function importItems(v: Caller, input: ImportInput): Promise<Import
       await rememberBarcode(v, created!);
       await itemChanged(v, created!.id);
       if (row.haDeviceId) haHere.add(row.haDeviceId);
+      if (row.importKey) keysHere.add(row.importKey);
       if (serial) serialsHere.add(serial);
       result.created++;
       if (room !== null) room--;

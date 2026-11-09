@@ -383,6 +383,15 @@ export const api = {
 
   imports: () => request<{ data: ImportBatchSummary[] }>("/import"),
   importRows: (input: ImportInput) => request<ImportResult>("/import", { method: "POST", body: JSON.stringify(input) }),
+  /** Which of a file's lines are already in Ferret (asked 5,000 at a time). */
+  importKnown: async (keys: string[]) => {
+    const known: string[] = [];
+    for (let i = 0; i < keys.length; i += 5000) {
+      const part = await request<{ known: string[] }>("/import/known", { method: "POST", body: JSON.stringify({ keys: keys.slice(i, i + 5000) }) });
+      known.push(...part.known);
+    }
+    return new Set(known);
+  },
   undoImport: (id: string) => request<{ removed: number }>(`/import/${id}/undo`, { method: "POST" }),
   homeAssistantDevices: (input: HomeAssistantConnect) =>
     request<HaRegistryView>("/import/home-assistant/devices", { method: "POST", body: JSON.stringify(input) }),
