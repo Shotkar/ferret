@@ -1,7 +1,9 @@
 /**
  * Say it instead of typing it (AI-7; server: POST /transcribe → the Speech port, a Whisper server): tap to record,
  * tap again (or wait 10 s) to stop; the words come back into the field. Shown only when the server has speech to text.
- * The recording goes to this Ferret server and its speech model, and isn't kept.
+ * The recording goes to this Ferret server and its speech model, and isn't kept. It's sent as a small 16 kHz mono WAV
+ * (decoded here from whatever the browser recorded — webm in Chrome, mp4 in Safari): every Whisper server reads WAV,
+ * and some (vLLM's) read neither webm nor mp4.
  */
 import { useEffect, useRef, useState } from "react";
 import { api } from "./lib/api";
@@ -35,7 +37,8 @@ export function SpeakButton({ onText, label = "Say it" }: { onText: (text: strin
         if (timer.current) clearTimeout(timer.current);
         setState("reading");
         try {
-          const { text } = await api.transcribe(new Blob(chunks, { type: rec.mimeType || mimeType || "audio/webm" }));
+          const recorded = new Blob(chunks, { type: rec.mimeType || mimeType || "audio/webm" });
+          const { text } = await api.transcribe(await toWav(recorded).catch(() => recorded));
           if (text) onText(text.replace(/[.。!?]+$/, ""));
           else setError("Didn't catch that — try again");
         } catch (err) {
@@ -76,4 +79,33 @@ export function SpeakButton({ onText, label = "Say it" }: { onText: (text: strin
       )}
     </span>
   );
+}
+
+/** The recording as 16 kHz mono 16-bit WAV — what speech models listen at (10 s ≈ 320 KB). */
+async function toWav(blob: Blob): Promise<Blob> {
+  const rate = 16_000;
+  const decoded = await new AudioContext().decodeAudioData(await blob.arrayBuffer());
+  const offline = new OfflineAudioContext(1, Math.max(1, Math.ceil(decoded.duration * rate)), rate);
+  const source = offline.createBufferSource();
+  source.buffer = decoded;
+  source.connect(offline.destination);
+  source.start();
+  const samples = (await offline.startRendering()).getChannelData(0);
+  const out = new DataView(new ArrayBuffer(44 + samples.length * 2));
+  const text = (at: number, s: string) => [...s].forEach((c, i) => out.setUint8(at + i, c.charCodeAt(0)));
+  text(0, "RIFF");
+  out.setUint32(4, 36 + samples.length * 2, true);
+  text(8, "WAVE");
+  text(12, "fmt ");
+  out.setUint32(16, 16, true);
+  out.setUint16(20, 1, true); // PCM
+  out.setUint16(22, 1, true); // mono
+  out.setUint32(24, rate, true);
+  out.setUint32(28, rate * 2, true);
+  out.setUint16(32, 2, true);
+  out.setUint16(34, 16, true);
+  text(36, "data");
+  out.setUint32(40, samples.length * 2, true);
+  samples.forEach((x, i) => out.setInt16(44 + i * 2, Math.max(-1, Math.min(1, x)) * 0x7fff, true));
+  return new Blob([out], { type: "audio/wav" });
 }
