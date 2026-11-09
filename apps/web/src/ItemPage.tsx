@@ -30,7 +30,7 @@ import { ORIGIN_HOW } from "./lib/origin";
 import { BoxContents, LabelBadge } from "./Boxes";
 import { flattenCategories, useCategories } from "./Catalog";
 import { mergeFields, useTemplates } from "./Templates";
-import { money } from "./Overview";
+import { money } from "./lib/money";
 import { CollectionBanner } from "./Collections";
 import { ItemMaintenance, maintenanceKey } from "./Maintenance";
 import { ClaimDialog } from "./Claims";

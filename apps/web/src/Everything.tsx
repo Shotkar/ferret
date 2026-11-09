@@ -12,7 +12,8 @@ import { CategoryPicker, flattenCategories, useCategories, useTags } from "./Cat
 import { PlacePicker } from "./Combobox";
 import { ItemRow } from "./ItemRow";
 import { DialogActions, Modal } from "./Modal";
-import { MISSING_LABELS, money } from "./Overview";
+import { MISSING_LABELS } from "./Overview";
+import { money } from "./lib/money";
 import { api } from "./lib/api";
 import { useCanEdit } from "./lib/auth";
 import { ORIGIN_FILTER, itemOriginList } from "./lib/origin";

@@ -17,7 +17,7 @@ describe("summary for dashboards", () => {
     const res = await ann.as("/api/v1/summary", { headers: { Cookie: "", "X-Api-Key": key } });
     expect(res.status).toBe(200);
     const summary = (await res.json()) as Record<string, unknown>;
-    expect(summary).toEqual({ household: "ann home", things: 3, valueCents: 10_000, needsAttention: expect.any(Number), urgent: expect.any(Number), toBuy: 1 });
+    expect(summary).toEqual({ household: "ann home", things: 3, valueCents: 10_000, currency: "USD", needsAttention: expect.any(Number), urgent: expect.any(Number), toBuy: 1 });
     // Counts only: nothing about what the things are.
     expect(JSON.stringify(summary)).not.toMatch(/Drill|Batteries/);
 

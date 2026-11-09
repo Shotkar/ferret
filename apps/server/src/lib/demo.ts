@@ -120,7 +120,7 @@ async function plantHousehold(p: DemoParts, demoId: string) {
   await db.insert(member).values({ id: crypto.randomUUID(), organizationId: householdId, userId: demoId, role: "owner", createdAt: now });
   await setHouseholdTimeZone(db, householdId, DEMO_HOUSEHOLD.timeZone);
   const jobs = onceEach(p.deps.jobs);
-  const v: Caller = { deps: { ...p.deps, jobs: jobs.queue }, db, householdId, userId: demoId, timeZone: DEMO_HOUSEHOLD.timeZone, via: "web" };
+  const v: Caller = { deps: { ...p.deps, jobs: jobs.queue }, db, householdId, userId: demoId, timeZone: DEMO_HOUSEHOLD.timeZone, currency: "USD", via: "web" };
   const on = today(now, v.timeZone);
 
   const home = await createProperty(v, propertyInput.parse(DEMO_PROPERTY));

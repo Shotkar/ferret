@@ -43,7 +43,7 @@ import { openLoansFor } from "./loans";
 import { RECALL_CHECK_JOB } from "../jobs/recalls";
 import { fullTextSearch, refreshFullText } from "./fulltext";
 import { SEARCH_PROFILES, fuse, semanticSearch } from "./search";
-import { startOfDayIn, todayFor } from "./household-time";
+import { moneyText, startOfDayIn, todayFor } from "./household-time";
 import { inList } from "./sql";
 
 /** Who is acting, where, and through which client (recorded in the activity log). */
@@ -54,6 +54,8 @@ export interface Caller {
   userId: string;
   /** The household's time zone: what "today" is (lib/household-time.ts). */
   timeZone: string;
+  /** The household's currency (ISO 4217): how amounts are written in what the server says (formatMoney). */
+  currency: string;
   via: "web" | "api" | "mcp";
   /** The API key's name, when it came with one (recorded as where things it adds came from). */
   keyName?: string | null;
@@ -761,7 +763,6 @@ export async function updateItem(v: Caller, id: string, input: ItemPatch, summar
   return getItem(v, row.id);
 }
 
-const dollars = (c: number | null) => (c == null ? null : `$${(c / 100).toFixed(2)}`);
 const TEXT_FIELDS = [
   ["brand", "brand"],
   ["model", "model"],
@@ -804,6 +805,7 @@ async function describeChanges(
     if (a === b) continue;
     out.push(a == null ? `${label} set to ${b}` : b == null ? `${label} removed` : `${label} ${a} → ${b}`);
   }
+  const dollars = (c: number | null) => (c == null ? null : moneyText(v, c, { exact: true }));
   for (const [k, label] of [["purchasePriceCents", "price paid"], ["valueCents", "value"]] as const) {
     const [a, b] = [was[k] ?? null, now[k] ?? null];
     if (a !== b) out.push(a == null ? `${label} set to ${dollars(b)}` : b == null ? `${label} removed` : `${label} ${dollars(a)} → ${dollars(b)}`);

@@ -11,7 +11,7 @@ import { api } from "./lib/api";
 import { ImportStatus, useImportRun } from "./Import";
 import { usePlaces } from "./lib/places";
 import { PLACES_HREF } from "./lib/route";
-import { money } from "./Overview";
+import { money, currencySymbol, toCents } from "./lib/money";
 
 const PRESET_NAMES = { ferret: "Ferret's own export", amazon: "Amazon order history" } as const;
 const SHOWN = 300;
@@ -111,7 +111,7 @@ function Mapper({
   const [under, setUnder] = useState("");
   const { run, progress } = useImportRun(householdId);
 
-  const below = Number.parseFloat(under) > 0 ? Math.round(Number.parseFloat(under) * 100) : null;
+  const below = (toCents(under) ?? 0) > 0 ? toCents(under) : null;
   const ticked = (r: DraftRow, i: number) => Boolean(r.draft) && !unticked.has(i) && !(below != null && (r.draft!.purchasePriceCents ?? r.draft!.valueCents ?? 0) < below);
   const chosen = rows.flatMap((r, i) => (ticked(r, i) ? [{ i, r }] : []));
   const needsProperty = chosen.some(({ r }) => r.draft!.place);
@@ -244,7 +244,7 @@ function Mapper({
             <input className="input min-w-0 flex-1 basis-48" type="search" placeholder="Find a row" value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Find a row" />
             {mapping.some((f) => f === "purchasePrice" || f === "value" || f === "purchaseTotal") && (
               <label className="input w-full sm:w-52">
-                <span className="my-auto whitespace-nowrap text-sm text-base-content/70">Leave out under $</span>
+                <span className="my-auto whitespace-nowrap text-sm text-base-content/70">Leave out under {currencySymbol()}</span>
                 <input className="grow" inputMode="decimal" value={under} onChange={(e) => setUnder(e.target.value)} placeholder="0" aria-label="Leave out things that cost less than" />
               </label>
             )}

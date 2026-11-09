@@ -102,7 +102,7 @@ describe("responses", () => {
 
 describe("the spreadsheet export", () => {
   it("defuses cells a spreadsheet would run, tab and carriage return included", () => {
-    const csv = toCsv([{ name: "\t=1+1", brand: "\r=cmd", tags: [] } as never]);
+    const csv = toCsv([{ name: "\t=1+1", brand: "\r=cmd", tags: [] } as never], { currency: "USD" });
     expect(csv).not.toMatch(/(^|,)"?[\t\r]=/m);
   });
 });

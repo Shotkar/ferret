@@ -17,10 +17,10 @@ import { ProviderPicker } from "./Providers";
 import { itemHref, PROVIDERS_HREF } from "./lib/route";
 import { DialogActions, Modal } from "./Modal";
 import { HelpLink } from "./HelpLink";
-import { money } from "./Overview";
 import { Mascot } from "./Mascot";
 import { MaintenanceCalendar, thisMonth } from "./MaintenanceCalendar";
 import { navigateTo } from "./lib/navigate";
+import { money, currencySymbol, toCents } from "./lib/money";
 
 export const maintenanceKey = (householdId: string) => ["maintenance", householdId];
 
@@ -301,11 +301,10 @@ function DoneModal({ task, householdId, onClose }: { task: MaintenanceTask; hous
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const cost = Number.parseFloat(String(f.get("cost") || "").replace(",", "."));
     done.mutate({
       doneOn: String(f.get("doneOn")),
       note: String(f.get("note") || "").trim() || null,
-      costCents: Number.isFinite(cost) ? Math.round(cost * 100) : null,
+      costCents: toCents(f.get("cost")),
       providerId: doneBy,
       usePart,
       reading: task.usage && f.get("reading") ? Number(f.get("reading")) : undefined,
@@ -338,7 +337,7 @@ function DoneModal({ task, householdId, onClose }: { task: MaintenanceTask; hous
               Cost
             </label>
             <div className="input">
-              <span className="my-auto me-1 text-base-content/70">$</span>
+              <span className="my-auto me-1 text-base-content/70">{currencySymbol()}</span>
               <input id="done-cost" name="cost" className="grow" inputMode="decimal" placeholder="optional" />
             </div>
           </div>

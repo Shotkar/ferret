@@ -132,12 +132,28 @@ export function guessMapping(headers: string[]): ColumnMapping {
   });
 }
 
-/** "$1,234.56", "1234.5", "1.234,56 €" → cents; null if it isn't money. */
-export function parseMoney(raw: string): number | null {
+/**
+ * "$1,234.56", "1234.5", "1.234,56 €", "1 234,56", "CHF 1'234.50", "£12", "¥1500", "12,5" → the amount ×100; null if it
+ * isn't money. Whichever of "." and "," comes last with one to three digits after it is the decimal point — unless it
+ * appears more than once ("1.234.567") or has exactly three digits and `decimal` (the reader's own) says otherwise.
+ */
+export function parseMoney(raw: string, decimal: "." | "," = "."): number | null {
   let s = raw.trim().replace(/[^\d.,-]/g, "");
   if (!s || s === "-") return null;
-  if (/,\d{1,2}$/.test(s) && !/\.\d{1,2}$/.test(s)) s = s.replace(/\./g, "").replace(",", ".");
-  else s = s.replace(/,/g, "");
+  const lastDot = s.lastIndexOf(".");
+  const lastComma = s.lastIndexOf(",");
+  const mark = lastDot > lastComma ? "." : lastComma > lastDot ? "," : null;
+  let point: "." | "," | null = null;
+  if (mark) {
+    const after = s.length - s.lastIndexOf(mark) - 1;
+    const once = s.indexOf(mark) === s.lastIndexOf(mark);
+    const other = mark === "." ? "," : ".";
+    // "1,234.5" / "1.234,56": both kinds — the last one is the point. One kind once: a point unless it reads as
+    // thousands (three digits after it, and this reader writes the other mark as the point).
+    if (s.includes(other)) point = mark;
+    else if (once && after >= 1 && after <= 3 && !(after === 3 && decimal !== mark)) point = mark;
+  }
+  s = point ? s.replace(point === "." ? /,/g : /\./g, "").replace(point, ".") : s.replace(/[.,]/g, "");
   const n = Number(s);
   return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : null;
 }

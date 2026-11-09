@@ -21,7 +21,7 @@ import { HouseholdContext, useHousehold } from "./lib/household";
 import { type Choice, ItemPicker } from "./Combobox";
 import { Outlet, useSearch } from "@tanstack/react-router";
 import { Breadcrumbs, PlaceTiles, PropertyCards, PropertyHeader } from "./Browse";
-import { MISSING_LABELS, money, OverviewSections } from "./Overview";
+import { MISSING_LABELS, OverviewSections } from "./Overview";
 import { CategoryTiles, categoryIcon, flattenCategories, useCategories } from "./Catalog";
 import { LabelBadge } from "./Boxes";
 import { AttentionBell } from "./AttentionBell";
@@ -42,6 +42,7 @@ import { ItemRow } from "./ItemRow";
 import { navigateTo } from "./lib/navigate";
 import { HOUSEHOLD_NAME_MAX, NewHouseholdDialog, createHousehold } from "./NewHousehold";
 import { Mascot } from "./Mascot";
+import { money, rememberedCurrency, toCents, showAmountsIn } from "./lib/money";
 
 /** The root: a splash on the first load, then the route's screen (router.tsx). */
 export function App() {
@@ -798,12 +799,17 @@ function Screens({ householdName, householdId }: { householdName: string; househ
   useCaptureSync(householdId);
   const [folded, toggleSidebar] = useSidebarFolded();
   useSearchHotkeys(["home", "property", "place", "items", "category", "tag"].includes(route));
+  // Amounts in the household's currency: what this device last saw until its settings come (a head start offline).
+  const settings = useQuery({ queryKey: ["household-settings", householdId], queryFn: api.householdSettings, staleTime: 5 * 60_000 });
+  const currency = settings.data?.currency ?? rememberedCurrency(householdId);
+  showAmountsIn(currency, householdId);
   return (
     // Big screens: the sidebar on the left (folded to icons, or open), each screen beside it.
     <HouseholdContext value={{ householdId, householdName }}>
       <div className={`transition-[padding] duration-200 motion-reduce:transition-none print:ps-0 ${folded ? "xl:ps-16" : "xl:ps-64"}`}>
         <Sidebar route={route} householdName={householdName} householdId={householdId} folded={folded} onToggle={toggleSidebar} />
-        <Outlet />
+        {/* A different currency redraws the screen, so every amount on it changes. */}
+        <Outlet key={currency} />
         <TabBar route={route} />
       </div>
     </HouseholdContext>
@@ -1023,12 +1029,11 @@ export function Home({ householdName, householdId, view }: { householdName: stri
     e.preventDefault();
     const form = e.currentTarget;
     const data = new FormData(form);
-    const value = Number.parseFloat(String(data.get("value") || ""));
     create.mutate(
       {
         name: String(data.get("name")).trim(),
         brand: String(data.get("brand") || "").trim() || null,
-        valueCents: Number.isFinite(value) ? Math.round(value * 100) : null,
+        valueCents: toCents(data.get("value")),
         isContainer: data.get("isContainer") === "on",
         // Adding while looking at a place puts it there.
         locationId: locationId ?? null,

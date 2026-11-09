@@ -9,6 +9,7 @@ import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { category, coverageLimit, item, location, property } from "../db/schema";
 import { categoryDescendants, categoryInfo, findTag } from "./catalog";
 import { type Caller, type ItemFilter, descendants, itemScope, logActivity, notFound } from "./inventory";
+import { moneyText } from "./household-time";
 
 type Row = typeof coverageLimit.$inferSelect;
 
@@ -94,12 +95,11 @@ const fields = (input: CoverageInput) => ({
   note: input.note ?? null,
 });
 
-const dollars = (c: number) => `$${(c / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
 export async function addCoverage(v: Caller, input: CoverageInput) {
   await checkTargets(v, input);
   const [row] = await v.db.insert(coverageLimit).values({ householdId: v.householdId, ...fields(input) }).returning();
-  await logActivity(v, "coverage.create", row!.id, `Added coverage: ${row!.label} (${dollars(row!.limitCents)})`);
+  await logActivity(v, "coverage.create", row!.id, `Added coverage: ${row!.label} (${moneyText(v, row!.limitCents, { whole: true })})`);
   return (await coverageChecks(v)).find((c) => c.id === row!.id)!;
 }
 

@@ -12,7 +12,7 @@ import { useState } from "react";
 import { api } from "./lib/api";
 import { authClient } from "./lib/auth";
 import { usePlaces } from "./lib/places";
-import { money } from "./Overview";
+import { money } from "./lib/money";
 import { PROPERTY_TYPES } from "./Places";
 import { HelpLink } from "./HelpLink";
 import { ShareButton } from "./Shares";

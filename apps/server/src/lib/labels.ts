@@ -11,7 +11,7 @@ import { HTTPException } from "hono/http-exception";
 import { item, label, location } from "../db/schema";
 import { membership } from "./context";
 import { type Caller, itemChanged, itemScope, locationIn, locationPaths, logActivity, notFound } from "./inventory";
-import { householdTimeZone } from "./household-time";
+import { householdLocale } from "./household-time";
 
 const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const CODE_LENGTH = 6;
@@ -119,12 +119,12 @@ async function describe(v: Caller, row: typeof label.$inferSelect): Promise<Labe
  * What a scanned code opens, for someone signed in — in whichever of their
  * households it belongs to (the app switches to it). Not theirs: not found.
  */
-export async function resolveLabel(v: Omit<Caller, "householdId" | "timeZone">, code: string, onlyHousehold?: string) {
+export async function resolveLabel(v: Omit<Caller, "householdId" | "timeZone" | "currency">, code: string, onlyHousehold?: string) {
   const [row] = await v.db.select().from(label).where(eq(label.code, normalizeCode(code)));
   if (!row || (onlyHousehold !== undefined && row.householdId !== onlyHousehold) || !(await membership(v.db, row.householdId, v.userId))) {
     throw notFound("Label");
   }
-  const found = await describe({ ...v, householdId: row.householdId, timeZone: await householdTimeZone(v.db, row.householdId) }, row);
+  const found = await describe({ ...v, householdId: row.householdId, ...(await householdLocale(v.db, row.householdId)) }, row);
   // A label scanned to its thing: when it was last seen (lib/sightings.ts).
   if (found.item) await recordSighting({ db: v.db, householdId: row.householdId, userId: v.userId }, found.item.id, "scanned", "label");
   return found;

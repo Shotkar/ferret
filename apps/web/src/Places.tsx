@@ -15,6 +15,7 @@ import { PlacePicker } from "./Combobox";
 import { countLabel, findLocation, placesKey, usePlaces } from "./lib/places";
 import { missingHref, placeHref, propertyHref } from "./lib/route";
 import { DialogActions, Modal } from "./Modal";
+import { currencySymbol, toCents, centsToInput } from "./lib/money";
 
 type Property = PlacesTree["properties"][number];
 
@@ -265,7 +266,6 @@ function PropertyDialog({ property, onClose, onSaved }: { property?: Property; o
     const f = new FormData(e.currentTarget);
     const text = (name: string) => String(f.get(name) ?? "").trim() || null;
     const year = Number.parseInt(String(f.get("yearBuilt") || ""), 10);
-    const value = Number.parseFloat(String(f.get("value") || "").replace(/[$,\s]/g, ""));
     save.mutate({
       name: String(f.get("name")).trim(),
       type: String(f.get("type")) as Property["type"],
@@ -275,7 +275,7 @@ function PropertyDialog({ property, onClose, onSaved }: { property?: Property; o
       postalCode: text("postalCode"),
       country: text("country"),
       yearBuilt: Number.isFinite(year) ? year : null,
-      valueCents: Number.isFinite(value) ? Math.round(value * 100) : null,
+      valueCents: toCents(f.get("value")),
       notes: text("notes"),
     });
   }
@@ -325,13 +325,13 @@ function PropertyDialog({ property, onClose, onSaved }: { property?: Property; o
                 Worth
               </label>
               <div className="input">
-                <span className="my-auto me-1 text-base-content/70">$</span>
+                <span className="my-auto me-1 text-base-content/70">{currencySymbol()}</span>
                 <input
                   id="property-value"
                   name="value"
                   className="grow"
                   inputMode="decimal"
-                  defaultValue={d?.valueCents != null ? (d.valueCents / 100).toFixed(0) : ""}
+                  defaultValue={centsToInput(d?.valueCents, true)}
                   placeholder="for insurance"
                 />
               </div>

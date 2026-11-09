@@ -13,6 +13,7 @@
  * It's streamed as it's made — one file decrypted at a time, nothing written on the server — so a decrypted copy
  * never sits anywhere but the download. Deleted things (Recently deleted) are left out.
  */
+import { formatMoney } from "@ferret/shared";
 import { listTemplates } from "./templates";
 import { listCollections } from "./collections";
 import { and, asc, eq, isNull } from "drizzle-orm";
@@ -180,8 +181,8 @@ export async function householdData(v: Caller, root: string, householdName: stri
   const data = {
     ...EXPORT_FORMAT,
     exportedAt: new Date().toISOString(),
-    household: { name: householdName },
-    notes: "Money is in cents (12900 = $129.00); dates are yyyy-mm-dd; `file` paths are relative to this folder.",
+    household: { name: householdName, currency: v.currency },
+    notes: `Money is in hundredths of the household's currency, ${v.currency} (12900 = ${formatMoney(12900, v.currency, { exact: true, locale: "en-US" })}); dates are yyyy-mm-dd; \`file\` paths are relative to this folder.`,
     properties: liveProperties.map((p) => ({
       id: p.id,
       name: p.name,
@@ -348,12 +349,12 @@ export async function householdData(v: Caller, root: string, householdName: stri
   return { data, files: files.filter((f) => filePaths.has(f.id)).map((f) => ({ ...f, path: filePaths.get(f.id)! })) };
 }
 
-const README = (household: string, counts: { items: number; files: number }) => `Ferret export — ${household}
+const README = (household: string, currency: string, counts: { items: number; files: number }) => `Ferret export — ${household}
 Made ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC: ${counts.items} items, ${counts.files} photos and documents.
 
 ferret.json   Everything: properties and places, items (with their warranties and claims, files, tags,
               custom fields and links), maintenance and its history, service providers, categories.
-              Money is in cents (12900 = $129.00); dates are yyyy-mm-dd.
+              Money is in hundredths of ${currency} (12900 = ${formatMoney(12900, currency, { exact: true, locale: "en-US" })}); dates are yyyy-mm-dd.
 items.csv     The insurance list (one row per item, as in Ferret's report) — opens in any spreadsheet.
 files/        Every photo and document, in a folder per item, as they were uploaded.
 
@@ -369,10 +370,10 @@ export async function householdExport(v: Caller, files: FileStore) {
   const slug = householdName.normalize("NFKD").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase().slice(0, 40) || "household";
   const root = `ferret-export-${slug}-${date}`;
   const { data, files: uploads } = await householdData(v, root, home?.name ?? null, files);
-  const csv = toCsv(await exportRows(v));
+  const csv = toCsv(await exportRows(v), { currency: v.currency });
   const text = new TextEncoder();
   const stream = zipStream(async (add) => {
-    await add(`${root}/README.txt`, text.encode(README(householdName, { items: data.items.length, files: uploads.length })), { compress: true });
+    await add(`${root}/README.txt`, text.encode(README(householdName, v.currency, { items: data.items.length, files: uploads.length })), { compress: true });
     await add(`${root}/ferret.json`, text.encode(JSON.stringify(data, null, 2)), { compress: true });
     await add(`${root}/items.csv`, text.encode(csv), { compress: true });
     for (const f of uploads) {

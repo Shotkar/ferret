@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { DEFAULT_CURRENCY } from "@ferret/shared";
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import { HTTPException } from "hono/http-exception";
@@ -36,6 +37,8 @@ export type AppEnv = {
     role: string;
     /** The household's time zone (lib/household-time.ts), for "today". */
     timeZone: string;
+    /** The household's currency (ISO 4217). */
+    currency: string;
   };
 };
 
@@ -87,10 +90,11 @@ export const requireHousehold = createMiddleware<AppEnv>(async (c, next) => {
   c.set("role", role);
   // Its time zone, and the last day it was used (lib/plan.ts) — one read, and a write at most once a day.
   const [setting] = await c.var.db
-    .select({ timeZone: householdSetting.timeZone, lastActiveOn: householdSetting.lastActiveOn })
+    .select({ timeZone: householdSetting.timeZone, currency: householdSetting.currency, lastActiveOn: householdSetting.lastActiveOn })
     .from(householdSetting)
     .where(eq(householdSetting.householdId, householdId));
   c.set("timeZone", setting?.timeZone ?? serverTimeZone());
+  c.set("currency", setting?.currency ?? DEFAULT_CURRENCY);
   await markActive(c.var.db, householdId, setting?.lastActiveOn);
   await next();
 });
@@ -126,6 +130,7 @@ export const callerOf = (c: Context<AppEnv>): Caller => ({
   householdId: c.var.householdId,
   userId: c.var.user.id,
   timeZone: c.var.timeZone,
+  currency: c.var.currency,
   via: c.var.apiKey ? "api" : "web",
   keyName: c.var.apiKey?.name ?? null,
 });

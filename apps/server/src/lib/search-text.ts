@@ -4,8 +4,8 @@
  * read items through here, so they always agree.
  */
 import { and, eq, isNull } from "drizzle-orm";
-import type { CategoryField } from "@ferret/shared";
-import { attachment, category, collection, item, itemTag, itemTemplate, label, location, ownLabel, property, tag, warranty } from "../db/schema";
+import { type CategoryField, formatMoney } from "@ferret/shared";
+import { attachment, category, collection, householdSetting, item, itemTag, itemTemplate, label, location, ownLabel, property, tag, warranty } from "../db/schema";
 import type { Db } from "../ports";
 
 export type SearchDoc = NonNullable<Awaited<ReturnType<typeof loadSearchDoc>>>;
@@ -53,6 +53,7 @@ export async function loadSearchDoc(db: Db, itemId: string) {
     labelCodes: codes.map((c) => c.code),
     files,
     warranties,
+    currency: (await db.select({ currency: householdSetting.currency }).from(householdSetting).where(eq(householdSetting.householdId, it.householdId)))[0]?.currency ?? undefined,
   };
 }
 
@@ -95,7 +96,7 @@ export async function locationPath(db: Db, locationId: string | null) {
 }
 
 /** The item's own fields and location, as lines of text. */
-export function itemFields({ item: it, locationPath, categoryPath, categoryFields, collectionName, tags, boxName, contents, labelCodes, warranties }: SearchDoc) {
+export function itemFields({ item: it, locationPath, categoryPath, categoryFields, collectionName, tags, boxName, contents, labelCodes, warranties, currency }: SearchDoc) {
   const custom = Object.entries(it.customFields ?? {}).map(([key, value]) => {
     const field = categoryFields.find((f) => f.key === key);
     return `${field?.label ?? key}: ${value}${field?.unit ? ` ${field.unit}` : ""}`;
@@ -116,7 +117,7 @@ export function itemFields({ item: it, locationPath, categoryPath, categoryField
     ...(it.links ?? []).map((l) => `Link: ${l.label ? `${l.label} — ` : ""}${new URL(l.url).hostname.replace(/^www\./, "")}`),
     locationPath && `Kept in: ${locationPath}`,
     it.purchaseDate && `Purchased: ${it.purchaseDate}`,
-    it.purchasePriceCents != null && `Price paid: $${(it.purchasePriceCents / 100).toFixed(2)}`,
+    it.purchasePriceCents != null && `Price paid: ${formatMoney(it.purchasePriceCents, currency, { exact: true, locale: "en-US" })}`,
     // Dates, not "active/expired": the index shouldn't go stale as time passes.
     ...warranties.map((w) =>
       [`Warranty${w.provider ? ` (${w.provider})` : ""}`, w.startsOn && `from ${w.startsOn}`, `until ${w.endsOn}`, w.coverage && `— ${w.coverage}`]

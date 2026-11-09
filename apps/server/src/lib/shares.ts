@@ -16,7 +16,7 @@ import { categoryDescendants, categoryInfo, findTag } from "./catalog";
 import { exportRows } from "./export";
 import type { FileStore } from "./files";
 import { type Caller, type ItemFilter, listProperties, logActivity, notFound } from "./inventory";
-import { householdTimeZone } from "./household-time";
+import { householdLocale } from "./household-time";
 import { featureOn, requireFeature } from "./plan";
 import { inList } from "./sql";
 
@@ -149,7 +149,7 @@ export async function openShare(deps: Caller["deps"], token: string) {
   if (!(await featureOn({ deps, householdId: row.householdId }, "shareLinks"))) {
     throw new HTTPException(403, { message: "This link is paused — ask whoever shared it" });
   }
-  const v: Caller = { deps, db: deps.db, householdId: row.householdId, userId: row.createdBy ?? "", timeZone: await householdTimeZone(deps.db, row.householdId), via: "web" };
+  const v: Caller = { deps, db: deps.db, householdId: row.householdId, userId: row.createdBy ?? "", ...(await householdLocale(deps.db, row.householdId)), via: "web" };
   return { link: row, v };
 }
 
@@ -188,6 +188,7 @@ export async function sharedView(v: Caller, r: Row, seen: { ipAddress: string | 
   await v.db.update(shareLink).set({ views: sql`${shareLink.views} + 1`, lastViewedAt: new Date() }).where(eq(shareLink.id, r.id));
   return {
     household: household?.name ?? "A household",
+    currency: v.currency,
     title: await titleOf(v, r),
     label: r.label,
     sharedBy: by?.name ?? null,

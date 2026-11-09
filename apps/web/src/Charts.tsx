@@ -5,8 +5,7 @@
  * Each has a screen-reader table of the same numbers.
  */
 import { useState } from "react";
-
-const money = (cents: number) => `$${Math.round(cents / 100).toLocaleString()}`;
+import { moneyWhole as money } from "./lib/money";
 const monthName = (month: string, withYear = true) =>
   new Date(`${month}-01T00:00:00`).toLocaleDateString(undefined, withYear ? { month: "short", year: "numeric" } : { month: "short" });
 

@@ -23,7 +23,7 @@ import { listLoans } from "./loans";
 import { listRecalls } from "./recalls";
 import { coverageChecks } from "./coverage";
 import { openRoomScans } from "./room-scans";
-import { todayFor } from "./household-time";
+import { moneyText, todayFor } from "./household-time";
 
 const MAINTENANCE_DAYS = 7;
 const WARRANTY_DAYS = 30;
@@ -113,7 +113,7 @@ export async function needsAttention(v: Caller): Promise<AttentionItem[]> {
   // Insurance limits the things they cover have outgrown.
   for (const c of coverage) {
     if (c.shortCents <= 0) continue;
-    const money = (x: number) => `$${(x / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+    const money = (x: number) => moneyText(v, x, { whole: true });
     out.push({ kind: "coverage", severity: "soon", id: c.id, title: `${c.label}: worth ${money(c.valueCents)}`, detail: `Covered for ${money(c.limitCents)} — ${money(c.shortCents)} short`, itemId: null, date: null });
   }
 

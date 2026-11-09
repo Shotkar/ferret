@@ -5,7 +5,7 @@
  */
 import type { Attachment, Item, ItemPatch, MaintenanceInput, MaintenanceTask, Warranty, WarrantyInput } from "@ferret/shared";
 import { addDays, addMonths, describeInterval, today } from "@ferret/shared/utils";
-import { money } from "./Overview";
+import { money } from "./lib/money";
 
 type Field = "name" | "brand" | "model" | "serialNumber" | "barcode" | "purchaseDate" | "purchasePriceCents" | "returnBy";
 

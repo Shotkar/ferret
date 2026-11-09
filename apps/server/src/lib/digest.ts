@@ -15,7 +15,7 @@ import type { FileStore } from "./files";
 import type { Caller } from "./inventory";
 import { listLoans } from "./loans";
 import { deliver, mailTo } from "./notifications";
-import { zoneCache } from "./household-time";
+import { householdLocale, zoneCache } from "./household-time";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const GROUPS: [AttentionItem["kind"][], string][] = [
@@ -104,7 +104,7 @@ export async function sendWeeklyDigests(
       await mark();
       continue;
     }
-    const digest = await weeklyDigest({ deps, db, householdId: s.householdId, userId: s.userId, timeZone: await zoneOf(s.householdId), via: "web" }, deps.appUrl);
+    const digest = await weeklyDigest({ deps, db, householdId: s.householdId, userId: s.userId, ...(await householdLocale(db, s.householdId)), via: "web" }, deps.appUrl);
     if (digest) {
       if (push) {
         for (const sub of await db.select().from(pushSubscription).where(and(eq(pushSubscription.householdId, s.householdId), eq(pushSubscription.userId, s.userId)))) {

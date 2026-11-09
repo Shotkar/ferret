@@ -9,7 +9,7 @@ import { keyFromHeaders, verifyKey } from "../lib/api-keys";
 import { countEvent } from "../lib/analytics";
 import { type AppEnv, membership } from "../lib/context";
 import { mcpAuthInfo, mcpHandler } from "../mcp/server";
-import { householdTimeZone } from "../lib/household-time";
+import { householdLocale } from "../lib/household-time";
 import { requireFeature } from "../lib/plan";
 import { HTTPException } from "hono/http-exception";
 
@@ -49,7 +49,7 @@ mcp.all("/", sizeLimit, async (c) => {
     db: c.var.db,
     householdId: holder.key.householdId,
     userId: holder.user.id,
-    timeZone: await householdTimeZone(c.var.db, holder.key.householdId),
+    ...(await householdLocale(c.var.db, holder.key.householdId)),
     via: "mcp" as const,
     keyName: holder.key.name,
     readOnly: holder.key.readOnly || role === "viewer",

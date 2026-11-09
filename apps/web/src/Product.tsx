@@ -8,7 +8,7 @@ import type { ItemListing, ItemPatch } from "@ferret/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "./lib/api";
-import { money } from "./Overview";
+import { money } from "./lib/money";
 
 export function ProductSuggestions({ item, householdId }: { item: ItemListing; householdId: string }) {
   const qc = useQueryClient();

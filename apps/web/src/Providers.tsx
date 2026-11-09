@@ -14,7 +14,7 @@ import { api } from "./lib/api";
 import { useCanEdit } from "./lib/auth";
 import { itemHref, MAINTENANCE_HREF, PROVIDERS_HREF, providerHref } from "./lib/route";
 import { DialogActions, Modal } from "./Modal";
-import { money } from "./Overview";
+import { money } from "./lib/money";
 import { navigateTo } from "./lib/navigate";
 
 export const providersKey = (householdId: string) => ["providers", householdId];

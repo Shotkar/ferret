@@ -6,12 +6,12 @@
 import { organization } from "../db/schema";
 import { checkHousehold } from "../lib/recalls";
 import type { Deps, JobHandler } from "../ports";
-import { householdTimeZone } from "../lib/household-time";
+import { householdLocale } from "../lib/household-time";
 
 export const RECALL_SYNC_JOB = "recalls.sync";
 export const RECALL_CHECK_JOB = "recalls.check";
 
-const caller = async (deps: Deps, householdId: string) => ({ deps, db: deps.db, householdId, userId: "", timeZone: await householdTimeZone(deps.db, householdId), via: "web" as const });
+const caller = async (deps: Deps, householdId: string) => ({ deps, db: deps.db, householdId, userId: "", ...(await householdLocale(deps.db, householdId)), via: "web" as const });
 
 export function recallSyncJob(deps: Deps): JobHandler {
   return async () => {

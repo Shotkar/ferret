@@ -17,7 +17,7 @@ import { useCanEdit } from "./lib/auth";
 import { usePlaces } from "./lib/places";
 import { itemHref, REPORT_HREF } from "./lib/route";
 import { DialogActions, Modal } from "./Modal";
-import { money } from "./Overview";
+import { money, currencySymbol, toCents, centsToInput } from "./lib/money";
 
 const shortDate = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 
@@ -264,10 +264,9 @@ function CoverageDialog({ householdId, start, onClose }: { householdId: string; 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const dollars = Number.parseFloat(String(f.get("limit") ?? "").replace(/[$,\s]/g, ""));
     save.mutate({
       label: String(f.get("label")).trim(),
-      limitCents: Number.isFinite(dollars) ? Math.round(dollars * 100) : 0,
+      limitCents: toCents(f.get("limit")) ?? 0,
       scope,
       propertyId: String(f.get("property") || "") || null,
       categoryId: scope === "category" ? categoryId : null,
@@ -289,8 +288,8 @@ function CoverageDialog({ householdId, start, onClose }: { householdId: string; 
             Covered up to
           </label>
           <div className="input">
-            <span className="my-auto me-1 text-base-content/70">$</span>
-            <input id="cov-limit" name="limit" className="grow" inputMode="decimal" required defaultValue={start.limitCents ? String(start.limitCents / 100) : ""} placeholder="1500" />
+            <span className="my-auto me-1 text-base-content/70">{currencySymbol()}</span>
+            <input id="cov-limit" name="limit" className="grow" inputMode="decimal" required defaultValue={start.limitCents ? centsToInput(start.limitCents) : ""} placeholder="1500" />
           </div>
         </div>
         <div>

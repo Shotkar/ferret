@@ -4,7 +4,7 @@
  * what it's worth, proof (photos, receipts) and warranty. One list feeds both
  * the CSV download and the printable report.
  */
-import type { ExportRow } from "@ferret/shared";
+import { type ExportRow, moneyNumber } from "@ferret/shared";
 import { and, count, eq, inArray, isNull, max } from "drizzle-orm";
 import { attachment, item, location, warranty } from "../db/schema";
 import { type Caller, type ItemFilter, asListing, descendants, itemScope, withTags } from "./inventory";
@@ -82,7 +82,7 @@ export async function exportRows(v: Caller, opts: { propertyId?: string; gone?: 
     .sort((a, b) => (a.place ?? "\uffff").localeCompare(b.place ?? "\uffff") || a.name.localeCompare(b.name));
 }
 
-const COLUMNS: [string, (r: ExportRow) => string | number | null | undefined][] = [
+const COLUMNS: [string, (r: ExportRow, currency: string) => string | number | null | undefined][] = [
   ["Item", (r) => r.name],
   ["Where", (r) => r.place],
   ["In box", (r) => r.box],
@@ -93,9 +93,11 @@ const COLUMNS: [string, (r: ExportRow) => string | number | null | undefined][] 
   ["Quantity", (r) => r.quantity],
   ["Condition", (r) => r.condition],
   ["Purchase date", (r) => r.purchaseDate],
-  ["Price paid (each)", (r) => dollars(r.purchasePriceCents)],
-  ["Value (each)", (r) => dollars(r.valueCents)],
-  ["Total value", (r) => dollars(r.totalValueCents)],
+  ["Price paid (each)", (r, cur) => amount(r.purchasePriceCents, cur)],
+  ["Value (each)", (r, cur) => amount(r.valueCents, cur)],
+  ["Total value", (r, cur) => amount(r.totalValueCents, cur)],
+  // The amounts are plain numbers (a spreadsheet adds them up): which money they're in.
+  ["Currency", (_r, cur) => cur],
   ["Photos", (r) => r.photos],
   ["Receipts & documents", (r) => r.documents],
   ["Warranty until", (r) => r.warrantyEnds],
@@ -105,7 +107,7 @@ const COLUMNS: [string, (r: ExportRow) => string | number | null | undefined][] 
   ["Ferret ID", (r) => r.id],
 ];
 
-const dollars = (cents: number | null | undefined) => (cents == null ? null : (cents / 100).toFixed(2));
+const amount = (cents: number | null | undefined, currency: string) => (cents == null ? null : moneyNumber(cents, currency));
 
 /** For a lost-or-stolen claim: what happened, and when, first. */
 const GONE_COLUMNS: typeof COLUMNS = [
@@ -113,8 +115,11 @@ const GONE_COLUMNS: typeof COLUMNS = [
   ["When", (r) => r.disposedOn],
 ];
 
-/** RFC 4180 CSV, with a byte-order mark so Excel reads the text as UTF-8. With `gone`, what happened and when first. */
-export function toCsv(rows: ExportRow[], opts: { gone?: boolean } = {}) {
+/**
+ * RFC 4180 CSV, with a byte-order mark so Excel reads the text as UTF-8. Amounts in the household's `currency`. With
+ * `gone`, what happened and when first.
+ */
+export function toCsv(rows: ExportRow[], opts: { currency: string; gone?: boolean }) {
   const columns = opts.gone ? [...COLUMNS.slice(0, 1), ...GONE_COLUMNS, ...COLUMNS.slice(1)] : COLUMNS;
   const cell = (value: string | number | null | undefined) => {
     const text = value == null ? "" : String(value);
@@ -122,6 +127,6 @@ export function toCsv(rows: ExportRow[], opts: { gone?: boolean } = {}) {
     const safe = /^[=+\-@\t\r]/.test(text) && !/^-?\d+(\.\d+)?$/.test(text) ? `'${text}` : text;
     return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
   };
-  const lines = [columns.map(([title]) => cell(title)).join(","), ...rows.map((r) => columns.map(([, get]) => cell(get(r))).join(","))];
+  const lines = [columns.map(([title]) => cell(title)).join(","), ...rows.map((r) => columns.map(([, get]) => cell(get(r, opts.currency))).join(","))];
   return `\uFEFF${lines.join("\r\n")}\r\n`;
 }

@@ -5,7 +5,7 @@ attention, and what's on the shopping list. Dashboards ask `GET /api/v1/summary`
 [API key](../guide/claude#the-api); it answers counts and the total only, never what anything is or where:
 
 ```json
-{ "household": "Our house", "things": 412, "valueCents": 3864500, "needsAttention": 3, "urgent": 1, "toBuy": 2 }
+{ "household": "Our house", "things": 412, "valueCents": 3864500, "currency": "USD", "needsAttention": 3, "urgent": 1, "toBuy": 2 }
 ```
 
 Make a **read-only** key for it (Settings → Claude & API), bound to the household you want to see. `needsAttention`

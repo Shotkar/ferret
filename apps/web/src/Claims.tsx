@@ -10,7 +10,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { api } from "./lib/api";
 import { DialogActions, Modal } from "./Modal";
-import { money } from "./Overview";
+import { money, currencySymbol, toCents, centsToInput } from "./lib/money";
 
 export const CLAIM_STATUS: Record<ClaimStatus, { label: string; badge: string }> = {
   filed: { label: "Filed", badge: "badge-info" },
@@ -74,7 +74,6 @@ export function ClaimDialog(props: { householdId: string; itemId: string; warran
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const text = (name: string) => String(f.get(name) ?? "").trim() || null;
-    const cost = Number.parseFloat(String(f.get("cost") || "").replace(/[$,\s]/g, ""));
     save.mutate({
       problem: String(f.get("problem")).trim(),
       filedOn: text("filedOn") ?? today(),
@@ -82,7 +81,7 @@ export function ClaimDialog(props: { householdId: string; itemId: string; warran
       status,
       resolution: text("resolution"),
       resolvedOn: text("resolvedOn"),
-      costCents: Number.isFinite(cost) ? Math.round(cost * 100) : null,
+      costCents: toCents(f.get("cost")),
       notes: text("notes"),
     });
   }
@@ -144,13 +143,13 @@ export function ClaimDialog(props: { householdId: string; itemId: string; warran
                     It cost us
                   </label>
                   <div className="input">
-                    <span className="my-auto me-1 text-base-content/70">$</span>
+                    <span className="my-auto me-1 text-base-content/70">{currencySymbol()}</span>
                     <input
                       id="claim-cost"
                       name="cost"
                       className="grow"
                       inputMode="decimal"
-                      defaultValue={c?.costCents != null ? (c.costCents / 100).toFixed(2) : ""}
+                      defaultValue={centsToInput(c?.costCents)}
                       placeholder="deductible, shipping…"
                     />
                   </div>

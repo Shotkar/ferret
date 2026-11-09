@@ -14,7 +14,7 @@ import { addAttachment } from "./attachments";
 import type { FileStore } from "./files";
 import { type Caller, notFound } from "./inventory";
 import { sniffContentType } from "./sniff";
-import { householdTimeZone } from "./household-time";
+import { householdLocale } from "./household-time";
 
 export const DOWNLOAD_JOB = "attachment.download";
 
@@ -82,7 +82,7 @@ export function downloadJob(deps: Caller["deps"] & { files: FileStore; maxBytes:
       if (!type || !uploadTypes[kind].includes(type)) {
         return await fail(kind === "photo" ? "That isn't a photo Ferret can keep (JPEG, PNG, WebP…)" : "That isn't a photo or a PDF — it may be a web page rather than the file itself");
       }
-      const caller = { deps, db, householdId: row.householdId, userId: row.createdBy, timeZone: await householdTimeZone(db, row.householdId), via: "web" as const };
+      const caller = { deps, db, householdId: row.householdId, userId: row.createdBy, ...(await householdLocale(db, row.householdId)), via: "web" as const };
       await addAttachment(caller, deps.files, row.itemId, {
         bytes: got.bytes,
         filename: got.filename ?? new URL(got.finalUrl).hostname,

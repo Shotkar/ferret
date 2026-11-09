@@ -24,7 +24,7 @@ exporter.get("/items.json", async (c) => c.json({ data: await exportRows(callerO
 exporter.get("/items.csv", async (c) => {
   const opts = exportOpts(c);
   const rows = await exportRows(callerOf(c), opts);
-  return c.body(toCsv(rows, { gone: Boolean(opts.gone) }), 200, {
+  return c.body(toCsv(rows, { currency: c.var.currency, gone: Boolean(opts.gone) }), 200, {
     "Content-Type": "text/csv; charset=utf-8",
     "Content-Disposition": `attachment; filename="ferret-${opts.gone ? "lost-and-stolen" : "inventory"}-${todayFor(c.var)}.csv"`,
     "Cache-Control": "no-store",

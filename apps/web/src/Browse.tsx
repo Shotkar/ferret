@@ -8,7 +8,7 @@ import type { LocationNode, PlacesTree } from "@ferret/shared";
 import { useState } from "react";
 import { countLabel, findLocation } from "./lib/places";
 import { placeHref, PLACES_HREF, propertyHref, missingHref } from "./lib/route";
-import { money } from "./Overview";
+import { money } from "./lib/money";
 import { PROPERTY_TYPES } from "./Places";
 import { useAppearance } from "./lib/appearance";
 

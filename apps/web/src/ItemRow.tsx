@@ -2,7 +2,7 @@ import type { ItemListing, SearchHit } from "@ferret/shared";
 import { api } from "./lib/api";
 import { itemHref } from "./lib/route";
 import { loanLine } from "./Loans";
-import { money } from "./Overview";
+import { money } from "./lib/money";
 
 /** One item in the list: its photo, name, where it's kept, and how it matched a search. */
 export function ItemRow(props: { item: ItemListing; hit?: SearchHit; placeFrom?: string }) {

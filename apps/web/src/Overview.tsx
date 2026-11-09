@@ -7,6 +7,7 @@ import type { MissingDetail, Overview as OverviewData } from "@ferret/shared";
 import { describeInterval, missingDetails } from "@ferret/shared/utils";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./lib/api";
+import { money } from "./lib/money";
 import { useCategories, useTags } from "./Catalog";
 import { CategoryDonut, WorthOverTime } from "./Charts";
 import { CLAIM_STATUS } from "./Claims";
@@ -16,20 +17,12 @@ import { useCollections } from "./Collections";
 
 export const MISSING_LABELS: Record<MissingDetail, { label: string; filter: string; icon: string }> = {
   photo: { label: "Photo", filter: "No photo yet", icon: "icon-[tabler--camera]" },
-  value: { label: "Value or price", filter: "No value or price", icon: "icon-[tabler--currency-dollar]" },
+  value: { label: "Value or price", filter: "No value or price", icon: "icon-[tabler--cash]" },
   place: { label: "Where it's kept", filter: "Not in any place", icon: "icon-[tabler--map-pin]" },
   document: { label: "Receipt or manual", filter: "No receipt or manual", icon: "icon-[tabler--receipt]" },
   category: { label: "Category", filter: "No category yet", icon: "icon-[tabler--category]" },
 };
 
-/** Dollars from cents: whole dollars from $1,000 up, unless `exact` (one thing's value or price). */
-export const money = (cents: number, exact = false) =>
-  new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: exact ? 2 : undefined,
-    maximumFractionDigits: exact || cents < 100_000 ? 2 : 0,
-  }).format(cents / 100);
 
 /**
  * The dashboard's sections, under the search box on the home screen: `places`
@@ -91,7 +84,7 @@ export function OverviewSections({ householdId, places }: { householdId: string;
       <Collections householdId={householdId} />
       {o.byRoom.length > 0 && (
         <ValueBars
-          icon="icon-[tabler--home-dollar]"
+          icon="icon-[tabler--coins]"
           title="Worth, room by room"
           groups={o.byRoom}
           href={(g) => (g.locationId ? placeHref(g.locationId) : undefined)}

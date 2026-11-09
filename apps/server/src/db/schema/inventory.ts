@@ -286,6 +286,8 @@ export const householdSetting = sqliteTable("household_setting", {
    * go out. The server's clock is UTC; null = the server's own zone (lib/household-time.ts).
    */
   timeZone: text("time_zone"),
+  /** Its money (ISO 4217, e.g. EUR): how amounts are written everywhere. Null = US dollars (@ferret/shared money.ts). */
+  currency: text("currency"),
   /** The last day (UTC, yyyy-mm-dd) anyone in it used Ferret — written at most once a day (lib/plan.ts markActive). */
   lastActiveOn: text("last_active_on"),
   updatedAt: timestamps.updatedAt,

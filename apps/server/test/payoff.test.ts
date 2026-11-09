@@ -58,7 +58,7 @@ describe("recall alerts", () => {
     const kettle = await ann.addItem({ name: "Kettle", brand: "Acme", barcode: "012345678905" });
     await ann.addItem({ name: "Leaf blower", brand: "DeWalt" }); // DeWalt, but not a drill
     await ann.addItem({ name: "Tape", brand: "Scotch" }); // Scotch, but not a laminator
-    const v = { deps, db, householdId: ann.householdId, userId: "", timeZone: "UTC", via: "web" as const };
+    const v = { deps, db, householdId: ann.householdId, userId: "", timeZone: "UTC", currency: "USD", via: "web" as const };
 
     // Off until the server admin switches it on: nothing asked.
     expect(await checkHousehold(v)).toBe(0);

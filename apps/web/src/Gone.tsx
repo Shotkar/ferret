@@ -14,7 +14,7 @@ import { api } from "./lib/api";
 import { useCanEdit } from "./lib/auth";
 import { itemHref } from "./lib/route";
 import { DialogActions, Modal } from "./Modal";
-import { money } from "./Overview";
+import { money, currencySymbol, toCents } from "./lib/money";
 
 export const DISPOSITIONS: { value: ItemDisposition; label: string; past: string; icon: string; amount?: string }[] = [
   { value: "sold", label: "Sold it", past: "Sold", icon: "icon-[tabler--cash]", amount: "Sold for" },
@@ -53,11 +53,10 @@ export function GoneDialog({ item, householdId, onClose, onDone }: { item: ItemL
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const amount = Number.parseFloat(String(f.get("amount") || "").replace(",", "."));
     save.mutate({
       disposition: what,
       disposedOn: String(f.get("when")),
-      disposalCents: kind.amount && Number.isFinite(amount) ? Math.round(amount * 100) : null,
+      disposalCents: kind.amount ? toCents(f.get("amount")) : null,
       disposalNote: String(f.get("note") || "").trim() || null,
     });
   }
@@ -91,7 +90,7 @@ export function GoneDialog({ item, householdId, onClose, onDone }: { item: ItemL
                 {kind.amount}
               </label>
               <div className="input">
-                <span className="my-auto me-1 text-base-content/70">$</span>
+                <span className="my-auto me-1 text-base-content/70">{currencySymbol()}</span>
                 <input id="gone-amount" name="amount" className="grow" inputMode="decimal" placeholder="optional" />
               </div>
             </div>

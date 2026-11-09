@@ -1,5 +1,5 @@
 /**
- * The household's own settings (Settings → Household): its time zone (lib/household-time.ts). Anyone in it can read
+ * The household's own settings (Settings → Household): its time zone and currency (lib/household-time.ts). Anyone in it can read
  * them; the owner and admins change them. And deleting it for good — its owner, signed in for real.
  */
 import { type HouseholdSettings, type InvitationEmails, householdSettingsInput } from "@ferret/shared";
@@ -13,7 +13,7 @@ import { type AppEnv, body, requireHousehold, requireSession, requireUser, requi
 import { accountDeletionInfo, confirmIdentity, deleteAccount, deleteHouseholds } from "../lib/deletion";
 import { emailEnabled } from "../lib/email-verification";
 import { invitationEmails } from "../lib/invitation-email";
-import { chosenTimeZone, serverTimeZone, setHouseholdTimeZone } from "../lib/household-time";
+import { chosenTimeZone, householdCurrency, serverTimeZone, setHouseholdCurrency, setHouseholdTimeZone } from "../lib/household-time";
 
 export const household = new Hono<AppEnv>();
 
@@ -22,6 +22,7 @@ household.use("/*", requireUser, requireHousehold);
 const settings = async (c: { var: AppEnv["Variables"] }): Promise<HouseholdSettings> => ({
   timeZone: await chosenTimeZone(c.var.db, c.var.householdId),
   serverTimeZone: serverTimeZone(),
+  currency: await householdCurrency(c.var.db, c.var.householdId),
 });
 
 household.get("/settings", async (c) => c.json(await settings(c)));
@@ -29,7 +30,8 @@ household.get("/settings", async (c) => c.json(await settings(c)));
 household.put("/settings", requireWriter, async (c) => {
   if (c.var.role !== "owner" && c.var.role !== "admin") throw new HTTPException(403, { message: "Only the household's owner and admins can change this" });
   const input = await body(c.req.raw, householdSettingsInput);
-  await setHouseholdTimeZone(c.var.db, c.var.householdId, input.timeZone);
+  if (input.timeZone !== undefined) await setHouseholdTimeZone(c.var.db, c.var.householdId, input.timeZone);
+  if (input.currency !== undefined) await setHouseholdCurrency(c.var.db, c.var.householdId, input.currency);
   return c.json(await settings(c));
 });
 

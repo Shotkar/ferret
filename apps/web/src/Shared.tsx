@@ -7,12 +7,15 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "./lib/api";
 import { Logo } from "./AuthLayout";
 import { ReportDocument } from "./Report";
+import { showAmountsIn } from "./lib/money";
 
 const longDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 
 export function Shared({ token }: { token: string }) {
   const view = useQuery({ queryKey: ["shared", token], queryFn: () => api.shared(token), retry: false, staleTime: Infinity });
   const v = view.data;
+  // The amounts in the sharing household's currency, before the report draws.
+  if (v) showAmountsIn(v.currency);
   return (
     <div className="min-h-dvh bg-base-200 print:bg-white">
       <nav className="navbar border-b border-base-300 bg-base-100 px-4 print:hidden">

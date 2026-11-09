@@ -8,20 +8,22 @@ import { authClient } from "./lib/auth";
 import { navigateTo } from "./lib/navigate";
 import { Modal } from "./Modal";
 import { deviceTimeZone } from "./TimeZone";
+import { currencyForLocale } from "@ferret/shared/utils";
 
 /** The longest household name the server takes (HOUSEHOLD_NAME_MAX in auth.ts). */
 export const HOUSEHOLD_NAME_MAX = 100;
 
 /**
  * Makes a household and switches to it (Better Auth makes a new one the active household, and refreshes the
- * household list itself). Its time zone starts as this device's; Settings → Household changes it. Throws with the
+ * household list itself). Its time zone and currency start as this device's (the currency from its language's
+ * country: de-AT → euros); Settings → Household changes them. Throws with the
  * server's reason — e.g. a hosted plan's "one free household".
  */
 export async function createHousehold(name: string) {
   const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${crypto.randomUUID().slice(0, 6)}`;
   const result = await authClient.organization.create({ name, slug });
   if (result.error || !result.data) throw new Error(result.error?.message || "Could not create the household");
-  await api.setHouseholdSettings({ timeZone: deviceTimeZone() }, result.data.id).catch(() => {});
+  await api.setHouseholdSettings({ timeZone: deviceTimeZone(), currency: currencyForLocale(navigator.language) }, result.data.id).catch(() => {});
   return result.data;
 }
 

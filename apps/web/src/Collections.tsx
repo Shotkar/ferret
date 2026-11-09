@@ -19,8 +19,8 @@ import { navigateTo } from "./lib/navigate";
 import { COLLECTIONS_HREF, collectionHref, itemHref } from "./lib/route";
 import { DialogActions, Modal } from "./Modal";
 import { BarSearch } from "./Nav";
-import { money } from "./Overview";
 import { templateIcon, useTemplates } from "./Templates";
+import { money, currencySymbol, toCents } from "./lib/money";
 
 export const collectionsKey = (householdId: string) => ["collections", householdId];
 export function useCollections(householdId: string) {
@@ -458,10 +458,9 @@ function AddToCollection(props: { householdId: string; collection: CollectionSum
     e.preventDefault();
     const form = e.currentTarget;
     const f = new FormData(form);
-    const value = Number.parseFloat(String(f.get("value") || "").replace(/[$,]/g, ""));
     const name = String(f.get("name")).trim();
     add.mutate(
-      { name, quantity: Math.max(1, Number(f.get("quantity")) || 1), valueCents: Number.isFinite(value) ? Math.round(value * 100) : null },
+      { name, quantity: Math.max(1, Number(f.get("quantity")) || 1), valueCents: toCents(f.get("value")) },
       {
         onSuccess: (made: ItemListing | { id: string }) => {
           if (another) {
@@ -508,7 +507,7 @@ function AddToCollection(props: { householdId: string; collection: CollectionSum
               {wanted ? "Usually goes for" : "Worth (each)"}
             </label>
             <div className="input">
-              <span className="my-auto me-1 text-base-content/70">$</span>
+              <span className="my-auto me-1 text-base-content/70">{currencySymbol()}</span>
               <input id="collect-value" name="value" className="grow" inputMode="decimal" />
             </div>
           </div>

@@ -49,6 +49,7 @@ import { Modal } from "./Modal";
 import { NewHouseholdDialog } from "./NewHousehold";
 import { COMMAND_K, searchFromAnywhere } from "./Search";
 import { navigateTo } from "./lib/navigate";
+import { currencySymbol, toCents } from "./lib/money";
 
 type Link = { href: string; label: string; icon: string; external?: boolean };
 
@@ -636,11 +637,11 @@ function QuickAdd({ householdId, context, onDone, onBack }: { householdId: strin
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const value = Number.parseFloat(String(f.get("value") || "").replace(/[$,]/g, ""));
+
     create.mutate({
       name: String(f.get("name")).trim(),
       brand: String(f.get("brand") || "").trim() || null,
-      valueCents: Number.isFinite(value) ? Math.round(value * 100) : null,
+      valueCents: toCents(f.get("value")),
       isContainer: f.get("box") === "on",
       locationId: place,
       // Left out, a template's category and tags apply (the server fills them in).
@@ -681,7 +682,7 @@ function QuickAdd({ householdId, context, onDone, onBack }: { householdId: strin
             Worth
           </label>
           <div className="input">
-            <span className="my-auto me-1 text-base-content/70">$</span>
+            <span className="my-auto me-1 text-base-content/70">{currencySymbol()}</span>
             <input id="quick-value" name="value" className="grow" inputMode="decimal" />
           </div>
         </div>

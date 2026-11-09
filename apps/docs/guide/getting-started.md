@@ -54,6 +54,12 @@ Each household has a **time zone** (**Household & settings → Time zone**): wha
 and ending soon, and when reminders arrive. A new household starts with the time zone of the device that made it; the
 owner and admins can change it.
 
+It also has a **currency** (**Household & settings → Currency**): what prices and values are in, everywhere — screens,
+the [insurance report](./insurance-report), spreadsheets and reminders. Amounts are written your way (a German phone
+shows *1.234,56 €*). A new household starts with the currency of the device's country; households made before there
+was a choice are in US dollars until the owner or an admin picks another. Changing it converts nothing — the numbers
+already entered stay as they are.
+
 ## Inviting people
 
 **Household & settings → Household → Invite** makes an invitation for one email address and a role. When your Ferret

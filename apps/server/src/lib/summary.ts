@@ -27,6 +27,7 @@ export async function householdSummary(v: Caller): Promise<HouseholdSummary> {
     household: household?.name ?? "",
     things: totals?.things ?? 0,
     valueCents: Number(totals?.valueCents ?? 0),
+    currency: v.currency,
     needsAttention: attention.length,
     urgent: attention.filter((a) => a.severity === "urgent").length,
     toBuy: shopping.items.length,

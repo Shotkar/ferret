@@ -10,7 +10,7 @@ import { calendarFeed, organization } from "../db/schema";
 import { createFeed, feedToken, findFeed, toICalendar } from "../lib/calendar";
 import { type AppEnv, membership, requireHousehold, requireSession, requireUser } from "../lib/context";
 import { listMaintenance } from "../lib/maintenance";
-import { householdTimeZone } from "../lib/household-time";
+import { householdLocale } from "../lib/household-time";
 import { featureOn, requireFeature } from "../lib/plan";
 
 export const calendarSettings = new Hono<AppEnv>();
@@ -60,7 +60,7 @@ calendar.get("/:file", async (c) => {
   }
 
   const [household] = await c.var.db.select({ name: organization.name }).from(organization).where(eq(organization.id, feed.householdId));
-  const caller = { deps: c.var.deps, db: c.var.db, householdId: feed.householdId, userId: feed.userId, timeZone: await householdTimeZone(c.var.db, feed.householdId), via: "web" as const };
+  const caller = { deps: c.var.deps, db: c.var.db, householdId: feed.householdId, userId: feed.userId, ...(await householdLocale(c.var.db, feed.householdId)), via: "web" as const };
   const tasks = await listMaintenance(caller, { status: "open" });
   const ics = toICalendar(tasks, { name: `${household?.name ?? "Ferret"} maintenance`, appUrl: c.var.config.PUBLIC_URL, timeZone: caller.timeZone });
   return c.body(ics, 200, {

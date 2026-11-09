@@ -95,7 +95,7 @@ const INSTRUCTIONS = `Ferret is this household's home inventory: what they own, 
 - To find things, use search_inventory (words and meaning). For questions answered from receipts/manuals, use ask_inventory.
 - Places are properties (a home, a cabin) containing nested locations (rooms, closets, shelves). list_locations shows the tree with ids.
 - Boxes, bins and cases are items with isContainer: true; other items go inside them (containerItemId) and are wherever the box is. list_items with containerItemId shows what's in a box. Boxes and shelves can carry QR labels with 6-character codes (e.g. K7QM2X); search_inventory finds a box by its code.
-- Money is in integer cents (e.g. 12999 = $129.99). Dates are yyyy-mm-dd.
+- Money is in integer hundredths of the household's currency (e.g. 12999 = 129.99); inventory_report says which currency (ISO 4217, e.g. USD, EUR). Dates are yyyy-mm-dd.
 - Maintenance (filters, servicing, gutters…) is tracked as tasks that repeat; list_maintenance shows what's due. When someone says they did one, use complete_maintenance.
 - Before creating an item, search first so you don't add a duplicate. Before deleting, confirm with the person.`;
 
@@ -376,11 +376,11 @@ function buildServer(v: McpCaller) {
     {
       title: "Inventory value report",
       description:
-        "What everything is worth, for insurance: totals by property and by room, the most valuable items, and how many have no value recorded. An item counts at its value, else its purchase price, times its quantity; amounts in cents; gone and wanted things are left out. Use it for \"what's all our stuff worth?\"; to compare against insurance limits use coverage_check.",
+        "What everything is worth, for insurance: totals by property and by room, the most valuable items, and how many have no value recorded. An item counts at its value, else its purchase price, times its quantity; amounts in cents (hundredths) of its currency, which it names; gone and wanted things are left out. Use it for \"what's all our stuff worth?\"; to compare against insurance limits use coverage_check.",
       inputSchema: z.object({}),
       annotations: read,
     },
-    async () => run(() => svc.inventoryReport(v)),
+    async () => run(async () => ({ currency: v.currency, ...(await svc.inventoryReport(v)) })),
   );
 
   server.registerTool(

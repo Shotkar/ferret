@@ -3,7 +3,7 @@
  * reminders go out. The server keeps every moment in UTC; only these calendar questions need a zone. Not set: the
  * server's own zone (the TZ environment variable on Node; UTC where there's none).
  */
-import { isTimeZone, localParts, today } from "@ferret/shared";
+import { DEFAULT_CURRENCY, formatMoney, isCurrency, isTimeZone, localParts, type MoneyOptions, today } from "@ferret/shared";
 import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { householdSetting } from "../db/schema";
@@ -31,6 +31,36 @@ export async function setHouseholdTimeZone(db: Db, householdId: string, timeZone
     .values({ householdId, timeZone })
     .onConflictDoUpdate({ target: householdSetting.householdId, set: { timeZone, updatedAt: new Date() } });
 }
+
+/** The household's currency (Settings → Household): US dollars until it chooses one. */
+export async function householdCurrency(db: Db, householdId: string) {
+  const [row] = await db.select({ currency: householdSetting.currency }).from(householdSetting).where(eq(householdSetting.householdId, householdId));
+  return row?.currency ?? DEFAULT_CURRENCY;
+}
+
+/** Sets the household's currency. */
+export async function setHouseholdCurrency(db: Db, householdId: string, currency: string) {
+  if (!isCurrency(currency)) throw new HTTPException(422, { message: `${currency} isn't a currency` });
+  await db
+    .insert(householdSetting)
+    .values({ householdId, currency })
+    .onConflictDoUpdate({ target: householdSetting.householdId, set: { currency, updatedAt: new Date() } });
+}
+
+/** Where a household is, for a Caller made outside a request (jobs, share links, feeds): its zone and its currency. */
+export async function householdLocale(db: Db, householdId: string) {
+  const [row] = await db
+    .select({ timeZone: householdSetting.timeZone, currency: householdSetting.currency })
+    .from(householdSetting)
+    .where(eq(householdSetting.householdId, householdId));
+  return { timeZone: row?.timeZone ?? serverTimeZone(), currency: row?.currency ?? DEFAULT_CURRENCY };
+}
+
+/**
+ * An amount in what the server writes (history, the bell, emails): the household's currency, written the English way
+ * like the words around it ("value €80.00 → €95.00").
+ */
+export const moneyText = (v: { currency: string }, cents: number, opts: Omit<MoneyOptions, "locale"> = {}) => formatMoney(cents, v.currency, { ...opts, locale: "en-US" });
 
 /** Today (or `d`'s day) where the caller's household is. */
 export const todayFor = (v: { timeZone: string }, d?: Date) => today(d, v.timeZone);

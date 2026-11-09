@@ -12,7 +12,7 @@ import { HelpLink } from "./HelpLink";
 import { api } from "./lib/api";
 import { useCanEdit } from "./lib/auth";
 import { itemHref } from "./lib/route";
-import { money } from "./Overview";
+import { money } from "./lib/money";
 
 export function Shopping({ householdId }: { householdId: string }) {
   const list = useQuery({ queryKey: ["shopping", householdId], queryFn: api.shopping });

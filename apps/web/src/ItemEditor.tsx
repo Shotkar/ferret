@@ -17,6 +17,7 @@ import { DialogActions, Modal } from "./Modal";
 import { type LinkDraft, LinksInput, linksToSave } from "./Links";
 import { GoneDialog } from "./Gone";
 import { navigateTo } from "./lib/navigate";
+import { currencySymbol, toCents, centsToInput } from "./lib/money";
 
 export function ItemEditor({ item, householdId, onClose }: { item: ItemListing; householdId: string; onClose: () => void }) {
   const qc = useQueryClient();
@@ -293,21 +294,17 @@ function Money({ label, name, cents }: { label: string; name: string; cents: num
         {label}
       </label>
       <div className="input">
-        <span className="my-auto me-1 text-base-content/70">$</span>
+        <span className="my-auto me-1 text-base-content/70">{currencySymbol()}</span>
         <input
           id={`item-${name}`}
           name={name}
           className="grow"
           inputMode="decimal"
           pattern="[0-9]*[.,]?[0-9]{0,2}"
-          defaultValue={cents != null ? (cents / 100).toFixed(2) : ""}
+          defaultValue={centsToInput(cents)}
         />
       </div>
     </div>
   );
 }
 
-function toCents(value: FormDataEntryValue | null) {
-  const n = Number.parseFloat(String(value ?? "").replace(",", "."));
-  return Number.isFinite(n) ? Math.round(n * 100) : null;
-}

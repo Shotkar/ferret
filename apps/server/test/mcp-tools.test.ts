@@ -189,7 +189,7 @@ describe("MCP: recalls", () => {
     const { ann, call, db, deps } = await start({ recalls: new OneRecall() });
     const kettle = await ann.addItem({ name: "Kettle", brand: "Acme", barcode: "012345678905" });
     await ann.as("/api/v1/server/recalls", { method: "PUT", body: JSON.stringify({ enabled: true }) });
-    await checkHousehold({ deps, db, householdId: ann.householdId, userId: "", timeZone: "UTC", via: "web" });
+    await checkHousehold({ deps, db, householdId: ann.householdId, userId: "", timeZone: "UTC", currency: "USD", via: "web" });
 
     const [found] = (await call("list_recalls")).json().recalls;
     expect(found).toMatchObject({ item: "Kettle", itemId: kettle.id, match: "barcode", status: "open", title: "Acme Recalls Kettles" });

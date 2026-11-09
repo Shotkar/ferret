@@ -7,7 +7,8 @@ receipts, and its warranty — grouped, with totals. Pick one property or all of
 ![The insurance report, ready to print or save as a PDF](/screenshots/report-light.webp){.shot .wide}
 
 - **Print or save as PDF** (on an iPhone: Share → Print, then Share again → Save to Files).
-- **Download spreadsheet (CSV)** for Excel, Numbers or Google Sheets.
+- **Download spreadsheet (CSV)** for Excel, Numbers or Google Sheets. Amounts are plain numbers (so they add up), with a
+  **Currency** column saying what they're in.
 
 Boxes aren't listed (they're packaging), unless you gave one a value — a jewelry case, say.
 

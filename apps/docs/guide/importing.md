@@ -12,12 +12,15 @@ Any list with a header row, saved as CSV — from Numbers, Excel or Google Sheet
    date, where it is, category, tags… Change any guess that's wrong, or leave a column out. Several columns can go into
    the notes (each as *"Column: value"*).
 3. **Tick what to import.** Every row is ticked to start with, except ones that can't be (no name). Rows with something
-   Ferret couldn't read — a date like *"someday"* — say so, and come in without it. **Leave out under $** drops cheap
+   Ferret couldn't read — a date like *"someday"* — say so, and come in without it. **Leave out under** an amount drops cheap
    things in one go.
 4. **Import.**
 
 **Where it is** can be a room (*Kitchen*) or a path (*Garage › Shelf 2*, *Garage / Shelf 2*). Places you already have
 are used; missing ones are made, in the property you choose. Categories work the same way (*Electronics › TV*).
+
+Prices can be written any usual way — *$1,234.56*, *1.234,56 €*, *1 234,56*, *CHF 1'234.50* — and are taken as the
+household's [currency](./getting-started#households) (nothing is converted).
 
 A row whose serial number is already on something in Ferret is skipped, so importing the same file twice doesn't make
 everything twice.

@@ -5,6 +5,7 @@
 import { z } from "zod";
 import {
   categoryFieldTypes,
+  isCurrency,
   isTimeZone,
   type ClaimStatus,
   claimStatuses,
@@ -1436,6 +1437,8 @@ export interface ShareViewEntry {
 /** What a share link shows (no account): the report's rows, and each item's files if they're shared. */
 export interface SharedView {
   household: string;
+  /** The household's currency (ISO 4217): what the amounts are in. */
+  currency: string;
   title: string;
   label: string | null;
   sharedBy: string | null;
@@ -1624,6 +1627,8 @@ export interface HouseholdSettings {
   timeZone: string | null;
   /** What "today" follows while it isn't chosen: the server's own zone. */
   serverTimeZone: string;
+  /** Its money (ISO 4217, e.g. EUR) — how amounts are written everywhere. USD until chosen. */
+  currency: string;
 }
 
 /** Settings → Household's invitations: whether this server emails them, and when each pending one went out. */
@@ -1718,8 +1723,10 @@ export interface PlanReport {
   people: { userId: string | null; name: string; aiActions: number; asks: number; photos: number; documents: number; barcodeLookups: number }[];
 }
 
+/** Settings → Household: only what's sent changes. */
 export const householdSettingsInput = z.object({
-  timeZone: z.string().trim().min(1).max(64).refine(isTimeZone, "That isn't a time zone").nullable(),
+  timeZone: z.string().trim().min(1).max(64).refine(isTimeZone, "That isn't a time zone").nullable().optional(),
+  currency: z.string().trim().toUpperCase().length(3).refine(isCurrency, "That isn't a currency").optional(),
 });
 export type HouseholdSettingsInput = z.infer<typeof householdSettingsInput>;
 
@@ -1751,6 +1758,8 @@ export interface HouseholdSummary {
   things: number;
   /** What they're worth: current value, else what was paid, times quantity — like the insurance report. */
   valueCents: number;
+  /** The household's currency (ISO 4217) that `valueCents` is in (hundredths of it). */
+  currency: string;
   /** Everything in the bell, and how many of those are urgent. */
   needsAttention: number;
   urgent: number;

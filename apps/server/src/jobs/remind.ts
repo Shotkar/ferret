@@ -18,7 +18,7 @@ import { sendLoanReminders } from "../lib/loans";
 import { sendWeeklyDigests } from "../lib/digest";
 import { deliver } from "../lib/notifications";
 import type { Deps, JobHandler } from "../ports";
-import { dayFrom, zoneCache } from "../lib/household-time";
+import { dayFrom, householdLocale, zoneCache } from "../lib/household-time";
 
 /** Kept from when reminders were maintenance only, so jobs already queued still run. */
 export const REMIND_JOB = "maintenance.remind";
@@ -77,7 +77,7 @@ export function sendReminders(deps: Deps & { files: FileStore; appUrl: string; r
       const key = `${householdId}:${userId}`;
       if (!digests.has(key)) {
         const member = await membership(db, householdId, userId);
-        digests.set(key, member ? await dailyDigest({ deps, db, householdId, userId, timeZone: await zoneOf(householdId), via: "web" }, deps.appUrl) : "left");
+        digests.set(key, member ? await dailyDigest({ deps, db, householdId, userId, ...(await householdLocale(db, householdId)), via: "web" }, deps.appUrl) : "left");
       }
       return digests.get(key)!;
     };

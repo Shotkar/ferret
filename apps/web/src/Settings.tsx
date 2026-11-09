@@ -27,6 +27,7 @@ import { Server } from "./Server";
 import { Modal } from "./Modal";
 import { HelpLink } from "./HelpLink";
 import { TimeZoneCard } from "./TimeZone";
+import { CurrencyCard } from "./Currency";
 import { NotInPlan, PlanUsage, usePlanFeature } from "./PlanUsage";
 import { useRole } from "./lib/auth";
 
@@ -79,6 +80,7 @@ export function Settings(props: { section: SettingsSection; householdName: strin
           <>
             <Household householdName={householdName} />
             <TimeZoneCard householdId={householdId} canManage={role === "owner" || role === "admin"} />
+            <CurrencyCard householdId={householdId} canManage={role === "owner" || role === "admin"} />
             <DataExport householdName={householdName} householdId={householdId} />
             <DeleteHousehold householdName={householdName} />
             <ShareLinks householdId={householdId} />

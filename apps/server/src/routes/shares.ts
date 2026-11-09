@@ -44,7 +44,7 @@ shared.get("/:token", async (c) => {
 shared.get("/:token/items.csv", async (c) => {
   const { link, v } = await openShare(c.var.deps, c.req.param("token"));
   const rows = (await sharedRows(v, link)).map((r) => ({ ...r, notes: null }));
-  return c.body(toCsv(rows), 200, {
+  return c.body(toCsv(rows, { currency: v.currency }), 200, {
     "Content-Type": "text/csv; charset=utf-8",
     "Content-Disposition": `attachment; filename="shared-inventory-${todayFor(v)}.csv"`,
   });
