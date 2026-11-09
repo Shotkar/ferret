@@ -54,7 +54,7 @@ the shopping list, remember what you lent, and print an insurance report. Claude
     <td align="center">
       <img src=".github/readme/mascot/receipt.webp" height="120" alt=""><br>
       <b>Receipts and warranties</b><br>
-      Keep receipts and manuals with each thing, and hear before a warranty runs out.
+      Keep receipts and manuals with each thing, and hear before a warranty or a return window runs out.
     </td>
     <td align="center">
       <img src=".github/readme/mascot/wrench.webp" height="120" alt=""><br>

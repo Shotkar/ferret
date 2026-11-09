@@ -1,6 +1,7 @@
 # QR labels
 
 Stick a QR label on a box, a shelf or a door and scan it with any phone camera: it opens that box or place in Ferret.
+Each thing remembers when its label was [last scanned](./finding-things#last-scanned), and by whom.
 
 ## Printing
 
