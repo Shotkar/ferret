@@ -5,7 +5,7 @@
  * - DesktopLinks: the main places, labelled, in the top bar on wide screens (phones have the tab bar).
  * - AddButton (top bar) and AddFab (phones): one "+ Add" for every way in — type it in, from photos, scan a barcode,
  *   walk through a room, import, blank QR labels — into the room (or category, tag) being looked at.
- * - HouseholdBadge: the household's name in the top bar; with more than one, it switches.
+ * - HouseholdBadge: the household's name in the top bar: switches between households, or makes another.
  */
 import type { CustomFieldValues, ItemTemplate, PlacesTree } from "@ferret/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -46,6 +46,7 @@ import { useRoomScanOn } from "./lib/room-scan";
 import { Logo, PawMark } from "./AuthLayout";
 import { AddFromPhotos } from "./PhotoAdd";
 import { Modal } from "./Modal";
+import { NewHouseholdDialog } from "./NewHousehold";
 import { COMMAND_K, searchFromAnywhere } from "./Search";
 import { navigateTo } from "./lib/navigate";
 
@@ -117,11 +118,12 @@ export function MenuGroups({ onPick, className = "" }: { onPick: () => void; cla
   );
 }
 
-/** #/more — the More tab on phones: the account, its households, every group, appearance, sign out. */
+/** #/more — the More tab on phones: the account, its households (switch, or make another), every group, appearance, sign out. */
 export function MorePage({ householdId }: { householdId: string }) {
   const { data: session } = authClient.useSession();
   const { data: households } = authClient.useListOrganizations();
   const { choice, set } = useAppearance();
+  const [creating, setCreating] = useState(false);
   const user = session?.user;
   return (
     <div className="min-h-dvh bg-base-200">
@@ -143,7 +145,7 @@ export function MorePage({ householdId }: { householdId: string }) {
             </div>
           </div>
         </section>
-        {households && households.length > 1 && (
+        {households && (
           <section className="card" aria-labelledby="more-households">
             <div className="card-body gap-1 p-2">
               <h2 id="more-households" className="px-3 pt-2 text-sm font-semibold text-base-content/70">
@@ -155,9 +157,14 @@ export function MorePage({ householdId }: { householdId: string }) {
                   {h.name}
                 </button>
               ))}
+              <button type="button" className="flex min-h-11 items-center gap-3 rounded-field px-3 text-start hover:bg-base-200" onClick={() => setCreating(true)}>
+                <span className="icon-[tabler--plus] size-5 text-primary" />
+                New household…
+              </button>
             </div>
           </section>
         )}
+        {creating && <NewHouseholdDialog onClose={() => setCreating(false)} />}
         {NAV_GROUPS.map((g) => (
           <section key={g.title} className="card" aria-label={g.title}>
             <div className="card-body gap-0 p-2">
@@ -209,10 +216,11 @@ export function switchHousehold(id: string, current: string) {
   navigateTo("#/");
 }
 
-/** The household's name; with more than one household, a switcher. */
+/** The household's name, opening a menu: the households to switch between, and "New household…". Wide screens (phones: the More page). */
 export function HouseholdBadge({ householdName, householdId, align = "end" }: { householdName: string; householdId: string; align?: "start" | "end" }) {
   const { data: households } = authClient.useListOrganizations();
   const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent | KeyboardEvent) => {
@@ -225,7 +233,7 @@ export function HouseholdBadge({ householdName, householdId, align = "end" }: { 
       document.removeEventListener("keydown", close);
     };
   }, [open]);
-  if (!households || households.length < 2) return <span className="badge badge-soft badge-primary hidden sm:inline-flex">{householdName}</span>;
+  if (!households) return <span className="badge badge-soft badge-primary hidden sm:inline-flex">{householdName}</span>;
   return (
     <div id="household-switch" className={`dropdown relative hidden sm:inline-flex ${open ? "open" : ""}`}>
       <button type="button" className="btn btn-soft btn-primary btn-sm gap-1" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
@@ -242,8 +250,23 @@ export function HouseholdBadge({ householdName, householdId, align = "end" }: { 
               </button>
             </li>
           ))}
+          <li className="mt-1 border-t border-base-content/10 pt-1">
+            <button
+              type="button"
+              className="dropdown-item"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                setCreating(true);
+              }}
+            >
+              <span className="icon-[tabler--plus] size-5" />
+              New household…
+            </button>
+          </li>
         </ul>
       )}
+      {creating && <NewHouseholdDialog onClose={() => setCreating(false)} />}
     </div>
   );
 }

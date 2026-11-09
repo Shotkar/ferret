@@ -35,12 +35,12 @@ import { type Appearance, useAppearance } from "./lib/appearance";
 import { ShareButton } from "./Shares";
 import { RecallAlert } from "./PayOff";
 import { ORIGIN_FILTER, itemOriginList } from "./lib/origin";
-import { type AddContext, AddButton, AddFab, DesktopLinks, HouseholdBadge, MenuGroups, Sidebar, useScanRequests, useSidebarFolded } from "./Nav";
+import { type AddContext, AddButton, AddFab, DesktopLinks, HouseholdBadge, MenuGroups, Sidebar, switchHousehold, useScanRequests, useSidebarFolded } from "./Nav";
 import { SearchBox, useSearchHotkeys, useSearchText } from "./Search";
 import { Everything } from "./Everything";
 import { ItemRow } from "./ItemRow";
 import { navigateTo } from "./lib/navigate";
-import { deviceTimeZone } from "./TimeZone";
+import { HOUSEHOLD_NAME_MAX, NewHouseholdDialog, createHousehold } from "./NewHousehold";
 import { Mascot } from "./Mascot";
 
 /** The root: a splash on the first load, then the route's screen (router.tsx). */
@@ -817,11 +817,7 @@ function CreateHousehold() {
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const name = String(new FormData(e.currentTarget).get("name")).trim();
-    const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${crypto.randomUUID().slice(0, 6)}`;
-    const result = await authClient.organization.create({ name, slug });
-    if (result.error) setError(result.error.message ?? "Could not create household");
-    // Where it is: this device's time zone, to start with (Settings → Household changes it).
-    else if (result.data) await api.setHouseholdSettings({ timeZone: deviceTimeZone() }, result.data.id).catch(() => {});
+    await createHousehold(name).catch((err: Error) => setError(err.message));
   }
   return (
     <AuthLayout icon="icon-[tabler--home-heart]" title="Name your household" subtitle="Everything you track lives in a household. You can invite family later.">
@@ -830,7 +826,7 @@ function CreateHousehold() {
           <label className="label-text" htmlFor="household-name">
             Household name
           </label>
-          <input id="household-name" name="name" className="input" placeholder="e.g. The Highland House" required />
+          <input id="household-name" name="name" className="input" placeholder="e.g. The Highland House" maxLength={HOUSEHOLD_NAME_MAX} required pattern=".*\S.*" title="A name with at least one letter or number" />
         </div>
         {error && <div className="alert alert-soft alert-error text-sm">{error}</div>}
         <button className="btn btn-primary">Create household</button>
@@ -856,6 +852,7 @@ function AccountMenu({ householdName, householdId }: { householdName: string; ho
   const { data: session } = authClient.useSession();
   const { data: households } = authClient.useListOrganizations();
   const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent | KeyboardEvent) => {
@@ -896,33 +893,40 @@ function AccountMenu({ householdName, householdId }: { householdName: string; ho
               <span className="badge badge-soft badge-primary badge-sm mt-1 sm:hidden">{householdName}</span>
             </div>
           </li>
-          {/* From xl the sidebar has the household switcher and every place, so this menu is just about you. */}
-          {households && households.length > 1 && (
-            <>
-              <li className="dropdown-title px-4 pt-1 text-xs uppercase xl:hidden">Switch household</li>
-              {households.map((h) => (
-                <li key={h.id} className="xl:hidden">
-                  <button
-                    type="button"
-                    className="dropdown-item px-3"
-                    role="menuitemradio"
-                    aria-checked={h.id === householdId}
-                    onClick={() => {
-                      setOpen(false);
-                      if (h.id !== householdId) {
-                        void authClient.organization.setActive({ organizationId: h.id });
-                        navigateTo("#/");
-                      }
-                    }}
-                  >
-                    <span className={`${h.id === householdId ? "icon-[tabler--circle-check-filled] text-primary" : "icon-[tabler--circle]"} size-5`} />
-                    <span className="truncate">{h.name}</span>
-                  </button>
-                </li>
-              ))}
-              <li className="dropdown-divider my-1 xl:hidden" role="separator" />
-            </>
-          )}
+          {/* Households: switch between them, or make another. Below xl only — from xl the sidebar has the switcher. */}
+          <li className="dropdown-title px-4 pt-1 text-xs uppercase xl:hidden">{households && households.length > 1 ? "Switch household" : "Household"}</li>
+          {households?.map((h) => (
+            <li key={h.id} className="xl:hidden">
+              <button
+                type="button"
+                className="dropdown-item px-3"
+                role="menuitemradio"
+                aria-checked={h.id === householdId}
+                onClick={() => {
+                  setOpen(false);
+                  switchHousehold(h.id, householdId);
+                }}
+              >
+                <span className={`${h.id === householdId ? "icon-[tabler--circle-check-filled] text-primary" : "icon-[tabler--circle]"} size-5`} />
+                <span className="truncate">{h.name}</span>
+              </button>
+            </li>
+          ))}
+          <li className="xl:hidden">
+            <button
+              type="button"
+              className="dropdown-item px-3"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                setCreating(true);
+              }}
+            >
+              <span className="icon-[tabler--plus] size-5" />
+              New household…
+            </button>
+          </li>
+          <li className="dropdown-divider my-1 xl:hidden" role="separator" />
           {/* Everything that isn't a main place, grouped (Nav.tsx; the More tab on phones has the same). */}
           <MenuGroups onPick={() => setOpen(false)} className="xl:hidden" />
           <li className="dropdown-divider my-1 xl:hidden" role="separator" />
@@ -940,6 +944,7 @@ function AccountMenu({ householdName, householdId }: { householdName: string; ho
           </li>
         </ul>
       )}
+      {creating && <NewHouseholdDialog onClose={() => setCreating(false)} />}
     </div>
   );
 }

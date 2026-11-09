@@ -38,8 +38,13 @@ checklist goes away once they all are, or when you **Hide** it.
 ## Households
 
 Everything in Ferret belongs to a **household**: its properties, rooms, items, warranties and maintenance. Everyone in
-a household sees the same inventory. You can be in more than one (say, your home and your parents'); the household's
-name is shown in the top bar, and the menu (or its name in the top bar) switches between them.
+a household sees the same inventory. You can be in more than one (say, your home and your parents'). To switch, tap
+the household's name in the top bar (or the sidebar), or open the account menu; on a phone, **More** lists your
+households.
+
+To start another household, choose **New household…** in the same places and give it a name. You're switched to it
+straight away, as its owner, with an empty inventory; your other households stay as they are. Invite people to it
+from **Household & settings → Household**.
 
 To change a household's name, **Household & settings → Household → Rename** (the owner and admins). Only the name
 changes: everything in it stays as it is, and everyone in it sees the new name.
