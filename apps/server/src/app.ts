@@ -51,6 +51,7 @@ import { imports } from "./routes/imports";
 import { shared, shareShortLinks, shares } from "./routes/shares";
 import { borrowed, borrowerShortLinks, loans } from "./routes/loans";
 import { payoff } from "./routes/payoff";
+import { ai } from "./routes/ai";
 import { unlock } from "./routes/unlock";
 import { household } from "./routes/household";
 import { roomScans } from "./routes/room-scans";
@@ -328,6 +329,7 @@ export function createApp(deps: Deps, config: Config, opts: AppOptions = {}) {
   app.route("/api/v1", pairing);
   app.route("/api/v1", loans);
   app.route("/api/v1", payoff);
+  app.route("/api/v1", ai);
   app.route("/api/v1", inventory);
   app.route("/mcp", mcp);
   opts.extensions?.routes?.(app);

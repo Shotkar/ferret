@@ -19,7 +19,7 @@ const TABS: Tab[] = [
     label: "More",
     icon: "icon-[tabler--dots-circle-horizontal]",
     active: "icon-[tabler--dots-circle-horizontal]",
-    routes: ["more", "settings", "categories", "deleted", "shopping", "past", "loans", "coverage", "warranties", "report", "labels", "import"],
+    routes: ["more", "settings", "categories", "deleted", "shopping", "past", "loans", "coverage", "warranties", "ai-filled", "duplicates", "report", "labels", "import"],
   },
 ];
 

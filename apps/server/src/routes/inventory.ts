@@ -51,7 +51,11 @@ inventory.get("/me", requireUser, async (c) =>
     /** The server admin sees Settings → Server (backups). */
     serverAdmin: await isServerAdmin(c.var.db, c.var.user.id),
     /** What this server can do that depends on how it runs (the app hides what it can't). */
-    features: { fromWeb: Boolean(c.var.deps.downloader), homeAssistant: Boolean(c.var.deps.homeAssistant), roomScan: roomScansAvailable(c.var.deps, c.var.config.DEMO) },
+    features: { fromWeb: Boolean(c.var.deps.downloader), homeAssistant: Boolean(c.var.deps.homeAssistant), roomScan: roomScansAvailable(c.var.deps, c.var.config.DEMO),
+      // The AI helpers that read words (sorting imports, filters from words, estimates, typical upkeep), and speech to text.
+      textAi: Boolean(c.var.deps.chat ?? c.var.deps.ai),
+      speech: Boolean(c.var.deps.speech),
+    },
   }),
 );
 

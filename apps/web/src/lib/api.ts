@@ -109,6 +109,15 @@ import type {
   Warranty,
   WarrantyClaim,
   WarrantyInput,
+  AiFillEntry,
+  AiFillKind,
+  AiRunStatus,
+  DuplicatePair,
+  FiltersFromText,
+  ImportTriageInput,
+  ImportTriageRow,
+  MergeInput,
+  SuggestedTask,
 } from "@ferret/shared";
 import { photoCopies } from "./photo-copies";
 
@@ -252,7 +261,7 @@ export const api = {
     request<StockRule>(`/items/${itemId}/stock-rules`, { method: "PUT", body: JSON.stringify(rule) }),
   deleteStockRule: (itemId: string, ruleId: string) => request<void>(`/items/${itemId}/stock-rules/${ruleId}`, { method: "DELETE" }),
   /** Whether you're the server admin (who sees Settings → Server). */
-  me: () => request<{ serverAdmin: boolean; features: { fromWeb: boolean; homeAssistant: boolean; roomScan: boolean } }>("/me"),
+  me: () => request<{ serverAdmin: boolean; features: { fromWeb: boolean; homeAssistant: boolean; roomScan: boolean; textAi: boolean; speech: boolean } }>("/me"),
   backupStatus: () => request<BackupStatus>("/backup"),
   serverSecrets: () => request<ServerSecrets>("/server/secrets"),
   serverAddress: () => request<ServerAddress>("/server/address"),
@@ -552,4 +561,30 @@ export const api = {
   attachmentUrl: (id: string) => `/api/v1/attachments/${id}/content`,
   /** Small WebP for grids (falls back to the original server-side). */
   thumbnailUrl: (id: string) => `/api/v1/attachments/${id}/thumbnail`,
+
+  // ── AI helpers ──
+  aiFills: () => request<{ data: AiFillEntry[] }>("/ai-fills"),
+  confirmAiFill: (itemId: string, field: string) => request<Item>(`/items/${itemId}/ai-fills/${field}/confirm`, { method: "POST" }),
+  undoAiFill: (itemId: string, field: string) => request<Item>(`/items/${itemId}/ai-fills/${field}/undo`, { method: "POST" }),
+  serverAiFill: () => request<Record<AiFillKind, boolean>>("/server/ai-fill"),
+  setServerAiFill: (input: Partial<Record<AiFillKind, boolean>>) => request<Record<AiFillKind, boolean>>("/server/ai-fill", { method: "PUT", body: JSON.stringify(input) }),
+  suggestedTasks: (itemId?: string) => request<{ data: SuggestedTask[] }>(`/maintenance/suggestions${itemId ? `?itemId=${encodeURIComponent(itemId)}` : ""}`),
+  dismissSuggestedTask: (id: string) => request<{ ok: true }>(`/maintenance/suggestions/${id}/dismiss`, { method: "POST" }),
+  findTypicalUpkeep: (itemId?: string) => request<{ queued: number }>("/maintenance/typical", { method: "POST", body: JSON.stringify(itemId ? { itemId } : {}) }),
+  importTriage: (input: ImportTriageInput) => request<{ id: string }>("/import/triage", { method: "POST", body: JSON.stringify(input) }),
+  aiRun: <T,>(id: string) => request<AiRunStatus<T>>(`/ai-runs/${id}`),
+  importTriageRun: (id: string) => request<AiRunStatus<ImportTriageRow[]>>(`/ai-runs/${id}`),
+  filtersFromText: (text: string) => request<FiltersFromText>("/items/filters-from-text", { method: "POST", body: JSON.stringify({ text }) }),
+  estimateReplacement: (itemId: string) => request<{ queued: true }>(`/items/${itemId}/replacement-estimate`, { method: "POST" }),
+  duplicates: () => request<{ data: DuplicatePair[] }>("/duplicates"),
+  notDuplicate: (a: string, b: string) => request<{ ok: true }>("/duplicates/not", { method: "POST", body: JSON.stringify({ a, b }) }),
+  mergeItems: (intoId: string, input: MergeInput) => request<Item>(`/items/${intoId}/merge`, { method: "POST", body: JSON.stringify(input) }),
+  transcribe: async (audio: Blob) => {
+    const form = new FormData();
+    form.set("audio", audio, "speech");
+    const res = await fetch("/api/v1/transcribe", { method: "POST", body: form, credentials: "include" });
+    const json = (await res.json()) as { text: string } | ApiError;
+    if (!res.ok) throw Object.assign(new Error((json as ApiError).error?.message ?? res.statusText), { status: res.status });
+    return json as { text: string };
+  },
 };

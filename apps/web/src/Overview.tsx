@@ -21,6 +21,7 @@ export const MISSING_LABELS: Record<MissingDetail, { label: string; filter: stri
   place: { label: "Where it's kept", filter: "Not in any place", icon: "icon-[tabler--map-pin]" },
   document: { label: "Receipt or manual", filter: "No receipt or manual", icon: "icon-[tabler--receipt]" },
   category: { label: "Category", filter: "No category yet", icon: "icon-[tabler--category]" },
+  serial: { label: "Serial number (valuable things)", filter: "Valuable, no serial number", icon: "icon-[tabler--barcode]" },
 };
 
 

@@ -295,7 +295,8 @@ export async function setup(
     await refreshFullText(db, itemId);
     if (vectors) await jobs.enqueue(INDEX_JOB, { itemId });
   };
-  const analyze = analyzeAttachment({ db, files, ai, chat, images, documents, entitlements, onItemChanged });
+  const full = { db, blobs, images, jobs, ai, chat, documents, vectors, reranker, products, recalls, entitlements } as Deps;
+  const analyze = analyzeAttachment({ db, files, ai, chat, images, documents, entitlements, onItemChanged, full });
   jobs.register({ [PHOTO_JOB]: analyze, [DOCUMENT_JOB]: analyze, [ROOM_SCAN_JOB]: analyzeRoomScan({ db, files, ai, entitlements }) });
   if (pdfPages) jobs.register({ [PDF_THUMB_JOB]: pdfThumbnail({ db, files, pdfPages, images }), [PDF_BACKFILL_JOB]: pdfThumbnailBackfill({ db, jobs }) });
   if (ai && vectors) {

@@ -7,6 +7,8 @@ import { lastScans } from "./sightings";
 import { PHOTO_ORDER } from "./photo-order";
 import { meaningSearchAllowed, recordUsage, requireAllowed, requireRoom } from "./plan";
 import {
+  type AiFill,
+  SERIAL_WORTH_CENTS,
   type ItemDisposition,
   type ItemOrigin,
   type ItemsBulk,
@@ -45,6 +47,8 @@ import { fullTextSearch, refreshFullText } from "./fulltext";
 import { SEARCH_PROFILES, fuse, semanticSearch } from "./search";
 import { moneyText, startOfDayIn, todayFor } from "./household-time";
 import { inList } from "./sql";
+import { marksAfterEdit } from "./ai-fill";
+import { mergedInto } from "./duplicates";
 
 /** Who is acting, where, and through which client (recorded in the activity log). */
 export interface Caller {
@@ -383,6 +387,8 @@ function lacks(v: Caller, detail: MissingDetail): SQL {
   if (detail === "place") return isNull(item.locationId);
   if (detail === "category") return isNull(item.categoryId);
   if (detail === "value") return and(isNull(item.valueCents), isNull(item.purchasePriceCents))!;
+  // Worth something and no serial number: what an insurer asks for first (AI-5 — the vision model reads serial plates).
+  if (detail === "serial") return and(isNull(item.serialNumber), eq(item.isContainer, false), sql`coalesce(${item.valueCents}, ${item.purchasePriceCents}) >= ${SERIAL_WORTH_CENTS}`)!;
   return notExists(
     v.db
       .select({ one: sql`1` })
@@ -573,7 +579,12 @@ export async function itemChanged(v: Pick<Caller, "db" | "deps">, itemId: string
 
 export async function getItem(v: Caller, id: string) {
   const [row] = await v.db.select().from(item).where(and(eq(item.id, id), itemScope(v, { gone: "include" })));
-  if (!row) throw notFound("Item");
+  if (!row) {
+    // Merged into another (lib/duplicates.ts): say which, so old links lead there.
+    const into = await mergedInto(v, id);
+    if (into) throw new HTTPException(404, { message: "Item was merged into another", cause: { mergedIntoId: into } });
+    throw notFound("Item");
+  }
   return (await withTags(v, [row]))[0]!;
 }
 
@@ -710,7 +721,8 @@ function disposalChange(current: typeof item.$inferSelect, input: ItemPatch, on:
   };
 }
 
-export async function updateItem(v: Caller, id: string, input: ItemPatch, summary?: (name: string) => string) {
+/** `opts.aiFills`: the AI is filling these in by itself (lib/ai-fill.ts) — their marks are added, not cleared. */
+export async function updateItem(v: Caller, id: string, input: ItemPatch, summary?: (name: string) => string, opts: { aiFills?: Record<string, AiFill> } = {}) {
   const [current] = await v.db.select().from(item).where(and(eq(item.id, id), itemScope(v, { gone: "include" })));
   if (!current) throw notFound("Item");
   await templateOf(v, input.templateId);
@@ -725,10 +737,14 @@ export async function updateItem(v: Caller, id: string, input: ItemPatch, summar
   }
   const { tags, ...fields } = input;
   const tagsBefore = tags ? ((await tagsOf(v, [id])).get(id) ?? []) : [];
+  // What the AI filled in keeps its mark until a person changes it (or confirms it).
+  const marks = opts.aiFills
+    ? { ...(current.aiFilled ?? {}), ...opts.aiFills }
+    : marksAfterEdit(current.aiFilled, current, { ...current, ...fields, ...placed });
   // A tags-only change still bumps updatedAt (lists sort by it).
   const [row] = await v.db
     .update(item)
-    .set({ ...fields, ...disposal.fields, ...placed, updatedAt: new Date() })
+    .set({ ...fields, ...disposal.fields, ...placed, ...(marks !== undefined ? { aiFilled: marks } : {}), updatedAt: new Date() })
     .where(and(eq(item.id, id), itemScope(v, { gone: "include" })))
     .returning();
   if (!row) throw notFound("Item");
@@ -987,7 +1003,7 @@ export async function overview(v: Caller): Promise<Overview> {
     (await v.db.select({ n: count() }).from(item).where(itemScope(v, { missing: detail })))[0]?.n ?? 0;
   const today = new Date();
   const monthAgo = new Date(today.getTime() - 30 * 86_400_000).toISOString().slice(0, 10);
-  const [report, tree, warranties, photo, value, place, document, uncategorised, recent, tasks] = await Promise.all([
+  const [report, tree, warranties, photo, value, place, document, uncategorised, serial, recent, tasks] = await Promise.all([
     inventoryReport(v),
     locationTree(v),
     listWarranties(v),
@@ -996,6 +1012,7 @@ export async function overview(v: Caller): Promise<Overview> {
     countMissing("place"),
     countMissing("document"),
     countMissing("category"),
+    countMissing("serial"),
     v.db
       .select({
         id: activity.id,
@@ -1030,7 +1047,7 @@ export async function overview(v: Caller): Promise<Overview> {
       .filter((w) => w.status === "expiring" || (w.status === "expired" && w.endsOn >= monthAgo))
       .slice(0, 6)
       .map((w) => ({ id: w.id, itemId: w.itemId, itemName: w.itemName, provider: w.provider, endsOn: w.endsOn, status: w.status })),
-    missing: { photo, value, place, document, category: uncategorised },
+    missing: { photo, value, place, document, category: uncategorised, serial },
     openClaims,
     maintenance: {
       overdue: tasks.filter((t) => t.status === "overdue").length,

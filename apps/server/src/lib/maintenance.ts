@@ -33,6 +33,7 @@ import { adjustStock } from "./stock";
 import { currentReading, readingsOf } from "./usage";
 import { todayFor } from "./household-time";
 import { inList } from "./sql";
+import { markSuggestionAdded } from "./suggested-tasks";
 
 const taskIn = (v: Pick<Caller, "householdId">, id: string) =>
   and(eq(maintenanceTask.id, id), eq(maintenanceTask.householdId, v.householdId), isNull(maintenanceTask.deletedAt));
@@ -204,6 +205,7 @@ export async function createTask(v: Caller, input: MaintenanceInput) {
     })
     .returning();
   await logActivity(v, "maintenance.create", row!.id, `Added maintenance: ${row!.title} (${await describeSchedule(v, row!)})`, row!.itemId);
+  if (input.suggestionId) await markSuggestionAdded(v, input.suggestionId);
   return getTask(v, row!.id);
 }
 

@@ -89,6 +89,7 @@ export function jobSchedule({
     analytics: deps.analytics,
     entitlements: deps.entitlements,
     onItemChanged,
+    full: deps,
   });
 
   const handlers: Record<string, JobHandler> = {
@@ -118,7 +119,7 @@ export function jobSchedule({
   }
   if (deps.products) handlers[PRODUCT_JOB] = productLookupJob(deps);
   if (search) {
-    handlers[INDEX_JOB] = indexItem({ db, ai: deps.ai!, vectors: deps.vectors! });
+    handlers[INDEX_JOB] = indexItem({ db, ai: deps.ai!, vectors: deps.vectors!, profile: deps.searchProfile });
     handlers[BACKFILL_JOB] = backfillIndex({ db, jobs });
   }
   if (reminders) handlers[REMIND_JOB] = sendReminders({ ...deps, files, appUrl, remindHour: config.REMIND_HOUR, mailUrl });

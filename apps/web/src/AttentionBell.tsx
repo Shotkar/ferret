@@ -25,10 +25,11 @@ const KIND: Record<AttentionItem["kind"], { icon: string; label: string }> = {
   recall: { icon: "icon-[tabler--alert-triangle]", label: "Recall" },
   coverage: { icon: "icon-[tabler--umbrella]", label: "Coverage" },
   service: { icon: "icon-[tabler--plug-connected-x]", label: "Service" },
+  ai: { icon: "icon-[tabler--sparkles]", label: "Suggestion" },
 };
 
 const hrefFor = (a: AttentionItem) =>
-  a.kind === "roomscan" ? roomScanHref(a.id) : a.kind === "backup" || a.kind === "service" ? settingsHref("server") : a.kind === "coverage" ? COVERAGE_HREF : a.kind === "shopping" ? SHOPPING_HREF : a.kind === "maintenance" || !a.itemId ? MAINTENANCE_HREF : itemHref(a.itemId);
+  a.href ? a.href : a.kind === "roomscan" ? roomScanHref(a.id) : a.kind === "backup" || a.kind === "service" ? settingsHref("server") : a.kind === "coverage" ? COVERAGE_HREF : a.kind === "shopping" ? SHOPPING_HREF : a.kind === "maintenance" || !a.itemId ? MAINTENANCE_HREF : itemHref(a.itemId);
 
 export function AttentionBell({ householdId }: { householdId: string }) {
   const [open, setOpen] = useState(false);

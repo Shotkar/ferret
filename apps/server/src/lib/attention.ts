@@ -8,7 +8,7 @@
  * entry goes away when the thing is done, so the count means "things to do".
  */
 import { type AttentionItem, addDays } from "@ferret/shared";
-import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { and, count, desc, eq, gte, lte } from "drizzle-orm";
 import { attachment, backupRun, item } from "../db/schema";
 import { listClaims } from "./claims";
 import { isServerAdmin } from "./server-admin";
@@ -24,6 +24,9 @@ import { listRecalls } from "./recalls";
 import { coverageChecks } from "./coverage";
 import { openRoomScans } from "./room-scans";
 import { moneyText, todayFor } from "./household-time";
+import { suggestedTaskCount } from "./suggested-tasks";
+import { aiFillEntries } from "./ai-fill";
+import { duplicateCount } from "./duplicates";
 
 const MAINTENANCE_DAYS = 7;
 const WARRANTY_DAYS = 30;
@@ -221,6 +224,33 @@ export async function needsAttention(v: Caller): Promise<AttentionItem[]> {
     });
   }
 
+  // The AI's helpers: gentle lines, never urgent.
+  const suggested = await suggestedTaskCount(v);
+  if (suggested) {
+    out.push({ kind: "ai", severity: "soon", id: "suggested-maintenance", title: `${suggested} suggested maintenance ${suggested === 1 ? "task" : "tasks"}`, detail: "Found in manuals or typical for your things — add or dismiss", itemId: null, date: null, href: "#/maintenance" });
+  }
+  const filled = (await aiFillEntries(v)).length;
+  if (filled) {
+    out.push({ kind: "ai", severity: "soon", id: "ai-filled", title: `AI filled in ${filled} ${filled === 1 ? "detail" : "details"}`, detail: "Check what it filled in", itemId: null, date: null, href: "#/ai-filled" });
+  }
+  const duplicates = await duplicateCount(v);
+  if (duplicates) {
+    out.push({ kind: "ai", severity: "soon", id: "duplicates", title: `${duplicates} possible ${duplicates === 1 ? "duplicate" : "duplicates"}`, detail: "The same thing added twice? Merge or keep both", itemId: null, date: null, href: "#/duplicates" });
+  }
+  const [{ n: noSerial } = { n: 0 }] = await v.db.select({ n: count() }).from(item).where(itemScope(v, { missing: "serial" }));
+  if (noSerial) {
+    out.push({
+      kind: "ai",
+      severity: "soon",
+      id: "claim-ready",
+      title: `${noSerial} valuable ${noSerial === 1 ? "thing has" : "things have"} no serial number`,
+      detail: "Insurers ask for it — photograph the label and Ferret reads it",
+      itemId: null,
+      date: null,
+      href: "#/missing/serial",
+    });
+  }
+
   const backup = await backupTrouble(v);
   if (backup) out.push(backup);
   // Services Ferret depends on, failing in the last day — for the server admin.
@@ -286,7 +316,7 @@ export async function needsAttention(v: Caller): Promise<AttentionItem[]> {
   }
 
   // Urgent first; then by kind (things with a deadline before things waiting on someone); then soonest.
-  const order: Record<AttentionItem["kind"], number> = { backup: 0, service: 0, recall: 1, maintenance: 2, return: 3, loan: 3, warranty: 4, shopping: 5, coverage: 6, claim: 7, review: 8, roomscan: 8 };
+  const order: Record<AttentionItem["kind"], number> = { backup: 0, service: 0, recall: 1, maintenance: 2, return: 3, loan: 3, warranty: 4, shopping: 5, coverage: 6, claim: 7, review: 8, roomscan: 8, ai: 9 };
   return out.sort(
     (a, b) =>
       (a.severity === b.severity ? 0 : a.severity === "urgent" ? -1 : 1) ||

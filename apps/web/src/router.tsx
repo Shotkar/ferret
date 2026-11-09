@@ -22,6 +22,8 @@ import { App, Home, ResetPasswordScreen, SignedIn, UnlockScreen } from "./App";
 import { Categories } from "./Catalog";
 import { Borrower, Loans } from "./Loans";
 import { WarrantyList } from "./WarrantyList";
+import { AiFilled } from "./AiFill";
+import { Duplicates } from "./Duplicates";
 import { Coverage } from "./PayOff";
 import { ItemPage } from "./ItemPage";
 import { LabelLanding, PrintLabels } from "./Labels";
@@ -365,6 +367,8 @@ const routeTree = rootRoute.addChildren([
     screen("past", "past", ({ householdId }) => <Past householdId={householdId} />),
     screen("loans", "loans", ({ householdId }) => <Loans householdId={householdId} />),
     screen("warranties", "warranties", ({ householdId }) => <WarrantyList householdId={householdId} />),
+    screen("duplicates", "duplicates", ({ householdId }) => <Duplicates householdId={householdId} />),
+    screen("ai-filled", "ai-filled", ({ householdId }) => <AiFilled householdId={householdId} />),
     screen("coverage", "coverage", ({ householdId }) => <Coverage householdId={householdId} />),
     screen("more", "more", ({ householdId }) => <MorePage householdId={householdId} />),
     // Any other address: not found, inside the signed-in layout (signed out, it's the sign-in screen).

@@ -9,6 +9,8 @@ import { serverAdmin, setServerAdmin } from "../lib/server-admin";
 import { z } from "zod";
 import { RECALL_SYNC_JOB } from "../jobs/recalls";
 import { recallStatus, setRecallsEnabled } from "../lib/recalls";
+import { serverAiFillDefaults, setServerAiFillDefaults } from "../lib/ai-fill";
+import { aiFillKinds } from "@ferret/shared";
 import { demoReport } from "../lib/demo";
 import { DEMO_PARTS, partsOff, setPartsOff } from "../lib/demo-switches";
 import { HTTPException } from "hono/http-exception";
@@ -107,6 +109,13 @@ server.delete("/certificates/:id", async (c) => c.json(await removeCertificate(c
 
 /** Online barcode lookups: on or off, and what's left of the database's allowance today. */
 server.get("/barcode-lookups", async (c) => c.json(await barcodeLookupStatus(c.var.deps)));
+
+/** "Let AI fill in": which kinds are on by default for this server's households (each household can still choose). */
+server.get("/ai-fill", async (c) => c.json(await serverAiFillDefaults(c.var.db)));
+server.put("/ai-fill", async (c) => {
+  const input = await body(c.req.raw, z.partialRecord(z.enum(aiFillKinds), z.boolean()));
+  return c.json(await setServerAiFillDefaults(c.var.db, input));
+});
 
 /** Recall checks: whether they're on, how many brands asked about and recalls kept. */
 server.get("/recalls", async (c) => c.json(await recallStatus(c.var.deps)));

@@ -36,7 +36,7 @@ describe("overview", () => {
       ["Not placed", 30000, undefined],
       ["Home › Garage", 20000, garage.id],
     ]);
-    expect(o.missing).toEqual({ photo: 2, value: 1, place: 2, document: 2, category: 3 });
+    expect(o.missing).toEqual({ photo: 2, value: 1, place: 2, document: 2, category: 3, serial: expect.any(Number) });
     expect(o.warranties).toEqual([expect.objectContaining({ itemName: "Mixer", provider: "KitchenAid", status: "expiring" })]);
     expect(o.activity[0]).toMatchObject({ actorName: "ann", via: "web" });
 

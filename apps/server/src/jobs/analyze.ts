@@ -2,7 +2,8 @@
  * Attachment analysis jobs. Photos go to the vision model; documents (PDFs and
  * document photos) go to docling for a full Markdown transcription, then to the
  * model — with the image, or as text for PDFs — for suggested item fields.
- * Results are stored on the attachment; suggestions are never applied automatically.
+ * Results are stored on the attachment as suggestions; maintenance schedules go to Suggested maintenance. Fields are
+ * only filled in by themselves where the household switched that on (lib/ai-fill.ts).
  */
 import { type AttachmentAnalysis, type AttachmentKind, type AttachmentSuggestions, intervalUnits } from "@ferret/shared";
 import { and, eq, isNull } from "drizzle-orm";
@@ -14,6 +15,8 @@ import { allow, recordUsage } from "../lib/plan";
 import { sniffContentType } from "../lib/sniff";
 import type { Ai, Analytics, Db, Deps, Documents, Entitlements, Images, JobHandler, TextModel } from "../ports";
 import { householdCurrency } from "../lib/household-time";
+import { suggestTasks } from "../lib/suggested-tasks";
+import { autoFill } from "../lib/ai-fill";
 
 /** Separate job types so a long PDF never holds up photos (each type is its own lane). */
 export const PHOTO_JOB = "attachment.analyze";
@@ -38,6 +41,9 @@ export function analysisJob(deps: Deps, kind: AttachmentKind, contentType: strin
 }
 
 const nullableText = { type: ["string", "null"] } as const;
+
+/** Fields the model can vouch for having read plainly — the only ones the AI may fill in by itself. */
+const SURE_FIELDS = ["name", "brand", "model", "serialNumber", "barcode", "purchaseDate", "purchasePrice", "returnDays", "returnBy", "warrantyMonths"] as const;
 
 /** JSON Schema the model's reply must follow. Money comes back in currency units; we convert to cents. */
 const replySchema = {
@@ -68,10 +74,11 @@ const replySchema = {
         required: ["task", "every", "unit"],
       },
     },
+    sure: { type: "array", items: { type: "string", enum: [...SURE_FIELDS] } },
   },
   required: [
     "description", "text", "name", "brand", "model", "serialNumber", "barcode",
-    "purchaseDate", "purchasePrice", "returnDays", "returnBy", "warrantyMonths", "warrantyProvider", "maintenance",
+    "purchaseDate", "purchasePrice", "returnDays", "returnBy", "warrantyMonths", "warrantyProvider", "maintenance", "sure",
   ],
 };
 
@@ -86,6 +93,7 @@ const fieldRules = (currency: string) => `- name: a short, generic name for the 
 - warrantyMonths: how long the warranty lasts, in months ("one year" = 12, "90 days" = 3), only when stated; otherwise null. If several parts have different terms, use the main one.
 - warrantyProvider: who provides the warranty (the manufacturer, or e.g. "Geek Squad" for an extended plan), only when stated; otherwise null.
 - maintenance: upkeep the owner should repeat on a schedule, only when a manual or care guide states how often — e.g. "clean the filter every 3 months" → {"task": "Clean the filter", "every": 3, "unit": "month"}. task is a short instruction starting with a verb. unit is day, week, month or year ("annually" = 1 year). At most 8, the most important first; [] if none.
+- sure: the names of the fields above that you read plainly and in full, printed on the label or document itself — not inferred, guessed or partly legible. For name: only when the item is unmistakable. [] if none.
 Never guess: use null when unsure.`;
 
 const imageContext = {
@@ -155,6 +163,11 @@ const reply = z.object({
         return ok.success ? [ok.data] : [];
       }).slice(0, 8),
     ),
+  sure: z
+    .array(z.unknown())
+    .nullish()
+    .catch(undefined)
+    .transform((list) => [...new Set((list ?? []).filter((f): f is string => typeof f === "string" && (SURE_FIELDS as readonly string[]).includes(f)))]),
 });
 
 /** Turns the model's reply into a stored analysis, dropping anything malformed. */
@@ -175,7 +188,10 @@ export function toAnalysis(raw: unknown): AttachmentAnalysis {
     maintenance: r.maintenance.length
       ? r.maintenance.map((m) => ({ title: m.task, intervalCount: m.every, intervalUnit: m.unit }))
       : undefined,
+    // Only fields it actually gave a value for.
+    sure: r.sure.filter((f) => (f === "purchasePrice" ? r.purchasePrice != null : r[f as keyof typeof r] != null)),
   };
+  if (!suggestions.sure?.length) delete suggestions.sure;
   for (const key of Object.keys(suggestions) as (keyof AttachmentSuggestions)[]) {
     if (suggestions[key] === undefined) delete suggestions[key];
   }
@@ -196,6 +212,8 @@ export function analyzeAttachment(deps: {
   analytics?: Analytics;
   /** Households' plans, for the period an analysis is counted in (lib/plan.ts). */
   entitlements?: Entitlements;
+  /** Everything, for filling in fields where the household lets the AI (lib/ai-fill.ts). */
+  full?: Deps;
 }): JobHandler {
   return async (payload, { lastAttempt }) => {
     const { attachmentId } = z.object({ attachmentId: z.string() }).parse(payload);
@@ -252,6 +270,11 @@ export function analyzeAttachment(deps: {
       if (markdown) analysis.text = markdown;
 
       await save(analysis);
+      // Schedules read from a manual: into Suggested maintenance, for a person to add.
+      if (analysis.suggestions.maintenance?.length) {
+        await suggestTasks(deps.db, { householdId: row.householdId, itemId: row.itemId, attachmentId: row.id, source: "manual" }, analysis.suggestions.maintenance);
+      }
+      if (deps.full) await autoFill(deps.full, row, analysis).catch((err) => console.warn(`Filling in from ${row.id} failed: ${String(err)}`));
       if (preview) await deps.files.delete(previewKey(row.blobKey)).catch(() => {});
       await deps.onItemChanged?.(row.itemId); // new text to search
     } catch (err) {

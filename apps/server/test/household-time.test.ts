@@ -24,7 +24,7 @@ describe("a household's time zone", () => {
     const { user, db } = await setup();
     const ann = await user("ann");
     const bob = await user("bob");
-    expect(await json(ann.as("/api/v1/household/settings"))).toEqual({ timeZone: null, serverTimeZone: serverTimeZone(), currency: "USD" });
+    expect(await json(ann.as("/api/v1/household/settings"))).toMatchObject({ timeZone: null, serverTimeZone: serverTimeZone(), currency: "USD", aiFillChosen: [] });
 
     expect(await json(send(ann, "PUT", "/api/v1/household/settings", { timeZone: "America/Denver" }))).toMatchObject({ timeZone: "America/Denver" });
     expect((await send(ann, "PUT", "/api/v1/household/settings", { timeZone: "Mars/Olympus_Mons" })).status).toBe(422);

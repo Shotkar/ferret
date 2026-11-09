@@ -4,6 +4,8 @@
  */
 import { z } from "zod";
 import {
+  type AiFillKind,
+  aiFillKinds,
   categoryFieldTypes,
   isCurrency,
   isTimeZone,
@@ -222,6 +224,7 @@ const itemFields = z.object({
   disposedOn: z.iso.date().optional().nullable().describe("When it went, yyyy-mm-dd"),
   disposalCents: cents.describe("What it sold for, in cents"),
   disposalNote: optionalText(2000).describe("Who it went to, or what happened (for a lost or stolen claim)"),
+  replacementCents: cents.describe("What it would cost to replace today, in cents (for the insurance report)"),
 });
 export const itemInput = itemFields.extend({
   origin: z.enum(appOrigins).optional().describe("Which of the app's ways added it; ignored for Claude and API keys (recorded by the server)"),
@@ -360,6 +363,7 @@ export const maintenanceInput = z
     partItemId: z.string().min(1).optional().nullable().describe("The consumable it uses (a filter item): marking it done takes partQuantity out of stock"),
     partQuantity: z.number().int().min(1).max(1000).optional().describe("How many of the part each time (default 1)"),
     usageEvery: z.number().int().min(1).max(10_000_000).optional().nullable().describe('Also (or only) due every this much use, in the item\'s usageUnit ("every 5,000 miles": 5000). Needs itemId'),
+    suggestionId: z.string().min(1).optional().describe("The suggested maintenance it was added from (list_maintenance's suggestions), so it leaves that list"),
   })
   .refine(bothOrNeither, { message: "Say how often: a number and a unit", path: ["intervalUnit"] })
   .refine((t) => !t.usageEvery || t.itemId, { message: "Maintenance by use needs the thing it's on", path: ["usageEvery"] });
@@ -522,6 +526,8 @@ export type AttachmentSuggestions = Partial<
   warrantyProvider?: string;
   /** From manuals: upkeep to repeat, e.g. "Clean the filter" every 3 months. */
   maintenance?: { title: string; intervalCount: number; intervalUnit: (typeof intervalUnits)[number] }[];
+  /** The fields the model said it read plainly off the file (not inferred) — the only ones the AI may fill in by itself. */
+  sure?: string[];
 };
 
 /** null = not analysed (not configured, or not an image). */
@@ -561,6 +567,10 @@ export interface Item extends Omit<ItemInput, "origin"> {
   addedBy?: string | null;
   /** Found in a room scan: its photos are at /room-scans/:id. */
   roomScanId?: string | null;
+  /** Fields the AI filled in by itself, until a person confirms or edits them (by field: "brand", "warranty"…). */
+  aiFilled?: Record<string, AiFill> | null;
+  /** The AI's latest replacement-cost estimate — a suggestion; `replacementCents` is what a person set. */
+  replacementEstimate?: { cents: number; reasoning: string; at: string } | null;
 }
 
 export interface Paged<T> {
@@ -814,7 +824,7 @@ export interface Label {
 // ── Needs attention (the bell) ──────────────────────────────────────────────
 /** Something to act on now; it disappears once it's dealt with (no read/unread state). */
 export interface AttentionItem {
-  kind: "maintenance" | "warranty" | "return" | "claim" | "review" | "roomscan" | "backup" | "shopping" | "loan" | "recall" | "coverage" | "service";
+  kind: "maintenance" | "warranty" | "return" | "claim" | "review" | "roomscan" | "backup" | "shopping" | "loan" | "recall" | "coverage" | "service" | "ai";
   /** urgent: overdue / today; soon: coming up or waiting. */
   severity: "urgent" | "soon";
   /** The thing it's about (task, warranty, claim or item id; a backup's run id). */
@@ -825,6 +835,8 @@ export interface AttentionItem {
   itemId: string | null;
   /** When it's due / ends / was filed (yyyy-mm-dd), for sorting. */
   date: string | null;
+  /** Where in the app it's dealt with, when that isn't the item or its kind's screen (`#/…`). */
+  href?: string;
 }
 
 // ── Room scans: photograph a room, the vision model lists what's in it ──────
@@ -1629,6 +1641,12 @@ export interface HouseholdSettings {
   serverTimeZone: string;
   /** Its money (ISO 4217, e.g. EUR) — how amounts are written everywhere. USD until chosen. */
   currency: string;
+  /** Which kinds of AI results fill in by themselves here (each: the household's choice, else the server's default). */
+  aiFill: Record<AiFillKind, boolean>;
+  /** The server's defaults, for kinds the household hasn't chosen (Settings → Server). */
+  aiFillDefaults: Record<AiFillKind, boolean>;
+  /** Kinds the household chose itself (the rest follow the server). */
+  aiFillChosen: AiFillKind[];
 }
 
 /** Settings → Household's invitations: whether this server emails them, and when each pending one went out. */
@@ -1727,6 +1745,8 @@ export interface PlanReport {
 export const householdSettingsInput = z.object({
   timeZone: z.string().trim().min(1).max(64).refine(isTimeZone, "That isn't a time zone").nullable().optional(),
   currency: z.string().trim().toUpperCase().length(3).refine(isCurrency, "That isn't a currency").optional(),
+  /** Per kind: on, off, or null to follow the server's default. */
+  aiFill: z.partialRecord(z.enum(aiFillKinds), z.boolean().nullable()).optional(),
 });
 export type HouseholdSettingsInput = z.infer<typeof householdSettingsInput>;
 
@@ -1766,3 +1786,110 @@ export interface HouseholdSummary {
   /** On the shopping list. */
   toBuy: number;
 }
+
+// ── AI: filling in by itself, suggested maintenance, sorting, estimates, duplicates ──
+/**
+ * What the AI may fill in by itself, when a household lets it (lib/ai-fill.ts): only empty fields, only what the model
+ * read plainly. "details": brand, model, serial, barcode, purchase date, price paid (and the name of an unnamed
+ * "New item"); "returnBy": the return-by date from a receipt; "warranty": a warranty from a receipt or card, when the
+ * purchase date is known. Never: merging, values, renaming what a person named, gone/sold, maintenance schedules.
+ */
+/** One field the AI filled in by itself. */
+export interface AiFill {
+  /** What it wrote (a warranty: its end date). */
+  value: string | number;
+  /** The file it read it from. */
+  from: string | null;
+  attachmentId: string | null;
+  at: string;
+  /** For "warranty": the warranty it added (Undo removes it). */
+  warrantyId?: string;
+}
+
+/** The "Filled in by AI" list: one row per field still waiting to be confirmed. */
+export interface AiFillEntry {
+  itemId: string;
+  itemName: string;
+  field: string;
+  label: string;
+  value: string | number;
+  from: string | null;
+  at: string;
+}
+
+/** Suggested maintenance (household-wide): schedules found in manuals, or typical upkeep for an item's kind. */
+export interface SuggestedTask {
+  id: string;
+  itemId: string;
+  itemName: string;
+  title: string;
+  intervalCount: number;
+  intervalUnit: (typeof intervalUnits)[number];
+  source: "manual" | "typical";
+  attachmentId: string | null;
+  /** The manual's file name. */
+  filename: string | null;
+  createdAt: string;
+}
+
+/** Sorting an import's lines (AI-1): which to keep, and a category from the household's own. */
+export const importTriageInput = z.object({
+  rows: z
+    .array(z.object({ name: z.string().trim().min(1).max(300), category: z.string().trim().max(200).optional() }))
+    .min(1)
+    .max(3000),
+});
+export type ImportTriageInput = z.infer<typeof importTriageInput>;
+export interface ImportTriageRow {
+  /** False: looks like a consumable or something not worth keeping a record of. */
+  keep: boolean;
+  /** A category path from the household's own ("Tools › Power tools"), or null. */
+  category: string | null;
+}
+
+/** Background AI work the browser is waiting for (GET /ai-runs/:id). */
+export interface AiRunStatus<T = unknown> {
+  id: string;
+  status: "pending" | "done" | "failed";
+  /** For a run done in parts: how many are done. */
+  done?: number;
+  total?: number;
+  result: T | null;
+  error: string | null;
+}
+
+/** Plain words → Everything's filters (AI-2). */
+export const filtersFromTextInput = z.object({ text: z.string().trim().min(3).max(300) });
+export interface FiltersFromText {
+  /** Everything's filter values, as its link would carry them (e.g. { category: "…id", missing: "receipt" }). */
+  filters: Record<string, string>;
+  /** Words for each, to show as chips. */
+  chips: { key: string; label: string }[];
+  /** What it couldn't turn into a filter (shown as the search words). */
+  query: string | null;
+}
+
+/** Two items that may be the same thing (AI-4). */
+export interface DuplicatePair {
+  a: DuplicateSide;
+  b: DuplicateSide;
+  /** Why they look alike, in words. */
+  reasons: string[];
+}
+export interface DuplicateSide {
+  id: string;
+  name: string;
+  brand: string | null;
+  model: string | null;
+  serialNumber: string | null;
+  place: string | null;
+  photoId: string | null;
+  createdAt: string;
+}
+
+/** Merging two items: which one's value to keep where they differ (default: the survivor's, else the other's). */
+export const mergeInput = z.object({
+  from: z.string().min(1).describe("The item merged away (it goes to Recently deleted)"),
+  take: z.array(z.string().max(40)).max(40).default([]).describe("Fields to take from the merged-away item where both have a value"),
+});
+export type MergeInput = z.infer<typeof mergeInput>;

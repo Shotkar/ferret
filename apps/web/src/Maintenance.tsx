@@ -16,6 +16,7 @@ import { AttentionBell } from "./AttentionBell";
 import { ProviderPicker } from "./Providers";
 import { itemHref, PROVIDERS_HREF } from "./lib/route";
 import { DialogActions, Modal } from "./Modal";
+import { SuggestedMaintenance } from "./SuggestedMaintenance";
 import { HelpLink } from "./HelpLink";
 import { Mascot } from "./Mascot";
 import { MaintenanceCalendar, thisMonth } from "./MaintenanceCalendar";
@@ -148,6 +149,7 @@ export function Maintenance({ householdName, householdId, view: asked, month: as
             onEdit={setEditing}
           />
         )}
+        {view === "list" && <SuggestedMaintenance householdId={householdId} />}
         {view === "list" && groups.map((g) => (
           <section key={g.key} className="card" aria-labelledby={`group-${g.key}`}>
             <div className="card-body gap-2 p-4 sm:p-6">
@@ -205,6 +207,7 @@ export function ItemMaintenance({ itemId, householdId }: { itemId: string; house
           ))}
         </ul>
       )}
+      <SuggestedMaintenance householdId={householdId} itemId={itemId} />
       {editing && (
         <TaskModal householdId={householdId} itemId={itemId} task={editing === "new" ? undefined : editing} onClose={() => setEditing(null)} />
       )}
@@ -455,6 +458,7 @@ export function TaskModal(props: {
       intervalUnit: repeats ? (String(f.get("intervalUnit")) as IntervalUnit) : null,
       dueOn: String(f.get("dueOn") || "") || undefined,
       attachmentId: initial.attachmentId ?? null,
+      ...(!task && props.initial?.suggestionId ? { suggestionId: props.initial.suggestionId } : {}),
       providerId,
       partItemId: part?.id ?? null,
       partQuantity: part ? Math.max(1, Number(f.get("partQuantity")) || 1) : 1,

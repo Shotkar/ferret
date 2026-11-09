@@ -6,7 +6,7 @@
 import { sql } from "drizzle-orm";
 import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 import type { SightingHow, SightingKind } from "@ferret/shared/utils";
-import type { AnalysisStatus, AttachmentAnalysis, CategoryField, CustomFieldValues, HaSnapshot, ItemLink, ItemOrigin, ProductInfo, RoomScanCandidate, RoomScanStatus } from "@ferret/shared";
+import type { AiFill, AiFillSwitches, AnalysisStatus, AttachmentAnalysis, CategoryField, CustomFieldValues, HaSnapshot, ItemLink, ItemOrigin, ProductInfo, RoomScanCandidate, RoomScanStatus } from "@ferret/shared";
 import { invitation, organization, user } from "./auth";
 
 const id = () =>
@@ -209,6 +209,19 @@ export const item = sqliteTable(
     importKey: text("import_key"),
     /** What Home Assistant said about it when last imported — a re-import offers only what HA changed since. */
     haSnapshot: text("ha_snapshot", { mode: "json" }).$type<HaSnapshot>(),
+    /**
+     * Fields the AI filled in by itself (lib/ai-fill.ts, when the household let it): what it wrote, from which file, when.
+     * A field leaves this when a person confirms or edits it; Undo clears the field again.
+     */
+    aiFilled: text("ai_filled", { mode: "json" }).$type<Record<string, AiFill>>(),
+    /** What it would cost to replace today, in cents — set by a person (maybe from the AI's estimate). */
+    replacementCents: integer("replacement_cents"),
+    /** The AI's latest replacement-cost estimate (lib/replacement.ts): a suggestion until someone applies it. */
+    replacementEstimate: text("replacement_estimate", { mode: "json" }).$type<{ cents: number; reasoning: string; at: string } | null>(),
+    /** When the AI was last asked for typical upkeep of it (lib/typical-upkeep.ts) — asked once, not again. */
+    upkeepCheckedAt: integer("upkeep_checked_at", { mode: "timestamp_ms" }),
+    /** Merged into another item (lib/duplicates.ts): it's in Recently deleted, and old links lead to that one. */
+    mergedIntoId: text("merged_into_id"),
     /** Last time the item was embedded for semantic search (null = never; stale if older than updatedAt). */
     indexedAt: integer("indexed_at", { mode: "timestamp_ms" }),
     ...timestamps,
@@ -288,6 +301,8 @@ export const householdSetting = sqliteTable("household_setting", {
   timeZone: text("time_zone"),
   /** Its money (ISO 4217, e.g. EUR): how amounts are written everywhere. Null = US dollars (@ferret/shared money.ts). */
   currency: text("currency"),
+  /** Which kinds of AI results it lets fill in by themselves (lib/ai-fill.ts); a kind left out follows the server's default. */
+  aiFill: text("ai_fill", { mode: "json" }).$type<AiFillSwitches>(),
   /** The last day (UTC, yyyy-mm-dd) anyone in it used Ferret — written at most once a day (lib/plan.ts markActive). */
   lastActiveOn: text("last_active_on"),
   updatedAt: timestamps.updatedAt,
@@ -1182,4 +1197,74 @@ export const invitationEmail = sqliteTable(
     error: text("error"),
   },
   (t) => [index("invitation_email_household_idx").on(t.householdId, t.sentAt)],
+);
+
+/**
+ * Suggested maintenance (lib/suggested-tasks.ts): every schedule Ferret found for an item — read from its manuals, or
+ * the AI's typical upkeep for its kind — waiting for a person to add it (`addedAt`) or say it isn't needed
+ * (`dismissedAt`, remembered). Never added by itself.
+ */
+export const suggestedTask = sqliteTable(
+  "suggested_task",
+  {
+    id: id(),
+    householdId: householdId(),
+    itemId: text("item_id")
+      .notNull()
+      .references(() => item.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    /** The title lowercased and trimmed: one suggestion per job per item. */
+    titleKey: text("title_key").notNull(),
+    intervalCount: integer("interval_count").notNull(),
+    intervalUnit: text("interval_unit").$type<"day" | "week" | "month" | "year">().notNull(),
+    /** "manual": read from one of its documents; "typical": the AI's usual upkeep for things like it. */
+    source: text("source").$type<"manual" | "typical">().notNull(),
+    attachmentId: text("attachment_id").references(() => attachment.id, { onDelete: "set null" }),
+    dismissedAt: integer("dismissed_at", { mode: "timestamp_ms" }),
+    addedAt: integer("added_at", { mode: "timestamp_ms" }),
+    createdAt: timestamps.createdAt,
+  },
+  (t) => [uniqueIndex("suggested_task_item_title_idx").on(t.householdId, t.itemId, t.titleKey)],
+);
+
+/**
+ * A piece of AI work someone is waiting on (lib/ai-runs.ts): sorting an import's lines. The browser asks for it, a job
+ * does it, the browser polls for the result. Kept a day.
+ */
+export const aiRun = sqliteTable(
+  "ai_run",
+  {
+    id: id(),
+    householdId: householdId(),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    status: text("status").$type<"pending" | "done" | "failed">().notNull().default("pending"),
+    input: text("input", { mode: "json" }).$type<unknown>().notNull(),
+    result: text("result", { mode: "json" }).$type<unknown>(),
+    error: text("error"),
+    createdAt: timestamps.createdAt,
+  },
+  (t) => [index("ai_run_household_idx").on(t.householdId, t.createdAt)],
+);
+
+/**
+ * Two items that look like the same thing (lib/duplicates.ts) — found by meaning when items are indexed; `itemA` < `itemB`.
+ * "Not a duplicate" is remembered (`notDuplicateAt`), so the pair isn't offered again.
+ */
+export const itemPair = sqliteTable(
+  "item_pair",
+  {
+    householdId: householdId(),
+    itemA: text("item_a")
+      .notNull()
+      .references(() => item.id, { onDelete: "cascade" }),
+    itemB: text("item_b")
+      .notNull()
+      .references(() => item.id, { onDelete: "cascade" }),
+    /** How alike they read (embedding similarity, 0–1). */
+    score: real("score").notNull(),
+    notDuplicateAt: integer("not_duplicate_at", { mode: "timestamp_ms" }),
+    createdAt: timestamps.createdAt,
+  },
+  (t) => [primaryKey({ columns: [t.itemA, t.itemB] }), index("item_pair_household_idx").on(t.householdId)],
 );

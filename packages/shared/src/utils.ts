@@ -29,7 +29,9 @@ export const claimStatuses = ["filed", "in_progress", "approved", "denied", "res
 export type ClaimStatus = (typeof claimStatuses)[number];
 
 /** Details an item can be missing — the Overview's "fill these in" list. document = a receipt or manual. */
-export const missingDetails = ["photo", "value", "place", "document", "category"] as const;
+export const missingDetails = ["photo", "value", "place", "document", "category", "serial"] as const;
+/** "serial": worth at least this (value, else price paid, in minor units) and no serial number — what a claim asks for. */
+export const SERIAL_WORTH_CENTS = 20_000;
 export type MissingDetail = (typeof missingDetails)[number];
 
 /** "Expiring" = active, ending within this many days. */
@@ -319,3 +321,13 @@ export const PLAN_FEATURE_NAMES: Record<PlanFeature, string> = {
   shareLinks: "Share links",
   calendarFeeds: "Calendar feeds",
 };
+
+export const aiFillKinds = ["details", "returnBy", "warranty"] as const;
+export type AiFillKind = (typeof aiFillKinds)[number];
+export type AiFillSwitches = Partial<Record<AiFillKind, boolean>>;
+export const AI_FILL_KIND_NAMES: Record<AiFillKind, { label: string; hint: string }> = {
+  details: { label: "Details from photos and receipts", hint: "Brand, model, serial number, barcode, purchase date and price paid — only empty fields" },
+  returnBy: { label: "Return-by dates", hint: "The last day to return it, from a receipt" },
+  warranty: { label: "Warranties", hint: "From a receipt or warranty card, when the purchase date is known" },
+};
+

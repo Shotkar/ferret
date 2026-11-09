@@ -90,7 +90,7 @@ export async function restoreItem(v: Caller, id: string) {
     : [];
   await v.db
     .update(item)
-    .set({ deletedAt: null, locationId: place?.id ?? null, containerItemId: box?.id ?? null })
+    .set({ deletedAt: null, mergedIntoId: null, locationId: place?.id ?? null, containerItemId: box?.id ?? null })
     .where(eq(item.id, id));
   await itemChanged(v, id);
   if (box) await itemChanged(v, box.id);

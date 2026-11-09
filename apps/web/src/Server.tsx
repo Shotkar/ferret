@@ -4,6 +4,7 @@
  * certificates for the server's own connections, and handing the admin role to someone else. Restoring is a command on the server, not a button: see restoreCommands below.
  */
 import type { BackupRun, BackupSnapshot, BackupStatus, ServerCertificate, ServerSecrets } from "@ferret/shared";
+import { ServerAiFillCard } from "./AiFill";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DemoSwitches, DemoUsage, HostingUsageCard } from "./Demo";
 import { type FormEvent, useState } from "react";
@@ -27,6 +28,7 @@ export function Server() {
       <ServiceErrors />
       <BarcodeLookups />
       <RecallChecks />
+      <ServerAiFillCard />
       {!demo && <Certificates />}
       <ServerAdmin />
     </>

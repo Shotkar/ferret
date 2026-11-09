@@ -17,6 +17,7 @@
  *   Backups   → VACUUM INTO + a folder (NAS)
  *   HomeAssistant → its WebSocket API (LAN)
  *   Recalls   → CPSC's recall API (fetch)
+ *   Speech    → a Whisper-style transcription server (OpenAI-compatible /v1/audio/transcriptions)
  */
 import type { BaseSQLiteDatabase } from "drizzle-orm/sqlite-core";
 import type { PlanLimits } from "@ferret/shared";
@@ -124,6 +125,12 @@ export interface TextModel {
 export interface Ai extends TextModel {
   /** One vector per text. Queries and documents can differ (instruction-tuned embedding models). */
   embed(texts: string[], purpose: "document" | "query"): Promise<number[][]>;
+}
+
+/** Speech to text: a short recording (naming things during a walkthrough). */
+export interface Speech {
+  /** The words said, or "" for none. Throws when the server can't be reached or refuses it. */
+  transcribe(audio: Uint8Array, contentType: string): Promise<string>;
 }
 
 export interface Reranker {
@@ -320,6 +327,9 @@ export interface SearchProfile {
   judgeFloor: number;
   /** A meaning match this strong is sure: shown at once, never judged. */
   sureScore: number;
+  /** Two items' summaries this alike are likely the same thing (lib/duplicates.ts); a little less when in the same place. */
+  duplicateScore?: number;
+  duplicateScoreSamePlace?: number;
 }
 
 /** A household's plan (Deps.entitlements). */
@@ -401,6 +411,8 @@ export interface Deps {
   reranker?: Reranker;
   /** A stronger text model for questions and reading documents (falls back to `ai`). */
   chat?: TextModel;
+  /** Speech to text, for naming things aloud during a walkthrough (needs SPEECH_URL). */
+  speech?: Speech;
   /** Web Push for maintenance reminders (needs VAPID keys). */
   push?: Push;
   /** Reminders to other apps through Apprise (needs APPRISE_URL). */

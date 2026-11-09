@@ -1,7 +1,7 @@
 /**
- * "Suggestions from your photos": item fields, warranty terms and maintenance
- * schedules the model read off photos, receipts, warranty cards and manuals.
- * Nothing changes until someone taps Apply or Add.
+ * "Suggestions from your photos": item fields and warranty terms the model read off photos, receipts and warranty
+ * cards. Nothing changes until someone taps Apply or Add (unless the household lets AI fill in — AiFill.tsx).
+ * Maintenance schedules from manuals are in Suggested maintenance (SuggestedMaintenance.tsx).
  */
 import type { Attachment, Item, ItemPatch, MaintenanceInput, MaintenanceTask, Warranty, WarrantyInput } from "@ferret/shared";
 import { addDays, addMonths, describeInterval, today } from "@ferret/shared/utils";
@@ -65,20 +65,7 @@ export function pendingSuggestions(item: Item, attachments: Attachment[], warran
       warranty = { display: `${length}${provider ? ` (${provider})` : ""}`, needsDate: true };
     }
   }
-  // Maintenance schedules from manuals, unless the item already tracks one by that name.
-  const maintenance: (MaintenanceInput & { display: string })[] = [];
-  // "Descale" and "Descale the machine" are the same job: either containing the other counts.
-  const seen = tasks.map((t) => t.title.trim().toLowerCase());
-  const tracked = (title: string) => seen.some((t) => t.includes(title) || title.includes(t));
-  for (const source of sources) {
-    for (const m of source.analysis!.suggestions.maintenance ?? []) {
-      const key = m.title.trim().toLowerCase();
-      if (tracked(key)) continue;
-      seen.push(key);
-      maintenance.push({ ...m, itemId: item.id, attachmentId: source.id, display: `${m.title} — ${describeInterval(m.intervalCount, m.intervalUnit)}` });
-    }
-  }
-  return { rows, warranty, maintenance, sources };
+  return { rows, warranty, sources };
 }
 
 export function Suggestions(props: {
@@ -92,8 +79,8 @@ export function Suggestions(props: {
   onDismiss: (attachmentIds: string[]) => void;
   busy: boolean;
 }) {
-  const { rows, warranty, maintenance, sources } = pendingSuggestions(props.item, props.attachments, props.warranties, props.tasks);
-  if (rows.length === 0 && !warranty && maintenance.length === 0) return null;
+  const { rows, warranty, sources } = pendingSuggestions(props.item, props.attachments, props.warranties);
+  if (rows.length === 0 && !warranty) return null;
   const all = Object.fromEntries(rows.map((r) => [r.key, r.value])) as ItemPatch;
 
   return (
@@ -139,21 +126,6 @@ export function Suggestions(props: {
               </button>
             </li>
           )}
-          {maintenance.map(({ display, ...task }) => (
-            <li key={task.title} className="flex items-center gap-3 py-2">
-              <span className="text-base-content/70 w-20 shrink-0 text-sm">Upkeep</span>
-              <span className="text-base-content min-w-0 flex-1 font-medium">{display}</span>
-              <button
-                type="button"
-                className="btn btn-text btn-primary btn-sm"
-                disabled={props.busy}
-                onClick={() => props.onAddTask(task)}
-                aria-label={`Add maintenance: ${display}`}
-              >
-                Add
-              </button>
-            </li>
-          ))}
         </ul>
         <div className="flex items-center justify-end gap-2">
           <button

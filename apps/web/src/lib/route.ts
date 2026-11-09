@@ -39,6 +39,8 @@ export type Route =
   | { name: "borrower"; token: string }
   | { name: "loans" }
   | { name: "warranties" }
+  | { name: "ai-filled" }
+  | { name: "duplicates" }
   | { name: "coverage" }
   | { name: "more" }
   | { name: "item"; id: string }
@@ -98,6 +100,10 @@ export const COVERAGE_HREF = "#/coverage";
 export const LOANS_HREF = "#/loans";
 /** Every warranty in the household, and claims in progress (WarrantyList.tsx). */
 export const WARRANTIES_HREF = "#/warranties";
+/** What the AI filled in by itself, waiting for someone to check it (AiFill.tsx). */
+export const AI_FILLED_HREF = "#/ai-filled";
+/** Things that may be the same thing twice, to merge (Duplicates.tsx). */
+export const DUPLICATES_HREF = "#/duplicates";
 /** Everything, most valuable first (the dashboard's Worth). */
 export const BY_VALUE_HREF = "#/items?sort=value";
 /** Importing: a spreadsheet, or Home Assistant's devices (Import.tsx). */

@@ -8,7 +8,8 @@ import { and, eq, isNull, lt, or } from "drizzle-orm";
 import { z } from "zod";
 import { item } from "../db/schema";
 import { itemSummary, loadSearchDoc } from "../lib/search-text";
-import type { Ai, Db, JobHandler, Jobs, VectorPoint, Vectors } from "../ports";
+import type { Ai, Db, JobHandler, Jobs, SearchProfile, VectorPoint, Vectors } from "../ports";
+import { DUPLICATE_SCORE, DUPLICATE_SCORE_SAME_PLACE, recordNeighbours } from "../lib/duplicates";
 
 export const INDEX_JOB = "item.index";
 export const BACKFILL_JOB = "search.backfill";
@@ -17,7 +18,7 @@ const CHUNK_CHARS = 1500;
 const MAX_CHUNKS_PER_DOCUMENT = 40;
 const EMBED_BATCH = 16;
 
-export function indexItem(deps: { db: Db; ai: Ai; vectors: Vectors }): JobHandler {
+export function indexItem(deps: { db: Db; ai: Ai; vectors: Vectors; profile?: SearchProfile }): JobHandler {
   return async (payload) => {
     const { itemId } = z.object({ itemId: z.string() }).parse(payload);
     const doc = await loadSearchDoc(deps.db, itemId);
@@ -51,6 +52,11 @@ export function indexItem(deps: { db: Db; ai: Ai; vectors: Vectors }): JobHandle
     ];
     await deps.vectors.deleteWhere({ itemId });
     await deps.vectors.upsert(points);
+    // Possible duplicates: items that read nearly the same (a suggestion to merge — never done by itself).
+    await recordNeighbours(deps.db, deps.vectors, it, vectors[0]!, {
+      any: deps.profile?.duplicateScore ?? DUPLICATE_SCORE,
+      samePlace: deps.profile?.duplicateScoreSamePlace ?? DUPLICATE_SCORE_SAME_PLACE,
+    }).catch((err) => console.warn(`Looking for duplicates of ${itemId} failed: ${String(err)}`));
     // Mark indexed without bumping updatedAt (which orders the item list) — and only if the
     // item wasn't edited meanwhile; an edit queues its own re-index.
     await deps.db

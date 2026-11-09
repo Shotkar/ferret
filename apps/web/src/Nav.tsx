@@ -22,6 +22,8 @@ import {
   type Route,
   COVERAGE_HREF,
   WARRANTIES_HREF,
+  AI_FILLED_HREF,
+  DUPLICATES_HREF,
   DELETED_HREF,
   IMPORT_HREF,
   ITEMS_HREF,
@@ -77,6 +79,8 @@ export const NAV_GROUPS: { title: string; links: Link[] }[] = [
       { href: COLLECTIONS_HREF, label: "Collections", icon: "icon-[tabler--stack-2]" },
       { href: CATEGORIES_HREF, label: "Categories & tags", icon: "icon-[tabler--folders]" },
       { href: PROVIDERS_HREF, label: "Service providers", icon: "icon-[tabler--address-book]" },
+      { href: DUPLICATES_HREF, label: "Possible duplicates", icon: "icon-[tabler--copy]" },
+      { href: AI_FILLED_HREF, label: "Filled in by AI", icon: "icon-[tabler--sparkles]" },
     ],
   },
   {

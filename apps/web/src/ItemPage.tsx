@@ -33,6 +33,7 @@ import { mergeFields, useTemplates } from "./Templates";
 import { money } from "./lib/money";
 import { CollectionBanner } from "./Collections";
 import { ItemMaintenance, maintenanceKey } from "./Maintenance";
+import { AiFilledCard } from "./AiFill";
 import { ClaimDialog } from "./Claims";
 import { ProductSuggestions } from "./Product";
 import { Suggestions } from "./Suggestions";
@@ -157,6 +158,23 @@ export function ItemPage({ itemId, householdId }: { itemId: string; householdId:
   const [cropping, setCropping] = useState<Attachment | null>(null); // the photo being cropped (PhotoCrop.tsx)
 
   if (item.isError && (item.error as Error & { status?: number }).status === 404) {
+    // Merged into another thing (Possible duplicates): that one is where it lives now.
+    const into = ((item.error as Error & { details?: { mergedIntoId?: string } }).details)?.mergedIntoId;
+    if (into) {
+      return (
+        <Shell title="">
+          <div className="card">
+            <div className="card-body items-center gap-3 text-center">
+              <span className="icon-[tabler--arrow-merge] size-10 text-primary" />
+              <h2 className="text-lg font-semibold">This was merged into another</h2>
+              <a className="btn btn-primary" href={itemHref(into)}>
+                Open it
+              </a>
+            </div>
+          </div>
+        </Shell>
+      );
+    }
     return (
       <Shell title="">
         <NotFound what="item" wrap={false} />
@@ -275,6 +293,8 @@ export function ItemPage({ itemId, householdId }: { itemId: string; householdId:
       </section>
       </div>
 
+      {/* What the AI filled in by itself: until someone checks it. */}
+      <AiFilledCard item={item.data} householdId={householdId} />
       {/* A recall that matches it: before anything else. */}
       <RecallCard itemId={itemId} householdId={householdId} />
       <JumpLinks

@@ -28,6 +28,7 @@ const GROUPS: [AttentionItem["kind"][], string][] = [
   [["coverage"], "Insurance coverage"],
   [["review"], "To name"],
   [["backup"], "Backups"],
+  [["ai"], "Suggestions"],
 ];
 
 export async function getWeekly(v: Caller, canEmail: boolean): Promise<WeeklyDigestSetting> {
