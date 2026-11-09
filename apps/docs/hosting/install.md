@@ -55,8 +55,9 @@ The same image is published in two places — use whichever you like:
 | GitHub | [`ghcr.io/ferret-project/ferret`](https://github.com/ferret-project/ferret/pkgs/container/ferret) |
 | Docker Hub | [`ferretproject/ferret`](https://hub.docker.com/r/ferretproject/ferret) |
 
-Both have the same tags: `latest`, each release (`2026.11.2` — see [Upgrading](./upgrading)) and each build
-(`sha-…`), for x86-64 and 64-bit ARM. `compose.yaml` uses GitHub's; for Docker Hub, change its `image:` line to
+Both have the same tags, for x86-64 and 64-bit ARM: `latest` (the newest release), each release (`2026.11.2` — see
+[Upgrading](./upgrading)), and for trying what's coming, `main` (the newest build, not yet released) and each build
+(`sha-…`) — set `FERRET_TAG` in `.env` to one of those, and back to `latest` afterwards. `compose.yaml` uses GitHub's; for Docker Hub, change its `image:` line to
 `ferretproject/ferret:${FERRET_TAG:-latest}`. Unraid, Portainer and other tools that ask for an image name take either.
 
 ## The data folder's owner
