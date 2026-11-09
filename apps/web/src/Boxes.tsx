@@ -3,6 +3,7 @@
  * places show their QR label as a LabelBadge beside their name, which opens
  * LabelDialog to see, print, take off or provision one.
  */
+import { lastScannedText } from "./lib/last-scanned";
 import type { ItemListing, LabelTarget, OwnLabel } from "@ferret/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
@@ -111,7 +112,12 @@ export function BoxContents({ box, householdId }: { box: ItemListing; householdI
                 <span className="min-w-0">
                   <span className="block truncate text-base-content">{it.name}</span>
                   <span className="block truncate text-xs text-base-content/70">
-                    {it.isContainer ? `${it.contents} inside` : [it.brand, it.quantity !== 1 ? `×${it.quantity}` : null].filter(Boolean).join(" · ")}
+                    {[
+                      it.isContainer ? `${it.contents} inside` : [it.brand, it.quantity !== 1 ? `×${it.quantity}` : null].filter(Boolean).join(" · "),
+                      lastScannedText(it.lastScanned, true),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </span>
                 </span>
               </a>

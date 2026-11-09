@@ -342,6 +342,8 @@ export const api = {
       judge?: "later" | "now";
       limit?: number;
       offset?: number;
+      /** Not scanned since this day (yyyy-mm-dd); never scanned counts. */
+      notScannedSince?: string;
       /** Lists only: the order (last changed first, unless asked). */
       sort?: ItemSort;
       dir?: "asc" | "desc";
@@ -365,6 +367,7 @@ export const api = {
     if (filter.origin) params.set("origin", filter.origin);
     if (filter.collectionId) params.set("collectionId", filter.collectionId);
     if (filter.wanted) params.set("wanted", filter.wanted);
+    if (filter.notScannedSince) params.set("notScannedSince", filter.notScannedSince);
     return request<ItemSearch>(`/items${params.size ? `?${params}` : ""}`);
   },
   getItem: (id: string) => request<ItemListing>(`/items/${id}`),

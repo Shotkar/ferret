@@ -31,6 +31,7 @@ import {
   property,
   provider,
   stockMovement,
+  itemSighting,
   usageReading,
   stockRule,
   tag,
@@ -114,12 +115,13 @@ export async function householdData(v: Caller, root: string, householdName: stri
   const templates = await listTemplates(v);
   const collections = await listCollections(v);
   const owned = await v.db.select().from(ownLabel).where(eq(ownLabel.householdId, h)).orderBy(asc(ownLabel.createdAt));
-  const [rules, moves, readings] = await Promise.all([
+  const [rules, moves, readings, sightings] = await Promise.all([
     v.db.select().from(stockRule).where(eq(stockRule.householdId, h)),
     v.db.select().from(stockMovement).where(eq(stockMovement.householdId, h)).orderBy(asc(stockMovement.createdAt)),
     v.db.select().from(usageReading).where(eq(usageReading.householdId, h)).orderBy(asc(usageReading.readOn)),
+    v.db.select().from(itemSighting).where(eq(itemSighting.householdId, h)),
   ]);
-  const doers = [...new Set([...logs.map((l) => l.doneBy), ...moves.map((m) => m.userId), ...readings.map((r) => r.userId)].filter((id): id is string => !!id))];
+  const doers = [...new Set([...logs.map((l) => l.doneBy), ...moves.map((m) => m.userId), ...readings.map((r) => r.userId), ...sightings.map((x) => x.userId)].filter((id): id is string => !!id))];
   const people = doers.length ? await v.db.select({ id: user.id, name: user.name }).from(user).where(inList(user.id, doers)) : [];
   const liveProperties = live(properties);
   const livePlaces = live(places);
@@ -269,6 +271,10 @@ export async function householdData(v: Caller, root: string, householdName: stri
           .filter((m) => m.itemId === i.id)
           .map((m) => ({ at: iso(m.createdAt), change: m.delta, left: m.quantityAfter, how: m.reason, by: m.userId ? (who.get(m.userId) ?? null) : null, note: m.note, undone: m.undoneAt != null })),
       },
+      /** When it was last seen, by kind ("scanned": its label or barcode), by whom and how. */
+      lastSeen: sightings
+        .filter((x) => x.itemId === i.id)
+        .map((x) => ({ kind: x.kind, at: iso(x.at), by: x.userId ? (who.get(x.userId) ?? null) : null, how: x.how })),
       addedAt: iso(i.createdAt),
       /** How it was added (app, photos, walkthrough, scan, label, spreadsheet, homeassistant, claude, api) and the file's or key's name. */
       addedFrom: i.origin ? { how: i.origin, detail: i.originDetail } : null,

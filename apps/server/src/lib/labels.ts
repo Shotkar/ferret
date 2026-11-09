@@ -4,6 +4,7 @@
  * in a dim garage), six characters: about a billion codes, unique across
  * every household. Labels can be printed blank and claimed when stuck on.
  */
+import { recordSighting } from "./sightings";
 import type { Label, LabelTarget } from "@ferret/shared";
 import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
@@ -123,5 +124,8 @@ export async function resolveLabel(v: Omit<Caller, "householdId" | "timeZone">, 
   if (!row || (onlyHousehold !== undefined && row.householdId !== onlyHousehold) || !(await membership(v.db, row.householdId, v.userId))) {
     throw notFound("Label");
   }
-  return describe({ ...v, householdId: row.householdId, timeZone: await householdTimeZone(v.db, row.householdId) }, row);
+  const found = await describe({ ...v, householdId: row.householdId, timeZone: await householdTimeZone(v.db, row.householdId) }, row);
+  // A label scanned to its thing: when it was last seen (lib/sightings.ts).
+  if (found.item) await recordSighting({ db: v.db, householdId: row.householdId, userId: v.userId }, found.item.id, "scanned", "label");
+  return found;
 }

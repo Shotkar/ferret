@@ -5,6 +5,7 @@
  */
 import { sql } from "drizzle-orm";
 import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
+import type { SightingHow, SightingKind } from "@ferret/shared/utils";
 import type { AnalysisStatus, AttachmentAnalysis, CategoryField, CustomFieldValues, HaSnapshot, ItemLink, ItemOrigin, ProductInfo, RoomScanCandidate, RoomScanStatus } from "@ferret/shared";
 import { invitation, organization, user } from "./auth";
 
@@ -845,6 +846,27 @@ export const stockRule = sqliteTable(
 );
 
 /** Every change to an item's count: by a scan, by hand, by editing the item, by an undo — who, how, and what it left. */
+/**
+ * When a thing was last seen, by kind (lib/sightings.ts): "scanned" — its QR label or barcode looked up (it may only have
+ * been while searching; the weakest kind). One row per item and kind, overwritten each time — not history (scans would
+ * flood it), and not a change to the item (no re-index, nothing in "recently changed").
+ */
+export const itemSighting = sqliteTable(
+  "item_sighting",
+  {
+    householdId: householdId(),
+    itemId: text("item_id")
+      .notNull()
+      .references(() => item.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<SightingKind>().notNull(),
+    at: integer("at", { mode: "timestamp_ms" }).notNull(),
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    /** How: "label" (a QR label, Ferret's or one brought along), "barcode", "pairing" (a HomeKit/Matter code). */
+    how: text("how").$type<SightingHow>().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.itemId, t.kind] }), index("item_sighting_household_idx").on(t.householdId, t.kind, t.at)],
+);
+
 export const stockMovement = sqliteTable(
   "stock_movement",
   {

@@ -52,3 +52,23 @@ export function dayFrom(db: Db, now: Date, fromHour: number) {
     return localParts(now, timeZone).hour >= fromHour ? today(now, timeZone) : null;
   };
 }
+
+/** What a clock in `timeZone` reads at `at`, as if it were UTC (to find the zone's offset then). */
+function wallClock(at: number, timeZone: string) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", { timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      .formatToParts(new Date(at))
+      .map((p) => [p.type, Number(p.value)]),
+  );
+  return Date.UTC(parts.year!, parts.month! - 1, parts.day!, parts.hour!, parts.minute!, parts.second!);
+}
+
+/** The moment a day (yyyy-mm-dd) starts in a time zone: "since 2025-11-08" in Denver is 07:00 UTC that day. */
+export function startOfDayIn(day: string, timeZone: string) {
+  const [y, m, d] = day.split("-").map(Number) as [number, number, number];
+  const midnightUtc = Date.UTC(y, m - 1, d);
+  let at = midnightUtc - (wallClock(midnightUtc, timeZone) - midnightUtc);
+  // Across a daylight-saving change the offset at the answer can differ from the first guess's: once more.
+  at = midnightUtc - (wallClock(at, timeZone) - at);
+  return new Date(at);
+}

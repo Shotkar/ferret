@@ -3,6 +3,7 @@
  * tools (mcp/tools.ts) both do, so the app and Claude always agree. Every
  * function acts for one caller in one household and filters by its householdId.
  */
+import { lastScans } from "./sightings";
 import { PHOTO_ORDER } from "./photo-order";
 import { meaningSearchAllowed, recordUsage, requireAllowed, requireRoom } from "./plan";
 import {
@@ -28,7 +29,7 @@ import {
 } from "@ferret/shared";
 import { and, asc, count, desc, eq, exists, inArray, isNotNull, isNull, notExists, type SQL, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import { activity, attachment, category, collection, item, itemTag, itemTemplate, label, location, property, user, warranty } from "../db/schema";
+import { activity, attachment, category, collection, item, itemSighting, itemTag, itemTemplate, label, location, property, user, warranty } from "../db/schema";
 import { INDEX_JOB } from "../jobs/index-item";
 import type { Db, Deps } from "../ports";
 import { countEvent } from "./analytics";
@@ -42,7 +43,7 @@ import { openLoansFor } from "./loans";
 import { RECALL_CHECK_JOB } from "../jobs/recalls";
 import { fullTextSearch, refreshFullText } from "./fulltext";
 import { SEARCH_PROFILES, fuse, semanticSearch } from "./search";
-import { todayFor } from "./household-time";
+import { startOfDayIn, todayFor } from "./household-time";
 import { inList } from "./sql";
 
 /** Who is acting, where, and through which client (recorded in the activity log). */
@@ -326,6 +327,8 @@ export interface ItemFilter {
   gone?: "include" | "only";
   /** What's in this collection. */
   collectionId?: string;
+  /** Not scanned since this day (household time zone; never scanned counts) — lib/sightings.ts. */
+  notScannedSince?: string;
   /**
    * The want list (things not owned yet): left out unless asked for — "include" it, or "only" it. What's reached by
    * its id (gone: "include") includes it too.
@@ -360,6 +363,17 @@ export function itemScope(v: Caller, filter: ItemFilter = {}) {
   // A UPC-A and its EAN-13 spelling are the same code (and items keep whatever was typed or scanned).
   if (filter.barcode) where.push(inArray(item.barcode, [filter.barcode, ...barcodeVariants(filter.barcode)]));
   if (filter.missing) where.push(lacks(v, filter.missing));
+  if (filter.notScannedSince) {
+    const since = startOfDayIn(filter.notScannedSince, v.timeZone);
+    where.push(
+      notExists(
+        v.db
+          .select({ one: sql`1` })
+          .from(itemSighting)
+          .where(and(eq(itemSighting.itemId, item.id), eq(itemSighting.kind, "scanned"), sql`${itemSighting.at} >= ${since.getTime()}`)),
+      ),
+    );
+  }
   return and(...where);
 }
 
@@ -388,6 +402,7 @@ const SORTS = {
   value: sql`coalesce(${item.valueCents}, ${item.purchasePriceCents})`,
   bought: item.purchaseDate,
   added: item.createdAt,
+  scanned: sql`(select ${itemSighting.at} from ${itemSighting} where ${itemSighting.itemId} = ${item.id} and ${itemSighting.kind} = 'scanned')`,
 } as const;
 
 export async function listItems(
@@ -429,11 +444,11 @@ export async function withTags<T extends { id: string }>(v: Caller, rows: T[]) {
 export async function asListing<T extends typeof item.$inferSelect>(
   v: Caller,
   rows: T[],
-): Promise<(T & Pick<ItemListing, "photoId" | "place" | "category" | "container" | "contents" | "labelCode" | "loan">)[]> {
+): Promise<(T & Pick<ItemListing, "photoId" | "place" | "category" | "container" | "contents" | "labelCode" | "loan" | "lastScanned">)[]> {
   if (!rows.length) return [];
   const ids = rows.map((r) => r.id);
   const boxIds = [...new Set(rows.flatMap((r) => (r.containerItemId ? [r.containerItemId] : [])))];
-  const [photos, paths, categories, boxes, inside, labels, loans] = await Promise.all([
+  const [photos, paths, categories, boxes, inside, labels, loans, scans] = await Promise.all([
     v.db
       .select({ id: attachment.id, itemId: attachment.itemId })
       .from(attachment)
@@ -459,6 +474,7 @@ export async function asListing<T extends typeof item.$inferSelect>(
       .from(label)
       .where(and(eq(label.householdId, v.householdId), inList(label.itemId, ids))),
     openLoansFor(v, ids),
+    lastScans(v, ids),
   ]);
   const boxName = new Map(boxes.map((b) => [b.id, b.name]));
   const contentCount = new Map(inside.map((c) => [c.boxId, c.n]));
@@ -474,6 +490,7 @@ export async function asListing<T extends typeof item.$inferSelect>(
     contents: contentCount.get(r.id) ?? 0,
     labelCode: codeOf.get(r.id) ?? null,
     loan: loans.has(r.id) ? (({ direction, person, since, dueOn }) => ({ direction, person, since, dueOn }))(loans.get(r.id)!) : null,
+    lastScanned: scans.get(r.id) ?? null,
   }));
 }
 

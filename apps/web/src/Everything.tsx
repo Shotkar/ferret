@@ -28,7 +28,20 @@ const SORTS: { value: ItemSort; label: string; dir: "asc" | "desc" }[] = [
   { value: "name", label: "Name", dir: "asc" },
   { value: "value", label: "Most valuable", dir: "desc" },
   { value: "bought", label: "Bought most recently", dir: "desc" },
+  { value: "scanned", label: "Scanned most recently", dir: "desc" },
 ];
+/** "Last scanned": not in this many months (never scanned counts). */
+const UNSCANNED = [
+  { value: "1", label: "Not in a month" },
+  { value: "6", label: "Not in 6 months" },
+  { value: "12", label: "Not in a year" },
+] as const;
+/** The day `months` ago, on this device's calendar. */
+function monthsAgo(months: number) {
+  const d = new Date();
+  d.setMonth(d.getMonth() - months);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 type Layout = "list" | "table";
 const LAYOUT_KEY = "ferret-everything-layout";
 
@@ -60,6 +73,7 @@ export function Everything(props: { householdId: string; missing?: MissingDetail
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
   const [tag, setTag] = useState("");
+  const [unscanned, setUnscanned] = useState("");
   const [sort, setSort] = useState<{ by: ItemSort; dir: "asc" | "desc" }>(startSort ? { by: startSort.value, dir: startSort.dir } : { by: "updated", dir: "desc" });
   const [page, setPage] = useState(0);
   const [layout, setLayoutState] = useState<Layout>(storedLayout);
@@ -73,7 +87,14 @@ export function Everything(props: { householdId: string; missing?: MissingDetail
       // Remembering it is only a convenience.
     }
   };
-  const filters = { categoryId: categoryId ?? undefined, locationId: locationId ?? undefined, tag: tag || undefined, missing, origin };
+  const filters = {
+    categoryId: categoryId ?? undefined,
+    locationId: locationId ?? undefined,
+    tag: tag || undefined,
+    missing,
+    origin,
+    notScannedSince: unscanned ? monthsAgo(Number(unscanned)) : undefined,
+  };
   // A new filter or order starts again at the first page.
   const filterKey = JSON.stringify([filters, sort]);
   useEffect(() => setPage(0), [filterKey]);
@@ -86,7 +107,7 @@ export function Everything(props: { householdId: string; missing?: MissingDetail
   const [peek, setPeek] = useState<ItemListing | null>(null);
   // What the last bulk change did.
   const [result, setResult] = useState<ItemsBulkResult | null>(null);
-  const filtered = Boolean(categoryId || locationId || tag || missing || origin);
+  const filtered = Boolean(categoryId || locationId || tag || missing || origin || unscanned);
   const total = items.data?.total ?? 0;
   const rows = items.data?.data ?? [];
 
@@ -132,6 +153,8 @@ export function Everything(props: { householdId: string; missing?: MissingDetail
         onLocation={setLocationId}
         tag={tag}
         onTag={setTag}
+        unscanned={unscanned}
+        onUnscanned={setUnscanned}
         sort={sort}
         onSort={setSort}
         folded={!wide}
@@ -141,6 +164,7 @@ export function Everything(props: { householdId: string; missing?: MissingDetail
                 setCategoryId(null);
                 setLocationId(null);
                 setTag("");
+                setUnscanned("");
                 if (missing || origin) navigateTo(ITEMS_HREF);
               }
             : undefined
@@ -224,6 +248,9 @@ function FilterBar(props: {
   onLocation: (id: string | null) => void;
   tag: string;
   onTag: (tag: string) => void;
+  /** "Last scanned": not in this many months ("" = any). */
+  unscanned: string;
+  onUnscanned: (months: string) => void;
   sort: { by: ItemSort; dir: "asc" | "desc" };
   onSort: (sort: { by: ItemSort; dir: "asc" | "desc" }) => void;
   onClear?: () => void;
@@ -234,7 +261,7 @@ function FilterBar(props: {
   const tags = useTags(props.householdId);
   const [open, setOpen] = useState(false);
   const sortValue = SORTS.find((s) => s.value === props.sort.by && s.dir === props.sort.dir)?.value ?? "";
-  const active = [props.origin, props.missing, props.categoryId, props.locationId, props.tag].filter(Boolean).length;
+  const active = [props.origin, props.missing, props.categoryId, props.locationId, props.tag, props.unscanned].filter(Boolean).length;
   if (props.folded && !open) {
     return (
       <div className="flex flex-wrap items-center gap-2">
@@ -254,7 +281,7 @@ function FilterBar(props: {
   return (
     <section className="card" aria-label="Filters">
       <div className="card-body grid grid-cols-1 gap-3 p-3 @container sm:p-4">
-        <div className="grid grid-cols-1 gap-3 @lg:grid-cols-3 @5xl:grid-cols-6">
+        <div className="grid grid-cols-1 gap-3 @lg:grid-cols-3 @5xl:grid-cols-7">
           <Field label="Where from" id="filter-origin">
             <select
               id="filter-origin"
@@ -318,6 +345,16 @@ function FilterBar(props: {
               {(tags.data ?? []).map((t) => (
                 <option key={t.id} value={t.name}>
                   {t.name} ({t.items})
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Last scanned" id="filter-scanned">
+            <select id="filter-scanned" className="select" value={props.unscanned} onChange={(e) => props.onUnscanned(e.target.value)}>
+              <option value="">Any time</option>
+              {UNSCANNED.map((u) => (
+                <option key={u.value} value={u.value}>
+                  {u.label}
                 </option>
               ))}
             </select>

@@ -5,6 +5,7 @@
  * item, by undo), so counts have a history and a scan can be undone. What's run out — or is at or below an item's
  * "keep at least" — is the shopping list (shoppingList): a state, so restocking takes it off by itself.
  */
+import { recordSighting } from "./sightings";
 import type { ScanCandidate, ScanInput, ScanResult, ShoppingItem, ShoppingList, StockAdjust, StockBehaviour, StockMovement, StockRuleInput, StockSummary } from "@ferret/shared";
 import { addDays, barcodeVariants } from "@ferret/shared";
 import { amazonProductOf, isPairingPayload } from "@ferret/shared/utils";
@@ -191,7 +192,10 @@ export async function scan(v: Caller, input: ScanInput, canWrite: boolean, files
   if (isPairingPayload(input.code)) {
     const found = files ? await findPairing(v, files, input.code) : null;
     if (!found) return { action: "unknown", code: input.code };
-    if (found.item) return { action: "open", item: (await candidatesOf(v, [found.item]))[0]! };
+    if (found.item) {
+      await recordSighting(v, found.item.id, "scanned", "pairing");
+      return { action: "open", item: (await candidatesOf(v, [found.item]))[0]! };
+    }
     return { action: "pairing", kind: found.info.kind, category: found.info.category };
   }
   const key = scanKey(input.code);
@@ -216,6 +220,7 @@ export async function scan(v: Caller, input: ScanInput, canWrite: boolean, files
   // Scanning to add: a QR label is looked up as ever (the label page offers what to do with it).
   const adding = mode === "add";
   let labelOnly = key.startsWith("label:");
+  let ownLabelOf: string | undefined;
   if (key.startsWith("label:")) {
     const [tag] = await v.db.select().from(label).where(and(eq(label.householdId, v.householdId), eq(label.code, key.slice(6))));
     if (tag?.itemId) ids.add(tag.itemId);
@@ -227,6 +232,7 @@ export async function scan(v: Caller, input: ScanInput, canWrite: boolean, files
     for (const r of byBarcode) ids.add(r.id);
     // A label someone brought (an asset tag): it opens its item, like Ferret's own labels.
     const [own] = await v.db.select({ itemId: ownLabel.itemId }).from(ownLabel).where(and(eq(ownLabel.householdId, v.householdId), eq(ownLabel.code, key)));
+    ownLabelOf = own?.itemId;
     if (own) {
       ids.add(own.itemId);
       if (ids.size === 1 && !rules.length) labelOnly = true;
@@ -264,6 +270,8 @@ export async function scan(v: Caller, input: ScanInput, canWrite: boolean, files
   if (adding && behaviour === "restock" && !input.itemId) return { action: "have", code: input.code, step: stepOf(candidates[0]!.id), items: candidates };
   if (candidates.length > 1) return { action: "choose", behaviour, step: stepOf(candidates[0]!.id), items: candidates };
   const only = candidates[0]!;
+  // Scanned to one thing (by itself, or picked from "which one?"): when it was last seen.
+  await recordSighting(v, only.id, "scanned", key.startsWith("label:") || ownLabelOf === only.id ? "label" : "barcode");
   if (behaviour === "lookup") return { action: "open", item: only };
   if (behaviour === "ask") return { action: "ask", item: only, step: stepOf(only.id) };
   const delta = behaviour === "use" ? -stepOf(only.id) : stepOf(only.id);

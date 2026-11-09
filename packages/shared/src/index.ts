@@ -8,6 +8,7 @@ import {
   isTimeZone,
   type ClaimStatus,
   claimStatuses,
+  type SightingHow,
   itemConditions,
   propertyTypes,
   intervalUnits,
@@ -234,7 +235,7 @@ export const itemPatch = itemFields.partial();
 export type ItemPatch = z.infer<typeof itemPatch>;
 
 /** The orders a list can come in: last changed (the default), name, value, when bought, when added. */
-export const itemSorts = ["updated", "name", "value", "bought", "added"] as const;
+export const itemSorts = ["updated", "name", "value", "bought", "added", "scanned"] as const;
 export type ItemSort = (typeof itemSorts)[number];
 
 export const listQuery = z.object({
@@ -261,7 +262,9 @@ export const listQuery = z.object({
   wanted: z.enum(["include", "only"]).optional(),
   /** Things added this way (app, photos, walkthrough, scan, label, spreadsheet, homeassistant, claude, api). */
   origin: z.enum(itemOrigins).optional(),
-  /** Lists (not searches): the order — last changed (default), name, value, when bought, when added. */
+  /** Not scanned since this day (yyyy-mm-dd) — never scanned counts: "what hasn't been seen in a year?" */
+  notScannedSince: z.iso.date().optional(),
+  /** Lists (not searches): the order — last changed (default), name, value, when bought, when added, when last scanned. */
   sort: z.enum(itemSorts).optional(),
   dir: z.enum(["asc", "desc"]).optional(),
   /** Searches: "later" answers at once with the sure matches (and `checking`); "now" (default) checks the maybe-matches first. */
@@ -613,6 +616,8 @@ export interface ItemListing extends Item {
   place: string | null;
   /** Lent out (or borrowed) right now. */
   loan: { direction: LoanDirection; person: string; since: string; dueOn: string | null } | null;
+  /** When its QR label or barcode was last scanned to it, by whom (their name), and how. */
+  lastScanned: { at: string; by: string | null; how: SightingHow } | null;
 }
 
 /** Every property with its locations as a tree (`GET /locations/tree`). */

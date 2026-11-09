@@ -3,6 +3,7 @@
  * Uploader styling is adapted from FlyonUI Pro "Dashboard Modal 8" and the
  * photo grid from "Gallery 1"; behaviour is plain React (no FlyonUI JS plugins).
  */
+import { lastScannedText } from "./lib/last-scanned";
 import { UsageCard } from "./Usage";
 import { BarSearch } from "./Nav";
 import { NotFound } from "./NotFound";
@@ -526,8 +527,11 @@ export function ItemPage({ itemId, householdId }: { itemId: string; householdId:
   );
 }
 
-/** "Added Oct 19, 2026 by Ann, from a spreadsheet (orders.csv)" — the "how" links to everything else added that way. */
-function AddedLine({ item: it }: { item: Pick<ItemListing, "createdAt" | "origin" | "originDetail" | "addedBy" | "roomScanId"> }) {
+/**
+ * "Added Oct 19, 2026 by Ann, from a spreadsheet (orders.csv)" — the "how" links to everything else added that way —
+ * and when its label or barcode was last scanned.
+ */
+function AddedLine({ item: it }: { item: Pick<ItemListing, "createdAt" | "origin" | "originDetail" | "addedBy" | "roomScanId" | "lastScanned"> }) {
   const when = new Date(it.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   const detail = it.originDetail && it.originDetail !== "Home Assistant" ? ` (${it.originDetail})` : "";
   return (
@@ -550,6 +554,11 @@ function AddedLine({ item: it }: { item: Pick<ItemListing, "createdAt" | "origin
             see the room photo
           </a>
         </>
+      )}
+      {it.lastScanned && (
+        <span className="block" title={new Date(it.lastScanned.at).toLocaleString()}>
+          {lastScannedText(it.lastScanned)}
+        </span>
       )}
     </p>
   );
