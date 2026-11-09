@@ -1,5 +1,5 @@
 /** Importing: spreadsheets (any CSV, Ferret's own export, Amazon orders) and Home Assistant's devices. */
-import { detectPreset, draftRows, guessMapping, IMPORT_FIELDS, parseCsv, parseDate, parseMoney } from "@ferret/shared/utils";
+import { columnDecimal, detectPreset, draftRows, guessMapping, IMPORT_FIELDS, parseCsv, parseDate, parseMoney } from "@ferret/shared/utils";
 import { describe, expect, it } from "vitest";
 import { websocketUrl } from "../src/adapters/local/home-assistant";
 import { tidyRegistry } from "../src/lib/home-assistant";
@@ -24,6 +24,26 @@ describe("reading a spreadsheet", () => {
       ["Saw", ""],
     ]);
     expect(parseCsv("Name;Price\nLamp;12,50\n")).toEqual([["Name", "Price"], ["Lamp", "12,50"]]);
+  });
+
+  it("reads each amount column with the decimal mark its values give away", () => {
+    const prices = (csv: string, decimal?: "." | ",") => {
+      const table = parseCsv(csv);
+      return draftRows(table, guessMapping(table[0]!), undefined, decimal).map((d) => d.draft?.purchasePriceCents);
+    };
+    // One "12,50" shows the column writes decimals with a comma: its "1.234" is a thousand, its "1,234" not.
+    expect(prices("Name;Price\nLamp;12,50\nSofa;1.234\nRug;1,234\n")).toEqual([1250, 123_400, 123]);
+    // One "12.50": a dot — "1,234" is a thousand, whatever the reader's own mark.
+    expect(prices("Name,Price\nLamp,12.50\nSofa,\"1,234\"\n", ",")).toEqual([1250, 123_400]);
+    // Nothing gives it away: the reader's own mark decides.
+    expect(prices("Name;Price\nSofa;1.234\n", ",")).toEqual([123_400]);
+    expect(prices("Name;Price\nSofa;1.234\n", ".")).toEqual([123]);
+    // Thousands written twice give it away too.
+    expect(columnDecimal(["1.234.567", "80"])).toBe(",");
+    expect(columnDecimal(["1,234,567"])).toBe(".");
+    // Both kinds in one column: no verdict (each value read on its own).
+    expect(columnDecimal(["12,50", "12.50"])).toBeNull();
+    expect(columnDecimal(["1,234", "1500", ""])).toBeNull();
   });
 
   it("reads money and dates the ways people write them", () => {

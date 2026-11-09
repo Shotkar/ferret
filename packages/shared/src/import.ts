@@ -158,6 +158,24 @@ export function parseMoney(raw: string, decimal: "." | "," = "."): number | null
   return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : null;
 }
 
+/**
+ * A column of amounts' decimal mark, from what its values give away: "12,50" or "1.234,56" → ","; "12.50" or
+ * "1,234.5" → "."; null when none tells ("1,234", "1500") or they disagree (each value is then read on its own).
+ */
+export function columnDecimal(values: string[]): "." | "," | null {
+  let comma = false;
+  let dot = false;
+  for (const raw of values) {
+    const s = raw.replace(/[^\d.,]/g, "");
+    if (/,\d{1,2}$/.test(s) || /\.\d{3}.*,/.test(s) || /\.\d{3}\.\d{3}/.test(s)) comma = true;
+    if (/\.\d{1,2}$/.test(s) || /,\d{3}.*\./.test(s) || /,\d{3},\d{3}/.test(s)) dot = true;
+  }
+  return comma === dot ? null : comma ? "," : ".";
+}
+
+/** The fields that hold amounts. */
+const MONEY_FIELDS = new Set<ImportField>(["purchasePrice", "purchaseTotal", "value", "soldPrice"]);
+
 const pad = (n: number) => String(n).padStart(2, "0");
 /** yyyy-mm-dd + n days. */
 const plusDays = (day: string, n: number) => new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
@@ -241,9 +259,17 @@ export const AMAZON_RETURN_DAYS = 30;
  * Rows (header first) + where each column goes → drafts, with what couldn't be read. `today` (yyyy-mm-dd): Amazon lines
  * whose 30 days from the order date haven't run out yet get that as their return-by date.
  */
-export function draftRows(table: string[][], mapping: ColumnMapping, today?: string): DraftRow[] {
+/**
+ * The rows as things to import. `decimal`: the reader's own decimal mark, for amount columns that don't give theirs
+ * away (every value like "1,234"); Ferret's and Amazon's files always use ".".
+ */
+export function draftRows(table: string[][], mapping: ColumnMapping, today?: string, decimal: "." | "," = "."): DraftRow[] {
   const [headers = [], ...body] = table;
   const preset = detectPreset(headers);
+  // Each amount column's decimal mark, decided once from all its values — a lone "1,234" can't tell, its column can.
+  const marks = mapping.map((field, c) =>
+    field && MONEY_FIELDS.has(field) ? (preset ? "." : (columnDecimal(body.map((cells) => cells[c] ?? "")) ?? decimal)) : decimal,
+  );
   const col = (k: string) => (preset === "amazon" ? headers.findIndex((h) => key(h) === k) : -1);
   const statusCol = col("orderstatus");
   // Amazon's lines: the order and the product, whatever the columns are mapped to. The same product can be on several
@@ -271,7 +297,7 @@ export function draftRows(table: string[][], mapping: ColumnMapping, today?: str
       if (!field || !value || /^(n\/?a|none|null|-|not (available|applicable)|unknown)$/i.test(value)) return;
       const header = headers[col] ?? `Column ${col + 1}`;
       const money = () => {
-        const c = parseMoney(value);
+        const c = parseMoney(value, marks[col]);
         if (c == null) problems.push(`Couldn't read ${header} "${clip(value, 30)}"`);
         return c ?? undefined;
       };

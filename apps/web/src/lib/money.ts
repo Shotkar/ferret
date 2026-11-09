@@ -42,7 +42,7 @@ export const moneyWhole = (cents: number) => formatMoney(cents, current, { whole
 export const currencySymbol = () => symbolOf(current);
 
 /** The reader's decimal mark ("," in German), to read what they type. */
-const decimalMark = (): "." | "," => ((1.5).toLocaleString().includes(",") ? "," : ".");
+export const decimalMark = (): "." | "," => ((1.5).toLocaleString().includes(",") ? "," : ".");
 
 /** What's typed in an amount field ("12,50", "1.234", "$80") → ×100; null when empty or not an amount. */
 export function toCents(raw: FormDataEntryValue | string | null | undefined) {

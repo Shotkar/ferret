@@ -20,7 +20,9 @@ Any list with a header row, saved as CSV — from Numbers, Excel or Google Sheet
 are used; missing ones are made, in the property you choose. Categories work the same way (*Electronics › TV*).
 
 Prices can be written any usual way — *$1,234.56*, *1.234,56 €*, *1 234,56*, *CHF 1'234.50* — and are taken as the
-household's [currency](./getting-started#households) (nothing is converted).
+household's [currency](./getting-started#households) (nothing is converted). Whether a column writes decimals with a
+comma or a dot is worked out from all its amounts — one *12,50* is enough — and when none of them shows it, your
+device's own way is used.
 
 A row whose serial number is already on something in Ferret is skipped, so importing the same file twice doesn't make
 everything twice.

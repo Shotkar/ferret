@@ -11,7 +11,7 @@ import { api } from "./lib/api";
 import { ImportStatus, useImportRun } from "./Import";
 import { usePlaces } from "./lib/places";
 import { PLACES_HREF } from "./lib/route";
-import { money, currencySymbol, toCents } from "./lib/money";
+import { decimalMark, money, currencySymbol, toCents } from "./lib/money";
 
 const PRESET_NAMES = { ferret: "Ferret's own export", amazon: "Amazon order history" } as const;
 const SHOWN = 300;
@@ -85,7 +85,7 @@ function Mapper({
   const rows = useMemo(() => {
     const d = new Date();
     const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    return draftRows(file.table, mapping, today);
+    return draftRows(file.table, mapping, today, decimalMark());
   }, [file.table, mapping]);
   const places = usePlaces(householdId);
   const properties = places.data?.properties ?? [];
