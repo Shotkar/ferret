@@ -1,5 +1,6 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import { lingui } from "@lingui/vite-plugin";
 import { type Plugin, defineConfig } from "vite";
 
 /**
@@ -42,7 +43,7 @@ function noZod(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), precacheList(), noZod()],
+  plugins: [react(), lingui({ macroTransform: true, failOnCompileError: true }), tailwindcss(), precacheList(), noZod()],
   server: {
     port: 5173,
     // In dev, the API runs separately on :8787; in production one server serves both.

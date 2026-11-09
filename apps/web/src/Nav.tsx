@@ -13,6 +13,7 @@ import { useRouterState } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { APPEARANCES } from "./App";
 import { PlacePicker } from "./Combobox";
+import { LanguageChoice } from "./Language";
 import { CustomFieldInputs } from "./Catalog";
 import { TemplatePicker, useTemplates } from "./Templates";
 import { api } from "./lib/api";
@@ -204,6 +205,7 @@ export function MorePage({ householdId }: { householdId: string }) {
                 </button>
               ))}
             </div>
+            <LanguageChoice />
           </div>
         </section>
         <button type="button" className="btn btn-soft btn-error" onClick={() => signOut()}>

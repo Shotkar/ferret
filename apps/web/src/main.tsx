@@ -4,6 +4,9 @@ import { createRoot } from "react-dom/client";
 import { RouterProvider } from "@tanstack/react-router";
 import { router } from "./router";
 import "./index.css";
+import { i18n } from "@lingui/core";
+import { I18nProvider } from "@lingui/react";
+import { startLanguage } from "./lib/i18n";
 
 const queryClient = new QueryClient({
   // Once more after a failure — but not when the server said no (not found, not allowed): asking again won't change it.
@@ -29,10 +32,15 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("online", refresh);
 }
 
+// The language first (lib/i18n.ts), so the first screen is already in it.
+await startLanguage();
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
+    <I18nProvider i18n={i18n}>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </I18nProvider>
   </StrictMode>,
 );

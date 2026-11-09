@@ -32,6 +32,37 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
+  # The app's English text → ferret-project/ferret-translations (locales/messages.pot), where translators see what's new.
+  # Only when the text changed; the deploy key can write to that repo and nothing else.
+  translations:
+    name: Send the English text to the translations
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @ferret/web translations template
+      - uses: actions/checkout@v7
+        with:
+          repository: ferret-project/ferret-translations
+          ssh-key: ${{ secrets.TRANSLATIONS_DEPLOY_KEY }}
+          path: translations
+      - name: Commit the new source text, if it changed
+        run: |
+          cp apps/web/src/locales/messages.pot translations/locales/messages.pot
+          cd translations
+          if git diff --quiet; then echo "No text changed."; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Source text from Ferret ${GITHUB_SHA::7}"
+          git push
+
   image:
     name: Build & push image
     needs: check

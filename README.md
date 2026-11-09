@@ -186,6 +186,15 @@ pnpm typecheck
 | `apps/docs` | The help (VitePress), served at `/docs` |
 | `packages/shared` | Zod schemas and helpers shared by the server and the web app |
 
+## Translations
+
+Ferret is written in English, and English is the only language kept up in this repository. Other languages are made
+by the people who use Ferret, in [ferret-translations](https://github.com/ferret-project/ferret-translations), and
+every build includes them. Anything not translated yet shows in English.
+
+To make text translatable, wrap it with Lingui's macros: `` t`Add to cart` `` or `<Trans>Add to cart</Trans>`
+(`@lingui/react/macro`). Write the English only. CI sends the new text to the translations repository by itself.
+
 ## License
 
 [MIT](LICENSE). Questions, ideas or something odd? Come say hi on [Discord](https://discord.gg/XSkKyP2pdg).

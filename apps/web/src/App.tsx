@@ -1,4 +1,5 @@
 import type { ItemListing, ItemOrigin, MissingDetail, SearchHit } from "@ferret/shared";
+import { LanguageChoice } from "./Language";
 import { DeleteAccountDialog } from "./DeleteForGood";
 import { usePlan } from "./PlanUsage";
 import { CapturesCard, OfflineCapture, useCaptureSync } from "./Offline";
@@ -937,6 +938,7 @@ function AccountMenu({ householdName, householdId }: { householdName: string; ho
           <MenuGroups onPick={() => setOpen(false)} className="xl:hidden" />
           <li className="dropdown-divider my-1 xl:hidden" role="separator" />
           <AppearanceChoice />
+          <LanguageChoice inMenu />
           <li className="dropdown-footer p-2 pt-1">
             <button
               type="button"

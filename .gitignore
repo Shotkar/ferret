@@ -27,3 +27,6 @@ apps/docs/.vitepress/api-sidebar.json
 CLAUDE.md
 CLAUDE.local.md
 .claude/
+
+# Translations: fetched from ferret-project/ferret-translations at build time (apps/web/scripts/translations.mjs), never kept here
+apps/web/src/locales/
