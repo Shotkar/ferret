@@ -99,15 +99,16 @@ function body(s, depth = 0) {
   return Object.fromEntries(chosen.map(([n, p]) => [n, sample(n, p, depth)]));
 }
 
-/** The same request three ways. Path parameters show as <id>. */
-function examples(pathName, method, op) {
+/** The same request three ways. Path parameters show as <id>. `given` replaces the body made from the schema. */
+function examples(pathName, method, op, given) {
   const json = op.requestBody?.content["application/json"]?.schema;
   const upload = op.requestBody?.content["multipart/form-data"];
   const open = op.security.length === 0;
   const hasQ = op.parameters.some((p) => p.in === "query" && p.name === "q");
   const url = `${base}${pathName.replace(/\{(\w+)\}/g, "<$1>")}${hasQ && method === "get" ? "?q=drill" : ""}`;
   const M = method.toUpperCase();
-  const payload = json ? JSON.stringify(body(json), null, 2) : null;
+  const sent = given ?? (json ? body(json) : null);
+  const payload = sent ? JSON.stringify(sent, null, 2) : null;
 
   const curl = [
     `curl${method === "get" ? "" : ` -X ${M}`} "${url}"`,
@@ -138,7 +139,7 @@ function examples(pathName, method, op) {
   const args = [
     `"${url}"`,
     !open && `headers={"Authorization": f"Bearer {os.environ['FERRET_KEY']}"}`,
-    json && `json=${py(body(json)).replace(/\n/g, "\n    ")}`,
+    sent && `json=${py(sent).replace(/\n/g, "\n    ")}`,
     upload && `files={"file": open("photo.jpg", "rb")}, data={"kind": "photo"}`,
   ].filter(Boolean);
   const python = [`import os, requests`, ``, `r = requests.${method}(\n    ${args.join(",\n    ")},\n)`, `r.raise_for_status()`, op.responses["204"] ? null : `print(r.json())`]
@@ -237,6 +238,7 @@ for (const area of areas) {
 }
 
 const start = examples("/items", "get", { security: [{ apiKey: [] }], parameters: [{ name: "q", in: "query", schema: {} }], responses: { 200: {} } });
+const firstItem = examples("/items", "post", doc.paths["/items"].post, { name: "Cordless drill", brand: "DEWALT", model: "DCD791D2", valueCents: 14_900, tags: ["insured"] });
 const index = `---
 title: API reference
 ---
@@ -244,8 +246,8 @@ title: API reference
 # Ferret API
 
 Everything the app does, for your own scripts and tools: add things, search them, log maintenance, read the insurance
-report. REST and JSON, described as [OpenAPI 3.1](#openapi). Claude uses the same household through MCP — see
-[Claude and the API](../guide/claude).
+report. REST and JSON, described as [OpenAPI 3.1](#openapi). Claude uses the same keys through
+[MCP](#claude-and-other-ai-apps).
 
 ## Quick start
 
@@ -254,6 +256,23 @@ report. REST and JSON, described as [OpenAPI 3.1](#openapi). Claude uses the sam
 3. Every call acts in the key's household. The base address is \`${base}\`.
 
 ${codeGroup(start)}
+
+Adding something is a \`POST\` with a JSON body. Only \`name\` is needed; the answer is the new item, with its \`id\`.
+Every field is under [Add an item](./items#postItems).
+
+${codeGroup(firstItem)}
+
+## Claude and other AI apps
+
+Ferret is also an MCP server, at \`/mcp\` on the same address. It takes the same keys and acts in the same household, so
+Claude can find things, add them and log maintenance for you — a read-only key keeps it to looking. In Claude Code:
+
+\`\`\`sh
+claude mcp add --transport http ferret https://ferret.example.com/mcp \\
+  --header "Authorization: Bearer ferret_…"
+\`\`\`
+
+Claude Desktop, other MCP clients and what Claude can do: [Claude and the API](../guide/claude).
 
 ## Keys
 
@@ -318,6 +337,7 @@ writeFileSync(
       text: "Introduction",
       items: [
         { text: "Quick start", link: "/api/#quick-start" },
+        { text: "Claude and other AI apps", link: "/api/#claude-and-other-ai-apps" },
         { text: "Keys", link: "/api/#keys" },
         { text: "Errors", link: "/api/#errors" },
         { text: "Pages of results", link: "/api/#pages-of-results" },
