@@ -9,6 +9,32 @@ const send = (u: User, method: string, url: string, data?: object) =>
 const attention = async (u: User) => ((await (await u.as("/api/v1/attention")).json()) as { data: AttentionItem[] }).data;
 
 describe("needs attention", () => {
+  it("says a return window is closing the week before, urgently in its last days, and forgets it once it's shut", async () => {
+    const { user } = await setup();
+    const ann = await user("ann");
+    const at = (days: number) => addDays(today(), days);
+    await ann.addItem({ name: "Blender", returnBy: at(5) });
+    await ann.addItem({ name: "Lamp", returnBy: at(1) });
+    await ann.addItem({ name: "Rug", returnBy: at(0) });
+    await ann.addItem({ name: "Chair", returnBy: at(10) }); // not yet
+    await ann.addItem({ name: "Kettle", returnBy: at(-1) }); // too late
+    const sold = await ann.addItem({ name: "Toaster", returnBy: at(3) });
+    await send(ann, "PATCH", `/api/v1/items/${sold.id}`, { disposition: "given", disposedOn: today() }); // gone
+    const returns = (await attention(ann)).filter((a) => a.kind === "return");
+    expect(returns.map((a) => [a.severity, a.title, a.detail, a.date])).toEqual([
+      ["urgent", "Return Rug?", "Last day to return it", at(0)],
+      ["urgent", "Return Lamp?", "Last day to return it is tomorrow", at(1)],
+      ["soon", "Return Blender?", "5 days left to return it", at(5)],
+    ]);
+
+    // Set or changed by hand: in its history, in words.
+    const chair = (await (await ann.as("/api/v1/items?limit=50")).json()) as { data: { id: string; name: string }[] };
+    const id = chair.data.find((i) => i.name === "Chair")!.id;
+    await send(ann, "PATCH", `/api/v1/items/${id}`, { returnBy: at(12) });
+    const history = (await (await ann.as(`/api/v1/items/${id}/history`)).json()) as { data: { summary: string }[] };
+    expect(history.data[0]!.summary).toContain(`return by ${at(10)} → ${at(12)}`);
+  });
+
   it("lists what to act on now, urgent first, and drops each thing once it's dealt with", async () => {
     const { user } = await setup();
     const ann = await user("ann");

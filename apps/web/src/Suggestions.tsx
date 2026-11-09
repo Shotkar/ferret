@@ -4,10 +4,10 @@
  * Nothing changes until someone taps Apply or Add.
  */
 import type { Attachment, Item, ItemPatch, MaintenanceInput, MaintenanceTask, Warranty, WarrantyInput } from "@ferret/shared";
-import { addMonths, describeInterval } from "@ferret/shared/utils";
+import { addDays, addMonths, describeInterval, today } from "@ferret/shared/utils";
 import { money } from "./Overview";
 
-type Field = "name" | "brand" | "model" | "serialNumber" | "barcode" | "purchaseDate" | "purchasePriceCents";
+type Field = "name" | "brand" | "model" | "serialNumber" | "barcode" | "purchaseDate" | "purchasePriceCents" | "returnBy";
 
 const fields: { key: Field; label: string; format?: (v: string | number) => string }[] = [
   { key: "name", label: "Name" },
@@ -33,6 +33,15 @@ export function pendingSuggestions(item: Item, attachments: Attachment[], warran
     const value = source?.analysis!.suggestions[field.key];
     if (value == null || same(item[field.key], value)) continue;
     rows.push({ key: field.key, label: field.label, value, display: field.format?.(value) ?? String(value) });
+  }
+
+  // A return window from a receipt: the date it prints, else its days from the purchase date — while it's still open.
+  const printed = sources.find((a) => a.analysis!.suggestions.returnBy)?.analysis!.suggestions.returnBy;
+  const window = sources.find((a) => a.analysis!.suggestions.returnDays);
+  const boughtOn = item.purchaseDate ?? sources.find((a) => a.analysis!.suggestions.purchaseDate)?.analysis!.suggestions.purchaseDate;
+  const returnBy = printed ?? (window && boughtOn ? addDays(boughtOn, window.analysis!.suggestions.returnDays!) : undefined);
+  if (returnBy && returnBy >= today() && returnBy !== item.returnBy) {
+    rows.push({ key: "returnBy", label: "Return by", value: returnBy, display: new Date(`${returnBy}T00:00:00`).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) });
   }
 
   // Warranty terms run from the purchase date: the item's, or one read from a receipt.

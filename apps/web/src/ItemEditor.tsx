@@ -81,6 +81,7 @@ export function ItemEditor({ item, householdId, onClose }: { item: ItemListing; 
       quantity: Math.max(0, Number.parseInt(String(f.get("quantity")), 10) || 0),
       condition: (text("condition") as ItemPatch["condition"]) ?? null,
       purchaseDate: text("purchaseDate"),
+      returnBy: text("returnBy"),
       purchasePriceCents: toCents(f.get("purchasePrice")),
       valueCents: toCents(f.get("value")),
       // In a box, it's wherever the box is (the server keeps that in step).
@@ -183,6 +184,11 @@ export function ItemEditor({ item, householdId, onClose }: { item: ItemListing; 
               </select>
             </div>
             <Field label="Goes to (heir)" name="heir" defaultValue={item.heir} maxLength={120} placeholder="e.g. Sam" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Return by" name="returnBy" type="date" defaultValue={item.returnBy} />
+            <p className="self-end pb-2 text-xs text-base-content/70">The store's last day to take it back — Ferret reminds you the week before.</p>
           </div>
 
           <div>

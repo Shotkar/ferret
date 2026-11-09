@@ -769,6 +769,7 @@ const TEXT_FIELDS = [
   ["barcode", "barcode"],
   ["condition", "condition"],
   ["purchaseDate", "bought on"],
+  ["returnBy", "return by"],
   ["heir", "goes to"],
 ] as const;
 

@@ -253,6 +253,9 @@ describe("toAnalysis", () => {
       suggestions: { name: "Cordless drill", barcode: "028877580324", purchaseDate: "2026-03-04", purchasePriceCents: 12999 },
     });
 
+    expect(toAnalysis({ description: "Best Buy receipt.", returnDays: 15, returnBy: "2026-03-19" }).suggestions).toEqual({ returnDays: 15, returnBy: "2026-03-19" });
+    expect(toAnalysis({ description: "x", returnDays: 0, returnBy: "within 15 days" }).suggestions).toEqual({});
+
     const junk = toAnalysis({ description: 42, purchaseDate: "March 4th", purchasePrice: -5, barcode: "12" });
     expect(junk).toEqual({ description: "", text: "", suggestions: {} });
 

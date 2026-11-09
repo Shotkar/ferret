@@ -3,6 +3,7 @@
  * Uploader styling is adapted from FlyonUI Pro "Dashboard Modal 8" and the
  * photo grid from "Gallery 1"; behaviour is plain React (no FlyonUI JS plugins).
  */
+import { today } from "@ferret/shared/utils";
 import { lastScannedText } from "./lib/last-scanned";
 import { UsageCard } from "./Usage";
 import { BarSearch } from "./Nav";
@@ -255,6 +256,7 @@ export function ItemPage({ itemId, householdId }: { itemId: string; householdId:
             <p className="text-base-content/80 text-sm">Serial: {item.data.serialNumber}</p>
           )}
           {purchase && <p className="text-base-content/80 text-sm">{purchase}</p>}
+          <ReturnLine returnBy={item.data.returnBy} gone={Boolean(item.data.disposition)} />
           {item.data.heir && <p className="text-base-content/80 text-sm">Goes to {item.data.heir}</p>}
           <Classification
             item={item.data}
@@ -560,6 +562,21 @@ function AddedLine({ item: it }: { item: Pick<ItemListing, "createdAt" | "origin
           {lastScannedText(it.lastScanned)}
         </span>
       )}
+    </p>
+  );
+}
+
+/** "Return by Nov 30 — 5 days left", while the window is open (and it's still here). */
+function ReturnLine({ returnBy, gone }: { returnBy: string | null | undefined; gone: boolean }) {
+  if (!returnBy || gone) return null;
+  const days = Math.round((Date.parse(`${returnBy}T00:00:00Z`) - Date.parse(`${today()}T00:00:00Z`)) / 86_400_000);
+  if (days < 0) return null;
+  const when = new Date(`${returnBy}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  const left = days === 0 ? "last day" : days === 1 ? "1 day left" : `${days} days left`;
+  return (
+    <p className={`flex items-center gap-1 text-sm ${days <= 2 ? "text-warning" : "text-base-content/80"}`}>
+      <span className="icon-[tabler--receipt-refund] size-4" />
+      Return by {when} — {left}
     </p>
   );
 }

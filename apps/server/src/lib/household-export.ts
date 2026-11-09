@@ -229,6 +229,7 @@ export async function householdData(v: Caller, root: string, householdName: stri
       keepAtLeast: i.minQuantity,
       condition: i.condition,
       purchaseDate: i.purchaseDate,
+      returnBy: i.returnBy,
       purchasePriceCents: i.purchasePriceCents,
       valueCents: i.valueCents,
       notes: i.notes,

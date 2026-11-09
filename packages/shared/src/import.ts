@@ -53,6 +53,7 @@ export const IMPORT_FIELDS = {
   quantity: "Quantity",
   condition: "Condition",
   purchaseDate: "Purchase date",
+  returnBy: "Return by",
   purchasePrice: "Price paid (each)",
   purchaseTotal: "Price paid (total)",
   value: "Value (each)",
@@ -99,6 +100,7 @@ const SYNONYMS: Record<string, ImportField> = {
   notes: "notes", comments: "notes",
   warrantyuntil: "warrantyEnds", warrantyexpires: "warrantyEnds", warrantyends: "warrantyEnds", warrantyend: "warrantyEnds",
   soldon: "soldOn", solddate: "soldOn", soldtime: "soldOn",
+  returnby: "returnBy", returndate: "returnBy", returnuntil: "returnBy", returnwindowends: "returnBy", lastdaytoreturn: "returnBy",
   soldfor: "soldPrice", soldprice: "soldPrice",
   url: "link", link: "link", productlink: "link", producturl: "link",
   asin: "asin",
@@ -141,6 +143,8 @@ export function parseMoney(raw: string): number | null {
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
+/** yyyy-mm-dd + n days. */
+const plusDays = (day: string, n: number) => new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 const isoDate = (y: number, m: number, d: number) => {
   const dt = new Date(Date.UTC(y, m - 1, d));
   return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d && y >= 1900 && y <= 2200 ? `${y}-${pad(m)}-${pad(d)}` : null;
@@ -187,6 +191,7 @@ export interface ImportDraft {
   quantity?: number;
   condition?: "new" | "excellent" | "good" | "fair" | "poor";
   purchaseDate?: string;
+  returnBy?: string;
   purchasePriceCents?: number;
   valueCents?: number;
   notes?: string;
@@ -213,8 +218,14 @@ export interface DraftRow {
 
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
 
-/** Rows (header first) + where each column goes → drafts, with what couldn't be read. */
-export function draftRows(table: string[][], mapping: ColumnMapping): DraftRow[] {
+/** Amazon takes most things back for 30 days (the export has no delivery date or per-item policy: the order date it is). */
+export const AMAZON_RETURN_DAYS = 30;
+
+/**
+ * Rows (header first) + where each column goes → drafts, with what couldn't be read. `today` (yyyy-mm-dd): Amazon lines
+ * whose 30 days from the order date haven't run out yet get that as their return-by date.
+ */
+export function draftRows(table: string[][], mapping: ColumnMapping, today?: string): DraftRow[] {
   const [headers = [], ...body] = table;
   const preset = detectPreset(headers);
   const col = (k: string) => (preset === "amazon" ? headers.findIndex((h) => key(h) === k) : -1);
@@ -234,6 +245,7 @@ export function draftRows(table: string[][], mapping: ColumnMapping): DraftRow[]
   };
   return body.map((cells, i) => {
     const importKey = lineKey(cells);
+    const unlikelyLine = statusCol >= 0 && /cancel|return/i.test(cells[statusCol] ?? "");
     const problems: string[] = [];
     const d: Partial<ImportDraft> = {};
     const notes: string[] = [];
@@ -282,6 +294,9 @@ export function draftRows(table: string[][], mapping: ColumnMapping): DraftRow[]
         case "purchaseDate":
           d.purchaseDate = date();
           break;
+        case "returnBy":
+          d.returnBy = date();
+          break;
         case "purchasePrice":
           d.purchasePriceCents = money();
           break;
@@ -325,8 +340,12 @@ export function draftRows(table: string[][], mapping: ColumnMapping): DraftRow[]
     if (preset === "amazon") notes.unshift("Bought on Amazon");
     if (notes.length) d.notes = clip(notes.join("\n"), 10000);
     if (importKey) d.importKey = importKey;
+    if (preset === "amazon" && today && d.purchaseDate && !d.returnBy && !unlikelyLine) {
+      const by = plusDays(d.purchaseDate, AMAZON_RETURN_DAYS);
+      if (by >= today) d.returnBy = by;
+    }
     if (d.soldCents != null && !d.soldOn) problems.push("Sold for a price but no date — kept as still yours");
-    const unlikely = statusCol >= 0 && /cancel|return/i.test(cells[statusCol] ?? "");
+    const unlikely = unlikelyLine;
     if (!d.name) return { line: i + 2, draft: null, problems: ["No name"], unlikely };
     return { line: i + 2, draft: d as ImportDraft, problems, unlikely };
   });

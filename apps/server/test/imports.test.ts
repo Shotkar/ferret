@@ -84,6 +84,14 @@ describe("reading a spreadsheet", () => {
       "Not an ASIN,2023-02-01T10:00:00Z,222-2,1,Gift card,25,Closed,\n";
     expect(detectPreset(parseCsv(csv)[0]!)).toBe("amazon");
     expect(drafts(csv).map((r) => r.draft!.importKey)).toEqual(["amazon:111-1:B0ABCDEFGH:1", "amazon:111-1:B0ABCDEFGH:2", "amazon:222-2:B0ABCDEFGH:1", undefined]);
+    // With today's date, a recent order can still go back: 30 days from the order date (not cancelled ones, not old ones).
+    const recent = `ASIN,"Order Date","Order ID","Product Name","Order Status"\nB0ABCDEFGH,2026-11-01T10:00:00Z,333-3,Kettle,Closed\nB0ABCDEFGI,2026-11-01T10:00:00Z,333-4,Toaster,Cancelled\nB0ABCDEFGJ,2026-09-01T10:00:00Z,333-5,Old mug,Closed\n`;
+    const t = parseCsv(recent);
+    const [kettle, toaster, mug] = draftRows(t, guessMapping(t[0]!), "2026-11-08");
+    expect(kettle!.draft!.returnBy).toMatch(/^2026-12-0[01]$/);
+    expect([toaster!.draft!.returnBy, mug!.draft!.returnBy]).toEqual([undefined, undefined]);
+    expect(drafts("Item,Return by\nLamp,2026-12-01\n")[0]!.draft!.returnBy).toBe("2026-12-01");
+
     // Any other spreadsheet has no key.
     expect(drafts("Name,Order ID,ASIN\nLamp,1,B0ABCDEFGH\n")[0]!.draft!.importKey).toBeUndefined();
   });

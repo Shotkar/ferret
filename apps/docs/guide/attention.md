@@ -10,6 +10,7 @@ things to do, not messages: an entry disappears once it's dealt with.
 |---|---|
 | Maintenance | Overdue, or due within a week (urgent once it's due) |
 | Warranties | Ending within a month (urgent within a week) |
+| Returns | The last day to [return something](./warranties#return-windows) is within a week (urgent for the last two days) |
 | Claims | No news for two weeks — time to follow up |
 | New items to name | Added from photos and not confirmed yet |
 | Things to buy | One entry for the [shopping list](./stock#shopping-list) — urgent once something's run out |

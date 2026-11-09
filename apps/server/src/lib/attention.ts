@@ -2,13 +2,13 @@
  * What needs attention now — the bell in the app's top bar, and Claude's
  * "what needs doing?": maintenance overdue or due within a week (a month, if
  * it's short of the part it uses), warranties
- * ending within a month, claims with no news for two weeks, and photos read
+ * ending within a month, return windows closing within a week, claims with no news for two weeks, and photos read
  * but not yet turned into named items, things to buy (one entry: the shopping
  * list), lent and borrowed things (overdue, or "they say it's back") — and, for the server admin, backups that stopped working. It's a list of states, not events: an
  * entry goes away when the thing is done, so the count means "things to do".
  */
 import { type AttentionItem, addDays } from "@ferret/shared";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { attachment, backupRun, item } from "../db/schema";
 import { listClaims } from "./claims";
 import { isServerAdmin } from "./server-admin";
@@ -27,6 +27,9 @@ import { todayFor } from "./household-time";
 
 const MAINTENANCE_DAYS = 7;
 const WARRANTY_DAYS = 30;
+/** A return window: in the bell this many days before its last day, urgent (so in the daily reminder) for the last few. */
+const RETURN_DAYS = 7;
+const RETURN_URGENT_DAYS = 2;
 const CLAIM_QUIET_DAYS = 14;
 /** Lent with no due date: the bell mentions it after this long. */
 const LENT_LONG_DAYS = 60;
@@ -39,7 +42,7 @@ const dayDiff = (from: string, to: string) => Math.round((Date.parse(`${to}T00:0
 
 export async function needsAttention(v: Caller): Promise<AttentionItem[]> {
   const on = todayFor(v);
-  const [tasks, warranties, claims, unnamed, loans, recalls, coverage] = await Promise.all([
+  const [tasks, warranties, claims, unnamed, loans, recalls, coverage, returns] = await Promise.all([
     listMaintenance(v, { status: "open" }),
     listWarranties(v, "expiring"),
     listClaims(v, { open: true }),
@@ -51,8 +54,26 @@ export async function needsAttention(v: Caller): Promise<AttentionItem[]> {
     listLoans(v),
     listRecalls(v),
     coverageChecks(v),
+    // Return windows closing this week (gone things are left out by itemScope; once the day passes, so is it).
+    v.db
+      .select({ id: item.id, name: item.name, returnBy: item.returnBy })
+      .from(item)
+      .where(and(itemScope(v), gte(item.returnBy, on), lte(item.returnBy, addDays(on, RETURN_DAYS)))),
   ]);
   const out: AttentionItem[] = [];
+
+  for (const r of returns) {
+    const days = dayDiff(on, r.returnBy!);
+    out.push({
+      kind: "return",
+      severity: days <= RETURN_URGENT_DAYS ? "urgent" : "soon",
+      id: r.id,
+      title: `Return ${r.name}?`,
+      detail: days === 0 ? "Last day to return it" : days === 1 ? "Last day to return it is tomorrow" : `${days} days left to return it`,
+      itemId: r.id,
+      date: r.returnBy!,
+    });
+  }
 
   for (const t of tasks) {
     // Short of the part it uses: show it early, while there's time to order some.
@@ -265,7 +286,7 @@ export async function needsAttention(v: Caller): Promise<AttentionItem[]> {
   }
 
   // Urgent first; then by kind (things with a deadline before things waiting on someone); then soonest.
-  const order = { backup: 0, service: 0, recall: 1, maintenance: 2, loan: 3, warranty: 4, shopping: 5, coverage: 6, claim: 7, review: 8, roomscan: 8 };
+  const order: Record<AttentionItem["kind"], number> = { backup: 0, service: 0, recall: 1, maintenance: 2, return: 3, loan: 3, warranty: 4, shopping: 5, coverage: 6, claim: 7, review: 8, roomscan: 8 };
   return out.sort(
     (a, b) =>
       (a.severity === b.severity ? 0 : a.severity === "urgent" ? -1 : 1) ||

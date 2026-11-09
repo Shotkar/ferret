@@ -81,7 +81,12 @@ function Mapper({
 }) {
   const headers = file.table[0]!;
   const preset = detectPreset(headers);
-  const rows = useMemo(() => draftRows(file.table, mapping), [file.table, mapping]);
+  // Today on this device: recent Amazon orders get "return by" 30 days on (draftRows).
+  const rows = useMemo(() => {
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return draftRows(file.table, mapping, today);
+  }, [file.table, mapping]);
   const places = usePlaces(householdId);
   const properties = places.data?.properties ?? [];
   const [propertyId, setPropertyId] = useState<string | null>(null);
@@ -279,6 +284,7 @@ function Mapper({
                         r.draft?.place,
                         r.draft?.purchasePriceCents != null ? money(r.draft.purchasePriceCents) : null,
                         r.draft?.purchaseDate,
+                        r.draft?.returnBy ? `return by ${r.draft.returnBy}` : null,
                         isKnown(r) ? "already in Ferret" : null,
                         r.unlikely ? "cancelled or returned" : null,
                       ]

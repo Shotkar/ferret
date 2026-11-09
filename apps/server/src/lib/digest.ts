@@ -21,6 +21,7 @@ const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
 const GROUPS: [AttentionItem["kind"][], string][] = [
   [["recall"], "Recalls"],
   [["maintenance"], "Maintenance"],
+  [["return"], "Returns"],
   [["warranty", "claim"], "Warranties and claims"],
   [["loan"], "Lent and borrowed"],
   [["shopping"], "To buy"],

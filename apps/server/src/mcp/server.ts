@@ -239,7 +239,7 @@ function buildServer(v: McpCaller) {
     {
       title: "What needs attention",
       description:
-        "What to act on now, urgent first: maintenance overdue or due within a week, warranties ending within 30 days, warranty claims with no news for two weeks, things running low, borrowed things due back, recalls that may affect something owned, insurance limits that fall short, and items or room scans from photos still to finish. Returns entries with kind, severity (urgent or soon), title, detail, the itemId to open (if any) and a date. Use it for \"anything I should deal with?\" or a daily check-in; for the full maintenance schedule use list_maintenance, for all warranties list_warranties, for what to buy shopping_list. Empty when nothing needs doing.",
+        "What to act on now, urgent first: maintenance overdue or due within a week, warranties ending within 30 days, return windows closing within a week, warranty claims with no news for two weeks, things running low, borrowed things due back, recalls that may affect something owned, insurance limits that fall short, and items or room scans from photos still to finish. Returns entries with kind, severity (urgent or soon), title, detail, the itemId to open (if any) and a date. Use it for \"anything I should deal with?\" or a daily check-in; for the full maintenance schedule use list_maintenance, for all warranties list_warranties, for what to buy shopping_list. Empty when nothing needs doing.",
       inputSchema: z.object({}),
       annotations: read,
     },

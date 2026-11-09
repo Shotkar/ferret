@@ -155,6 +155,8 @@ export const item = sqliteTable(
     disposalNote: text("disposal_note"),
     condition: text("condition"),
     purchaseDate: text("purchase_date"), // ISO yyyy-mm-dd
+    /** The last day the store takes it back (ISO yyyy-mm-dd) — in the bell the week before (lib/attention.ts). */
+    returnBy: text("return_by"),
     purchasePriceCents: integer("purchase_price_cents"),
     valueCents: integer("value_cents"),
     notes: text("notes"),

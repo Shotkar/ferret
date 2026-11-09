@@ -15,6 +15,7 @@ import { Mascot } from "./Mascot";
 const KIND: Record<AttentionItem["kind"], { icon: string; label: string }> = {
   maintenance: { icon: "icon-[tabler--tool]", label: "Maintenance" },
   warranty: { icon: "icon-[tabler--shield-check]", label: "Warranty" },
+  return: { icon: "icon-[tabler--receipt-refund]", label: "Return" },
   claim: { icon: "icon-[tabler--file-alert]", label: "Claim" },
   review: { icon: "icon-[tabler--photo-check]", label: "To name" },
   roomscan: { icon: "icon-[tabler--scan-eye]", label: "Room scan" },

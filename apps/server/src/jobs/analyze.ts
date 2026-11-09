@@ -51,6 +51,8 @@ const replySchema = {
     barcode: nullableText,
     purchaseDate: nullableText,
     purchasePrice: { type: ["number", "null"] },
+    returnDays: { type: ["integer", "null"] },
+    returnBy: nullableText,
     warrantyMonths: { type: ["integer", "null"] },
     warrantyProvider: nullableText,
     maintenance: {
@@ -68,7 +70,7 @@ const replySchema = {
   },
   required: [
     "description", "text", "name", "brand", "model", "serialNumber", "barcode",
-    "purchaseDate", "purchasePrice", "warrantyMonths", "warrantyProvider", "maintenance",
+    "purchaseDate", "purchasePrice", "returnDays", "returnBy", "warrantyMonths", "warrantyProvider", "maintenance",
   ],
 };
 
@@ -77,6 +79,8 @@ const fieldRules = `- name: a short, generic name for the item, like "Cordless d
 - barcode: the digits of a UPC/EAN barcode if printed; otherwise null.
 - purchaseDate: the purchase date as YYYY-MM-DD, only from a receipt or invoice; otherwise null.
 - purchasePrice: the price paid for the main item as a number (e.g. 129.99), only from a receipt or invoice; otherwise null.
+- returnDays: how many days the store accepts returns, only when a receipt or invoice states it ("returns within 30 days" = 30); otherwise null.
+- returnBy: the last day to return it as YYYY-MM-DD, only when a receipt or invoice prints that date ("Return by 12/15/2026"); otherwise null.
 - warrantyMonths: how long the warranty lasts, in months ("one year" = 12, "90 days" = 3), only when stated; otherwise null. If several parts have different terms, use the main one.
 - warrantyProvider: who provides the warranty (the manufacturer, or e.g. "Geek Squad" for an extended plan), only when stated; otherwise null.
 - maintenance: upkeep the owner should repeat on a schedule, only when a manual or care guide states how often — e.g. "clean the filter every 3 months" → {"task": "Clean the filter", "every": 3, "unit": "month"}. task is a short instruction starting with a verb. unit is day, week, month or year ("annually" = 1 year). At most 8, the most important first; [] if none.
@@ -134,6 +138,8 @@ const reply = z.object({
     .catch(undefined),
   purchaseDate: z.iso.date().nullish().catch(undefined),
   purchasePrice: z.number().positive().max(10_000_000).nullish().catch(undefined),
+  returnDays: z.number().int().min(1).max(730).nullish().catch(undefined),
+  returnBy: z.iso.date().nullish().catch(undefined),
   warrantyMonths: z.number().int().min(1).max(1200).nullish().catch(undefined),
   warrantyProvider: text(120).catch(undefined),
   // Each schedule on its own: one malformed entry doesn't lose the rest.
@@ -160,6 +166,8 @@ export function toAnalysis(raw: unknown): AttachmentAnalysis {
     barcode: r.barcode,
     purchaseDate: r.purchaseDate ?? undefined,
     purchasePriceCents: r.purchasePrice != null ? Math.round(r.purchasePrice * 100) : undefined,
+    returnDays: r.returnDays ?? undefined,
+    returnBy: r.returnBy ?? undefined,
     warrantyMonths: r.warrantyMonths ?? undefined,
     warrantyProvider: r.warrantyProvider,
     maintenance: r.maintenance.length

@@ -193,6 +193,7 @@ const itemFields = z.object({
   usageUnit: z.enum(usageUnits).optional().nullable().describe("What its counter measures, for maintenance by use (a car's miles, a mower's hours)"),
   condition: z.enum(itemConditions).optional().nullable().describe("What shape it's in"),
   purchaseDate: z.iso.date().optional().nullable().describe("When it was bought, yyyy-mm-dd"),
+  returnBy: z.iso.date().optional().nullable().describe("The last day the store takes it back, yyyy-mm-dd — what_needs_attention says so the week before"),
   purchasePriceCents: cents.describe("What was paid for one, in cents (12999 = $129.99)"),
   valueCents: cents.describe("What one is worth now, in cents — used for the insurance report"),
   notes: optionalText(10000).describe("Anything else worth keeping: where the spare key is, quirks, settings"),
@@ -511,8 +512,10 @@ export interface AttachmentAnalysis {
 
 /** Item fields the model could fill in. Only fields it was confident about are present. */
 export type AttachmentSuggestions = Partial<
-  Pick<ItemInput, "name" | "brand" | "model" | "serialNumber" | "barcode" | "purchaseDate" | "purchasePriceCents">
+  Pick<ItemInput, "name" | "brand" | "model" | "serialNumber" | "barcode" | "purchaseDate" | "purchasePriceCents" | "returnBy">
 > & {
+  /** From receipts: how many days the store takes it back (the return-by date is then the purchase date + this). */
+  returnDays?: number;
   /** From warranty cards and manuals: how long it lasts, and who provides it. */
   warrantyMonths?: number;
   warrantyProvider?: string;
@@ -810,7 +813,7 @@ export interface Label {
 // ── Needs attention (the bell) ──────────────────────────────────────────────
 /** Something to act on now; it disappears once it's dealt with (no read/unread state). */
 export interface AttentionItem {
-  kind: "maintenance" | "warranty" | "claim" | "review" | "roomscan" | "backup" | "shopping" | "loan" | "recall" | "coverage" | "service";
+  kind: "maintenance" | "warranty" | "return" | "claim" | "review" | "roomscan" | "backup" | "shopping" | "loan" | "recall" | "coverage" | "service";
   /** urgent: overdue / today; soon: coming up or waiting. */
   severity: "urgent" | "soon";
   /** The thing it's about (task, warranty, claim or item id; a backup's run id). */
@@ -1209,6 +1212,7 @@ export const importRow = z.object({
   quantity: z.number().int().min(0).max(100000).optional().nullable(),
   condition: z.enum(itemConditions).optional().nullable(),
   purchaseDate: z.iso.date().optional().nullable(),
+  returnBy: z.iso.date().optional().nullable(),
   purchasePriceCents: cents,
   valueCents: cents,
   notes: optionalText(10000),
