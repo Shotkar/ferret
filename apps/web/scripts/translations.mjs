@@ -75,15 +75,22 @@ function shape(message) {
 
 /**
  * Blanks translations that would break: ones that don't parse, or whose placeholders or tags differ from the English
- * — they then show in English instead of as a broken string or a bare id. Returns how much is translated (%).
+ * — they then show in English instead of as a broken string or a bare id. Also ones still marked "Needs editing"
+ * (fuzzy: machine drafts, or changed English) until someone approves them. Returns how much is translated (%).
  */
 function checkLanguage(file) {
   const po = parsePo(readFileSync(file, "utf8"));
   const items = po.items.filter((i) => !i.obsolete && i.msgid);
   const blanked = [];
+  let unreviewed = 0;
   for (const item of items) {
     const text = item.msgstr[0];
     if (!text) continue;
+    if (item.flags?.fuzzy) {
+      item.msgstr = item.msgstr.map(() => "");
+      unreviewed++;
+      continue;
+    }
     let ok;
     try {
       ok = shape(text) === shape(item.msgid);
@@ -95,8 +102,9 @@ function checkLanguage(file) {
       item.msgstr = [""];
     }
   }
+  if (unreviewed) say(`${path.basename(file)}: ${unreviewed} waiting for review ("Needs editing") — shown in English for now`);
+  if (blanked.length || unreviewed) writeFileSync(file, stringifyPo(po));
   if (blanked.length) {
-    writeFileSync(file, stringifyPo(po));
     say(`${path.basename(file)}: ${blanked.length} translation(s) left out — placeholders, tags or plural syntax don't match the English:`);
     for (const line of blanked) console.log(line);
   }
