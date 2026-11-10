@@ -22,21 +22,24 @@ import { findLocation, usePlaces } from "./lib/places";
 import { ITEMS_HREF, addedHref, itemHref, missingHref } from "./lib/route";
 import { navigateTo } from "./lib/navigate";
 import { Mascot } from "./Mascot";
+import { t, ph, plural, msg } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
+import type { MessageDescriptor } from "@lingui/core";
 
 const PAGE = 50;
-const SORTS: { value: ItemSort; label: string; dir: "asc" | "desc" }[] = [
-  { value: "updated", label: "Last changed", dir: "desc" },
-  { value: "added", label: "Newest", dir: "desc" },
-  { value: "name", label: "Name", dir: "asc" },
-  { value: "value", label: "Most valuable", dir: "desc" },
-  { value: "bought", label: "Bought most recently", dir: "desc" },
-  { value: "scanned", label: "Scanned most recently", dir: "desc" },
+const SORTS: { value: ItemSort; label: MessageDescriptor; dir: "asc" | "desc" }[] = [
+  { value: "updated", label: msg`Last changed`, dir: "desc" },
+  { value: "added", label: msg`Newest`, dir: "desc" },
+  { value: "name", label: msg`Name`, dir: "asc" },
+  { value: "value", label: msg`Most valuable`, dir: "desc" },
+  { value: "bought", label: msg`Bought most recently`, dir: "desc" },
+  { value: "scanned", label: msg`Scanned most recently`, dir: "desc" },
 ];
 /** "Last scanned": not in this many months (never scanned counts). */
 const UNSCANNED = [
-  { value: "1", label: "Not in a month" },
-  { value: "6", label: "Not in 6 months" },
-  { value: "12", label: "Not in a year" },
+  { value: "1", label: msg`Not in a month` },
+  { value: "6", label: msg`Not in 6 months` },
+  { value: "12", label: msg`Not in a year` },
 ] as const;
 /** The day `months` ago, on this device's calendar. */
 function monthsAgo(months: number) {
@@ -126,17 +129,17 @@ export function Everything(props: { householdId: string; missing?: MissingDetail
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-base-content">
-            {missing ? MISSING_LABELS[missing].filter : origin ? ORIGIN_FILTER[origin] : "Everything"}
+            {missing ? t(MISSING_LABELS[missing].filter) : origin ? t(ORIGIN_FILTER[origin]) : t`Everything`}
           </h1>
           {items.data && (
             <p className="text-sm text-base-content/70" aria-live="polite">
-              {total} {total === 1 ? "thing" : "things"}
+              {plural(total, { one: "# thing", other: "# things" })}
               {items.data.valueCents ? ` · ${money(items.data.valueCents)}` : ""}
             </p>
           )}
         </div>
         {wide && (
-          <div className="join" role="group" aria-label="Show as">
+          <div className="join" role="group" aria-label={t`Show as`}>
             {(["table", "list"] as const).map((l) => (
               <button
                 key={l}
@@ -146,7 +149,7 @@ export function Everything(props: { householdId: string; missing?: MissingDetail
                 onClick={() => setLayout(l)}
               >
                 <span className={`${l === "table" ? "icon-[tabler--table]" : "icon-[tabler--list]"} size-4`} />
-                {l === "table" ? "Table" : "List"}
+                {l === "table" ? t`Table` : t`List`}
               </button>
             ))}
           </div>
@@ -210,9 +213,10 @@ export function Everything(props: { householdId: string; missing?: MissingDetail
           )}
           {result && (
         <div className={`alert alert-soft ${result.failed.length ? "alert-warning" : "alert-success"} text-sm`} role="status">
-          {result.done} changed
-          {result.failed.length > 0 && ` · ${result.failed.length} couldn't be: ${[...new Set(result.failed.map((f) => f.reason))].join("; ")}`}
-          <button type="button" className="btn btn-text btn-xs ms-auto" onClick={() => setResult(null)} aria-label="Dismiss">
+          {result.failed.length > 0
+            ? t`${ph({ done: result.done })} changed · ${ph({ failed: result.failed.length })} couldn't be: ${ph({ reasons: [...new Set(result.failed.map((f) => f.reason))].join("; ") })}`
+            : t`${ph({ done: result.done })} changed`}
+          <button type="button" className="btn btn-text btn-xs ms-auto" onClick={() => setResult(null)} aria-label={t`Dismiss`}>
             <span className="icon-[tabler--x] size-4" />
           </button>
         </div>
@@ -243,11 +247,11 @@ export function Everything(props: { householdId: string; missing?: MissingDetail
           {filtered && (missing && !categoryId && !locationId && !tag ? <Mascot pose="asleep" /> : <Mascot pose="searching" />)}
           {filtered
             ? missing && !categoryId && !locationId && !tag
-              ? "All done — nothing is missing that."
+              ? t`All done — nothing is missing that.`
               : origin && !categoryId && !locationId && !tag
-                ? "Nothing added this way yet."
-                : "Nothing matches these filters."
-            : "Nothing here yet — + Add puts in your first thing."}
+                ? t`Nothing added this way yet.`
+                : t`Nothing matches these filters.`
+            : t`Nothing here yet — + Add puts in your first thing.`}
         </div>
       )}
 
@@ -288,22 +292,22 @@ function FilterBar(props: {
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className="btn btn-soft btn-primary btn-sm" aria-expanded={false} onClick={() => setOpen(true)}>
           <span className="icon-[tabler--adjustments-horizontal] size-4" />
-          Filter and sort
+          <Trans>Filter and sort</Trans>
           {active > 0 && <span className="badge badge-primary badge-sm">{active}</span>}
         </button>
         {props.onClear && (
           <button type="button" className="btn btn-text btn-sm" onClick={props.onClear}>
-            Clear filters
+            <Trans>Clear filters</Trans>
           </button>
         )}
       </div>
     );
   }
   return (
-    <section className="card" aria-label="Filters">
+    <section className="card" aria-label={t`Filters`}>
       <div className="card-body grid grid-cols-1 gap-3 p-3 @container sm:p-4">
         <div className="grid grid-cols-1 gap-3 @lg:grid-cols-3 @5xl:grid-cols-7">
-          <Field label="Where from" id="filter-origin">
+          <Field label={t`Where from`} id="filter-origin">
             <select
               id="filter-origin"
               className="select"
@@ -311,30 +315,30 @@ function FilterBar(props: {
               // Missing and where-from are links (the dashboard opens them), so they live in the address.
               onChange={(e) => navigateTo(e.target.value ? addedHref(e.target.value as ItemOrigin) : ITEMS_HREF)}
             >
-              <option value="">Anywhere</option>
+              <option value="">{t`Anywhere`}</option>
               {itemOriginList.map((o) => (
                 <option key={o} value={o}>
-                  {ORIGIN_FILTER[o]}
+                  {t(ORIGIN_FILTER[o])}
                 </option>
               ))}
             </select>
           </Field>
-          <Field label="Missing" id="filter-missing">
+          <Field label={t`Missing`} id="filter-missing">
             <select
               id="filter-missing"
               className="select"
               value={props.missing ?? ""}
               onChange={(e) => navigateTo(e.target.value ? missingHref(e.target.value as MissingDetail) : ITEMS_HREF)}
             >
-              <option value="">Anything</option>
+              <option value="">{t`Anything`}</option>
               {missingDetails.map((d) => (
                 <option key={d} value={d}>
-                  {MISSING_LABELS[d].filter}
+                  {t(MISSING_LABELS[d].filter)}
                 </option>
               ))}
             </select>
           </Field>
-          <Field label="Category" id="filter-category">
+          <Field label={t`Category`} id="filter-category">
             <select
               id="filter-category"
               className="select"
@@ -342,7 +346,7 @@ function FilterBar(props: {
               onChange={(e) => props.onCategory(e.target.value || null)}
               disabled={!categories.data?.length}
             >
-              <option value="">Any category</option>
+              <option value="">{t`Any category`}</option>
               {flattenCategories(categories.data ?? []).map((c) => (
                 <option key={c.id} value={c.id}>
                   {" ".repeat(c.depth)}
@@ -355,32 +359,32 @@ function FilterBar(props: {
             householdId={props.householdId}
             id="filter-place"
             name="locationId"
-            label="Place"
-            noneLabel="Anywhere"
+            label={t`Place`}
+            noneLabel={t`Anywhere`}
             value={props.locationId}
             onChange={props.onLocation}
           />
-          <Field label="Tag" id="filter-tag">
+          <Field label={t`Tag`} id="filter-tag">
             <select id="filter-tag" className="select" value={props.tag} onChange={(e) => props.onTag(e.target.value)} disabled={!tags.data?.length}>
-              <option value="">Any tag</option>
-              {(tags.data ?? []).map((t) => (
-                <option key={t.id} value={t.name}>
-                  {t.name} ({t.items})
+              <option value="">{t`Any tag`}</option>
+              {(tags.data ?? []).map((tag) => (
+                <option key={tag.id} value={tag.name}>
+                  {tag.name} ({tag.items})
                 </option>
               ))}
             </select>
           </Field>
-          <Field label="Last scanned" id="filter-scanned">
+          <Field label={t`Last scanned`} id="filter-scanned">
             <select id="filter-scanned" className="select" value={props.unscanned} onChange={(e) => props.onUnscanned(e.target.value)}>
-              <option value="">Any time</option>
+              <option value="">{t`Any time`}</option>
               {UNSCANNED.map((u) => (
                 <option key={u.value} value={u.value}>
-                  {u.label}
+                  {t(u.label)}
                 </option>
               ))}
             </select>
           </Field>
-          <Field label="Order" id="filter-sort">
+          <Field label={t`Order`} id="filter-sort">
             <select
               id="filter-sort"
               className="select"
@@ -390,10 +394,10 @@ function FilterBar(props: {
                 props.onSort({ by: s.value, dir: s.dir });
               }}
             >
-              {!sortValue && <option value="">As in the table</option>}
+              {!sortValue && <option value="">{t`As in the table`}</option>}
               {SORTS.map((s) => (
                 <option key={s.value} value={s.value}>
-                  {s.label}
+                  {t(s.label)}
                 </option>
               ))}
             </select>
@@ -404,13 +408,13 @@ function FilterBar(props: {
             {props.folded && (
               <button type="button" className="btn btn-soft btn-primary btn-sm" aria-expanded onClick={() => setOpen(false)}>
                 <span className="icon-[tabler--chevron-up] size-4" />
-                Done
+                <Trans>Done</Trans>
               </button>
             )}
             {props.onClear && (
               <button type="button" className="btn btn-text btn-sm" onClick={props.onClear}>
                 <span className="icon-[tabler--filter-off] size-4" />
-                Clear filters
+                <Trans>Clear filters</Trans>
               </button>
             )}
           </div>
@@ -431,13 +435,13 @@ function Field(props: { label: string; id: string; children: ReactNode }) {
   );
 }
 
-const COLUMNS: { key: string; label: string; sort?: ItemSort; firstDir?: "asc" | "desc"; className?: string }[] = [
-  { key: "name", label: "Name", sort: "name", firstDir: "asc" },
-  { key: "place", label: "Where" },
-  { key: "category", label: "Category", className: "max-lg:hidden" },
-  { key: "brand", label: "Brand", className: "max-xl:hidden" },
-  { key: "value", label: "Value", sort: "value", firstDir: "desc", className: "text-end" },
-  { key: "bought", label: "Bought", sort: "bought", firstDir: "desc", className: "max-lg:hidden" },
+const COLUMNS: { key: string; label: MessageDescriptor; sort?: ItemSort; firstDir?: "asc" | "desc"; className?: string }[] = [
+  { key: "name", label: msg`Name`, sort: "name", firstDir: "asc" },
+  { key: "place", label: msg`Where` },
+  { key: "category", label: msg`Category`, className: "max-lg:hidden" },
+  { key: "brand", label: msg`Brand`, className: "max-xl:hidden" },
+  { key: "value", label: msg`Value`, sort: "value", firstDir: "desc", className: "text-end" },
+  { key: "bought", label: msg`Bought`, sort: "bought", firstDir: "desc", className: "max-lg:hidden" },
 ];
 
 /** The table: sortable headings, a tick box per row (and one for the page), a click opens the quick view. */
@@ -471,7 +475,7 @@ function ItemTable(props: {
                 <input
                   type="checkbox"
                   className="checkbox checkbox-primary checkbox-sm"
-                  aria-label="Select everything on this page"
+                  aria-label={t`Select everything on this page`}
                   checked={all}
                   ref={(el) => {
                     if (el) el.indeterminate = some && !all;
@@ -503,13 +507,13 @@ function ItemTable(props: {
                         })
                       }
                     >
-                      {c.label}
+                      {t(c.label)}
                       <span
                         className={`size-4 ${active ? (props.sort.dir === "asc" ? "icon-[tabler--arrow-up]" : "icon-[tabler--arrow-down]") : "icon-[tabler--arrows-sort] text-base-content/40"}`}
                       />
                     </button>
                   ) : (
-                    c.label
+                    t(c.label)
                   )}
                 </th>
               );
@@ -528,7 +532,7 @@ function ItemTable(props: {
                   <input
                     type="checkbox"
                     className="checkbox checkbox-primary checkbox-sm"
-                    aria-label={`Select ${item.name}`}
+                    aria-label={t`Select ${ph({ name: item.name })}`}
                     checked={selected.has(item.id)}
                     onChange={() => toggle(item.id)}
                   />
@@ -544,7 +548,7 @@ function ItemTable(props: {
                     </a>
                     {(item.isContainer || item.loan) && (
                       <p className="text-xs text-base-content/70">
-                        {[item.isContainer && `Box · ${item.contents} inside`, item.loan && (item.loan.direction === "lent" ? `Lent to ${item.loan.person}` : `Borrowed from ${item.loan.person}`)]
+                        {[item.isContainer && t`Box · ${ph({ contents: item.contents })} inside`, item.loan && (item.loan.direction === "lent" ? t`Lent to ${ph({ person: item.loan.person })}` : t`Borrowed from ${ph({ person: item.loan.person })}`)]
                           .filter(Boolean)
                           .join(" · ")}
                       </p>
@@ -553,7 +557,7 @@ function ItemTable(props: {
                 </div>
               </td>
               <td className="max-w-64 truncate text-base-content/80" title={item.place ?? undefined}>
-                {[item.container && `In ${item.container.name}`, item.place].filter(Boolean).join(" · ") || <span className="text-base-content/70">—</span>}
+                {[item.container && t`In ${ph({ box: item.container.name })}`, item.place].filter(Boolean).join(" · ") || <span className="text-base-content/70">—</span>}
               </td>
               <td className="max-w-48 truncate text-base-content/80 max-lg:hidden">{item.category ?? ""}</td>
               <td className="text-base-content/80 max-xl:hidden">{item.brand ?? ""}</td>
@@ -587,17 +591,17 @@ function Pager(props: { page: number; pages: number; total: number; onPage: (p: 
     window.scrollTo({ top: 0 });
   };
   return (
-    <nav className="flex flex-wrap items-center justify-between gap-3" aria-label="Pages">
-      <span className="text-sm text-base-content/70">
-        {from}–{to} of {props.total}
-      </span>
+    <nav className="flex flex-wrap items-center justify-between gap-3" aria-label={t`Pages`}>
+      <Trans><span className="text-sm text-base-content/70">
+        {from}–{to} of {ph({ total: props.total })}
+      </span></Trans>
       <div className="flex gap-2">
         <button type="button" className="btn btn-soft btn-sm" disabled={props.page === 0} onClick={() => go(props.page - 1)}>
           <span className="icon-[tabler--chevron-left] size-4" />
-          Previous
+          <Trans>Previous</Trans>
         </button>
         <button type="button" className="btn btn-soft btn-sm" disabled={props.page >= props.pages - 1} onClick={() => go(props.page + 1)}>
-          Next
+          <Trans>Next</Trans>
           <span className="icon-[tabler--chevron-right] size-4" />
         </button>
       </div>
@@ -613,32 +617,32 @@ function BulkBar(props: { householdId: string; ids: string[]; rows: ItemListing[
   const n = props.ids.length;
   return (
     <>
-      <div className="sticky top-18 z-[5] flex flex-wrap items-center gap-2 rounded-box border border-primary/30 bg-base-100 p-2 shadow-sm" role="region" aria-label="Selected">
-        <span className="px-2 text-sm font-medium">
+      <div className="sticky top-18 z-[5] flex flex-wrap items-center gap-2 rounded-box border border-primary/30 bg-base-100 p-2 shadow-sm" role="region" aria-label={t`Selected`}>
+        <Trans><span className="px-2 text-sm font-medium">
           {n} selected
-        </span>
+        </span></Trans>
         <button type="button" className="btn btn-soft btn-primary btn-sm" onClick={() => setAction("move")}>
           <span className="icon-[tabler--map-pin] size-4" />
-          Move
+          <Trans>Move</Trans>
         </button>
         <button type="button" className="btn btn-soft btn-primary btn-sm" onClick={() => setAction("category")}>
           <span className="icon-[tabler--category] size-4" />
-          Category
+          <Trans>Category</Trans>
         </button>
         <button type="button" className="btn btn-soft btn-primary btn-sm" onClick={() => setAction("tag")}>
           <span className="icon-[tabler--tag] size-4" />
-          Tag
+          <Trans>Tag</Trans>
         </button>
         <button type="button" className="btn btn-soft btn-primary btn-sm" onClick={() => setAction("untag")}>
           <span className="icon-[tabler--tag-off] size-4" />
-          Remove tag
+          <Trans>Remove tag</Trans>
         </button>
         <button type="button" className="btn btn-soft btn-error btn-sm" onClick={() => setAction("delete")}>
           <span className="icon-[tabler--trash] size-4" />
-          Delete
+          <Trans>Delete</Trans>
         </button>
         <button type="button" className="btn btn-text btn-sm ms-auto" onClick={props.onClear}>
-          Clear
+          <Trans>Clear</Trans>
         </button>
       </div>
       {action && (
@@ -658,12 +662,12 @@ function BulkBar(props: { householdId: string; ids: string[]; rows: ItemListing[
   );
 }
 
-const BULK_TITLES: Record<BulkAction, string> = {
-  move: "Move to…",
-  category: "Set the category",
-  tag: "Add a tag",
-  untag: "Remove a tag",
-  delete: "Delete these?",
+const BULK_TITLES: Record<BulkAction, MessageDescriptor> = {
+  move: msg`Move to…`,
+  category: msg`Set the category`,
+  tag: msg`Add a tag`,
+  untag: msg`Remove a tag`,
+  delete: msg`Delete these?`,
 };
 
 function BulkDialog(props: {
@@ -680,7 +684,7 @@ function BulkDialog(props: {
   const [category, setCategory] = useState<string | null>(null);
   const [tag, setTag] = useState("");
   const n = props.ids.length;
-  const things = `${n} ${n === 1 ? "thing" : "things"}`;
+  const things = plural(n, { one: "# thing", other: "# things" });
   // Removing: the tags the ticked things on this page have.
   const onThem = [...new Set(props.rows.filter((r) => props.ids.includes(r.id)).flatMap((r) => r.tags))].sort((a, b) => a.localeCompare(b));
   const run = useMutation({
@@ -708,7 +712,7 @@ function BulkDialog(props: {
   });
   const ready = props.action === "tag" || props.action === "untag" ? Boolean(tag.trim()) : true;
   return (
-    <Modal id="bulk" title={BULK_TITLES[props.action]} onClose={props.onClose}>
+    <Modal id="bulk" title={t(BULK_TITLES[props.action])} onClose={props.onClose}>
       <form
         className="flex flex-col gap-4"
         onSubmit={(e) => {
@@ -718,20 +722,20 @@ function BulkDialog(props: {
       >
         {props.action === "move" && (
           <>
-            <PlacePicker householdId={props.householdId} id="bulk-place" name="locationId" label={`Where ${things} go`} noneLabel="Not in any place" value={place} onChange={setPlace} />
-            <p className="text-sm text-base-content/70">Things in a box come out of it; a box moved takes what's inside with it.</p>
+            <PlacePicker householdId={props.householdId} id="bulk-place" name="locationId" label={t`Where ${things} go`} noneLabel={t`Not in any place`} value={place} onChange={setPlace} />
+            <p className="text-sm text-base-content/70"><Trans>Things in a box come out of it; a box moved takes what's inside with it.</Trans></p>
           </>
         )}
         {props.action === "category" && <CategoryPicker householdId={props.householdId} value={category} onChange={setCategory} />}
         {props.action === "tag" && (
           <div>
             <label className="label-text" htmlFor="bulk-tag">
-              Tag {things}
+              <Trans>Tag {things}</Trans>
             </label>
             <input id="bulk-tag" className="input" list="bulk-tags" value={tag} onChange={(e) => setTag(e.target.value)} maxLength={40} autoFocus />
             <datalist id="bulk-tags">
-              {(tags.data ?? []).map((t) => (
-                <option key={t.id} value={t.name} />
+              {(tags.data ?? []).map((tag2) => (
+                <option key={tag2.id} value={tag2.name} />
               ))}
             </datalist>
           </div>
@@ -739,32 +743,32 @@ function BulkDialog(props: {
         {props.action === "untag" && (
           <div>
             <label className="label-text" htmlFor="bulk-untag">
-              Take this tag off {things}
+              <Trans>Take this tag off {things}</Trans>
             </label>
             <select id="bulk-untag" className="select" value={tag} onChange={(e) => setTag(e.target.value)}>
-              <option value="">Choose a tag</option>
-              {onThem.map((t) => (
-                <option key={t} value={t}>
-                  {t}
+              <option value="">{t`Choose a tag`}</option>
+              {onThem.map((value) => (
+                <option key={value} value={value}>
+                  {value}
                 </option>
               ))}
             </select>
-            {onThem.length === 0 && <p className="mt-1 text-sm text-base-content/70">None of them has a tag.</p>}
+            {onThem.length === 0 && <p className="mt-1 text-sm text-base-content/70"><Trans>None of them has a tag.</Trans></p>}
           </div>
         )}
         {props.action === "delete" && (
           <p className="text-base-content/80">
-            {things} go to <a className="link link-primary" href="#/deleted">Recently deleted</a>, where they can be brought back for 30 days.
+            <Trans>{things} go to <a className="link link-primary" href="#/deleted">Recently deleted</a>, where they can be brought back for 30 days.</Trans>
           </p>
         )}
         {run.isError && <div className="alert alert-soft alert-error">{run.error.message}</div>}
         <DialogActions>
           <button type="button" className="btn btn-soft" onClick={props.onClose}>
-            Cancel
+            <Trans>Cancel</Trans>
           </button>
           <button className={`btn ${props.action === "delete" ? "btn-error" : "btn-primary"}`} disabled={!ready || run.isPending}>
             {run.isPending && <span className="loading loading-spinner loading-xs" />}
-            {props.action === "delete" ? `Delete ${things}` : props.action === "move" ? `Move ${things}` : "Save"}
+            {props.action === "delete" ? t`Delete ${things}` : props.action === "move" ? t`Move ${things}` : t`Save`}
           </button>
         </DialogActions>
       </form>
@@ -787,25 +791,25 @@ function QuickView(props: { householdId: string; item: ItemListing; onClose: () 
   const room = item.locationId ? findLocation(places.data, item.locationId) : undefined;
   const facts: [string, ReactNode][] = (
     [
-      ["Where", [item.container && `In ${item.container.name}`, item.place].filter(Boolean).join(" · ")],
-      ["Category", item.category],
-      ["Brand", item.brand],
-      ["Model", item.model],
-      ["Serial", item.serialNumber && <span className="font-mono">{item.serialNumber}</span>],
-      ["Value", value != null && money(value)],
-      ["Bought", [item.purchaseDate, item.purchasePriceCents != null && money(item.purchasePriceCents)].filter(Boolean).join(" · ")],
-      ["Quantity", item.quantity > 1 && String(item.quantity)],
-      ["Lent", item.loan && (item.loan.direction === "lent" ? `To ${item.loan.person} since ${item.loan.since}` : `From ${item.loan.person} since ${item.loan.since}`)],
+      [t`Where`, [item.container && t`In ${ph({ box: item.container.name })}`, item.place].filter(Boolean).join(" · ")],
+      [t`Category`, item.category],
+      [t`Brand`, item.brand],
+      [t`Model`, item.model],
+      [t`Serial`, item.serialNumber && <span className="font-mono">{item.serialNumber}</span>],
+      [t`Value`, value != null && money(value)],
+      [t`Bought`, [item.purchaseDate, item.purchasePriceCents != null && money(item.purchasePriceCents)].filter(Boolean).join(" · ")],
+      [t`Quantity`, item.quantity > 1 && String(item.quantity)],
+      [t`Lent`, item.loan && (item.loan.direction === "lent" ? t`To ${ph({ person: item.loan.person })} since ${ph({ since: item.loan.since })}` : t`From ${ph({ person: item.loan.person })} since ${ph({ since: item.loan.since })}`)],
     ] as [string, ReactNode][]
   ).filter(([, v]) => Boolean(v));
   return createPortal(
     <aside
       className="fixed inset-y-0 end-0 z-[60] flex w-96 max-w-full flex-col border-s border-base-300 bg-base-100 shadow-xl"
-      aria-label={`${item.name} at a glance`}
+      aria-label={t`${ph({ name: item.name })} at a glance`}
     >
       <div className="flex items-start gap-2 border-b border-base-300 p-4">
         <h2 className="min-w-0 flex-1 text-lg font-semibold text-base-content">{item.name}</h2>
-        <button type="button" className="btn btn-circle btn-sm btn-text" aria-label="Close" onClick={onClose}>
+        <button type="button" className="btn btn-circle btn-sm btn-text" aria-label={t`Close`} onClick={onClose}>
           <span className="icon-[tabler--x] size-4" />
         </button>
       </div>
@@ -827,9 +831,9 @@ function QuickView(props: { householdId: string; item: ItemListing; onClose: () 
         </dl>
         {item.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            {item.tags.map((t) => (
-              <span key={t} className="badge badge-soft badge-primary">
-                {t}
+            {item.tags.map((tag) => (
+              <span key={tag} className="badge badge-soft badge-primary">
+                {tag}
               </span>
             ))}
           </div>
@@ -838,7 +842,7 @@ function QuickView(props: { householdId: string; item: ItemListing; onClose: () 
       </div>
       <div className="flex flex-wrap gap-2 border-t border-base-300 p-4">
         <a href={itemHref(item.id)} className="btn btn-primary">
-          Open
+          <Trans>Open</Trans>
           <span className="icon-[tabler--arrow-right] size-4" />
         </a>
         {room && (

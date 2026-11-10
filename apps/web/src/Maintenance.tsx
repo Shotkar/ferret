@@ -6,7 +6,8 @@
  */
 import { BarSearch } from "./Nav";
 import type { MaintenanceInput, MaintenanceTask } from "@ferret/shared";
-import { type IntervalUnit, addDays, describeInterval, describeUsage, intervalUnits, today } from "@ferret/shared/utils";
+import { type IntervalUnit, addDays, intervalUnits, today } from "@ferret/shared/utils";
+import { everyText, spanText, usageText } from "./lib/words";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { api } from "./lib/api";
@@ -22,6 +23,9 @@ import { Mascot } from "./Mascot";
 import { MaintenanceCalendar, thisMonth } from "./MaintenanceCalendar";
 import { navigateTo } from "./lib/navigate";
 import { money, currencySymbol, toCents } from "./lib/money";
+import { t, ph, plural, msg } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
+import type { MessageDescriptor } from "@lingui/core";
 
 export const maintenanceKey = (householdId: string) => ["maintenance", householdId];
 
@@ -69,25 +73,25 @@ export function Maintenance({ householdName, householdId, view: asked, month: as
   const [doing, setDoing] = useState<MaintenanceTask | null>(null);
   const list = tasks.data?.data ?? [];
   const groups = [
-    { key: "overdue", title: "Overdue", tasks: list.filter((t) => t.status === "overdue") },
-    { key: "due", title: "Due in the next two weeks", tasks: list.filter((t) => t.status === "due") },
-    { key: "upcoming", title: "Coming up", tasks: list.filter((t) => t.status === "upcoming") },
+    { key: "overdue", title: t`Overdue`, tasks: list.filter((value) => value.status === "overdue") },
+    { key: "due", title: t`Due in the next two weeks`, tasks: list.filter((value) => value.status === "due") },
+    { key: "upcoming", title: t`Coming up`, tasks: list.filter((value) => value.status === "upcoming") },
   ].filter((g) => g.tasks.length);
 
   return (
     <div className="min-h-dvh bg-base-200">
       <nav className="navbar sticky top-0 z-10 border-b border-base-300 bg-base-100/85 backdrop-blur-md px-4">
         <div className="navbar-start items-center gap-2">
-          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label="Back to your stuff">
+          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label={t`Back to your stuff`}>
             <span className="icon-[tabler--arrow-left] size-5" />
           </a>
-          <h1 className="text-lg font-semibold">Maintenance</h1>
-          <HelpLink page="guide/maintenance.html" label="Maintenance" />
+          <h1 className="text-lg font-semibold"><Trans>Maintenance</Trans></h1>
+          <HelpLink page="guide/maintenance.html" label={t`Maintenance`} />
         </div>
         <BarSearch />
         <div className="navbar-end items-center gap-2">
           {/* On a phone the bar is full: providers are under More, the bell on the home screen. */}
-          <a href={PROVIDERS_HREF} className="btn btn-text btn-sm btn-circle max-sm:hidden" aria-label="Service providers">
+          <a href={PROVIDERS_HREF} className="btn btn-text btn-sm btn-circle max-sm:hidden" aria-label={t`Service providers`}>
             <span className="icon-[tabler--address-book] size-5" />
           </a>
           <div className="max-sm:hidden">
@@ -96,7 +100,7 @@ export function Maintenance({ householdName, householdId, view: asked, month: as
           {canEdit && (
             <button type="button" className="btn btn-primary btn-sm" onClick={() => setEditing("new")}>
               <span className="icon-[tabler--plus] size-4" />
-              Task
+              <Trans>Task</Trans>
             </button>
           )}
         </div>
@@ -109,22 +113,22 @@ export function Maintenance({ householdName, householdId, view: asked, month: as
           <div className="card">
             <div className="card-body items-center gap-3 text-center">
               <Mascot pose="asleep" className="size-32" />
-              <h2 className="text-lg font-semibold">Nothing to keep up with yet</h2>
+              <h2 className="text-lg font-semibold"><Trans>Nothing to keep up with yet</Trans></h2>
               <p className="max-w-sm text-sm text-base-content/70">
-                Track filters, servicing, gutters — anything {householdName} does on a schedule. Upload a manual to an item and Ferret
-                suggests what it needs.
+                <Trans>Track filters, servicing, gutters — anything {householdName} does on a schedule. Upload a manual to an item and Ferret
+                suggests what it needs.</Trans>
               </p>
               {canEdit && (
                 <button type="button" className="btn btn-primary" onClick={() => setEditing("new")}>
                   <span className="icon-[tabler--plus] size-5" />
-                  Add a task
+                  <Trans>Add a task</Trans>
                 </button>
               )}
             </div>
           </div>
         )}
         {list.length > 0 && (
-          <div className="join self-start" role="group" aria-label="Show as">
+          <div className="join self-start" role="group" aria-label={t`Show as`}>
             {(["list", "month"] as const).map((v) => (
               <button
                 key={v}
@@ -134,7 +138,7 @@ export function Maintenance({ householdName, householdId, view: asked, month: as
                 onClick={() => show(v, month)}
               >
                 <span className={`size-4 ${v === "list" ? "icon-[tabler--list]" : "icon-[tabler--calendar-month]"}`} />
-                {v === "list" ? "List" : "Month"}
+                {v === "list" ? t`List` : t`Month`}
               </button>
             ))}
           </div>
@@ -160,8 +164,8 @@ export function Maintenance({ householdName, householdId, view: asked, month: as
                 </span>
               </h2>
               <ul className="divide-y divide-base-content/10">
-                {g.tasks.map((t) => (
-                  <TaskRow key={t.id} task={t} showItem canEdit={canEdit} onDone={() => setDoing(t)} onEdit={() => setEditing(t)} />
+                {g.tasks.map((task) => (
+                  <TaskRow key={task.id} task={task} showItem canEdit={canEdit} onDone={() => setDoing(task)} onEdit={() => setEditing(task)} />
                 ))}
               </ul>
             </div>
@@ -190,20 +194,20 @@ export function ItemMaintenance({ itemId, householdId }: { itemId: string; house
       <div className="flex flex-wrap items-center justify-between gap-x-2">
         <h2 className="flex items-center gap-2 font-semibold text-base-content">
           <span className="icon-[tabler--tool] size-5 text-primary" />
-          Maintenance
+          <Trans>Maintenance</Trans>
         </h2>
         {canEdit && (
           <button type="button" className="btn btn-text btn-sm" onClick={() => setEditing("new")}>
-            <span className="icon-[tabler--plus] size-4" /> Add
+            <span className="icon-[tabler--plus] size-4" /> <Trans>Add</Trans>
           </button>
         )}
       </div>
       {list.length === 0 ? (
-        <p className="text-sm text-base-content/70">Nothing scheduled. Upload the manual and Ferret will suggest what it needs.</p>
+        <p className="text-sm text-base-content/70"><Trans>Nothing scheduled. Upload the manual and Ferret will suggest what it needs.</Trans></p>
       ) : (
         <ul className="card divide-y divide-base-content/10 px-4">
-          {list.map((t) => (
-            <TaskRow key={t.id} task={t} canEdit={canEdit} onDone={() => setDoing(t)} onEdit={() => setEditing(t)} />
+          {list.map((task) => (
+            <TaskRow key={task.id} task={task} canEdit={canEdit} onDone={() => setDoing(task)} onEdit={() => setEditing(task)} />
           ))}
         </ul>
       )}
@@ -224,65 +228,74 @@ export const STATUS = {
 } as const;
 
 export function TaskRow(props: { task: MaintenanceTask; showItem?: boolean; canEdit: boolean; onDone: () => void; onEdit: () => void; expected?: string }) {
-  const t = props.task;
-  const where = [props.showItem && t.itemName, t.place && !t.itemName ? t.place : null].filter(Boolean);
+  const task = props.task;
+  const where = [props.showItem && task.itemName, task.place && !task.itemName ? task.place : null].filter(Boolean);
   return (
     <li className="flex items-center gap-3 py-3">
-      <span className={`size-2.5 shrink-0 rounded-full ${STATUS[t.status].dot}`} aria-hidden />
-      <button type="button" className="min-w-0 flex-1 text-start" onClick={props.onEdit} disabled={!props.canEdit && !t.notes}>
-        <span className="block truncate font-medium text-base-content">{t.title}</span>
+      <span className={`size-2.5 shrink-0 rounded-full ${STATUS[task.status].dot}`} aria-hidden />
+      <button type="button" className="min-w-0 flex-1 text-start" onClick={props.onEdit} disabled={!props.canEdit && !task.notes}>
+        <span className="block truncate font-medium text-base-content">{task.title}</span>
         <span className="block truncate text-sm text-base-content/70">
-          {props.showItem && t.itemId ? (
-            <a href={itemHref(t.itemId)} className="tap link link-hover" onClick={(e) => e.stopPropagation()}>
-              {t.itemName}
+          {props.showItem && task.itemId ? (
+            <a href={itemHref(task.itemId)} className="tap link link-hover" onClick={(e) => e.stopPropagation()}>
+              {task.itemName}
             </a>
           ) : (
             where.join(" · ")
           )}
-          {(props.showItem && t.itemId) || where.length ? " · " : ""}
-          {scheduleText(t)}
-          {t.providerName ? ` · ${t.providerName}` : ""}
+          {(props.showItem && task.itemId) || where.length ? " · " : ""}
+          {scheduleText(task)}
+          {task.providerName ? ` · ${task.providerName}` : ""}
         </span>
-        <span className={`block text-xs ${props.expected ? "text-base-content/70" : STATUS[t.status].text}`}>{props.expected ?? dueText(t)}</span>
-        {t.part && !props.expected && (
-          <span className={`block truncate text-xs ${partSoon(t.part) ? "text-warning" : "text-base-content/70"}`}>
-            Uses {t.part.uses} × {t.part.name} · {t.part.left === 0 ? "none" : t.part.left} left
-            {t.part.shortOn && t.part.left >= t.part.uses ? ` · buy more before ${formatDate(t.part.shortOn)}` : ""}
+        <span className={`block text-xs ${props.expected ? "text-base-content/70" : STATUS[task.status].text}`}>{props.expected ?? dueText(task)}</span>
+        {task.part && !props.expected && (
+          <span className={`block truncate text-xs ${partSoon(task.part) ? "text-warning" : "text-base-content/70"}`}>
+            {task.part.left === 0 ? t`Uses ${ph({ uses: task.part.uses })} × ${ph({ name: task.part.name })} · none left` : t`Uses ${ph({ uses: task.part.uses })} × ${ph({ name: task.part.name })} · ${ph({ left: task.part.left })} left`}
+            {task.part.shortOn && task.part.left >= task.part.uses ? t` · buy more before ${ph({ date: formatDate(task.part.shortOn) })}` : ""}
           </span>
         )}
       </button>
-      {props.canEdit && t.status !== "done" && !props.expected && (
-        <button type="button" className="btn btn-soft btn-success btn-sm" onClick={props.onDone} aria-label={`Mark ${t.title} done`}>
+      {props.canEdit && task.status !== "done" && !props.expected && (
+        <button type="button" className="btn btn-soft btn-success btn-sm" onClick={props.onDone} aria-label={t`Mark ${ph({ title: task.title })} done`}>
           <span className="icon-[tabler--check] size-4" />
-          Done
+          <Trans>Done</Trans>
         </button>
       )}
     </li>
   );
 }
 
+const UNITS: Record<IntervalUnit, MessageDescriptor> = { day: msg`days`, week: msg`weeks`, month: msg`months`, year: msg`years` };
+
 /** Not enough of its part for next time, or running short within a month (when the shopping list starts saying so). */
 const partSoon = (part: NonNullable<MaintenanceTask["part"]>) => part.left < part.uses || (!!part.shortOn && part.shortOn <= addDays(today(), 30));
 
 /** "every 3 months", "every 5,000 miles", "every 5,000 miles or 6 months" */
-export function scheduleText(t: MaintenanceTask) {
-  const byTime = describeInterval(t.intervalCount, t.intervalUnit);
-  if (!t.usage) return byTime;
-  const byUse = `every ${describeUsage(t.usage.every, t.usage.unit)}`;
-  return t.intervalCount ? `${byUse} or ${t.intervalCount === 1 ? `a ${t.intervalUnit}` : byTime.replace(/^every /, "")}` : byUse;
+export function scheduleText(task: MaintenanceTask) {
+  if (!task.usage) return everyText(task.intervalCount, task.intervalUnit);
+  const use = usageText(task.usage.every, task.usage.unit);
+  return task.intervalCount && task.intervalUnit
+    ? t`every ${ph({ use })} or ${ph({ time: spanText(task.intervalCount, task.intervalUnit) })}`
+    : t`every ${ph({ use })}`;
 }
 
-function dueText(t: MaintenanceTask) {
-  if (t.status === "done") return t.lastDoneOn ? `Done ${formatDate(t.lastDoneOn)}` : "Done";
+function dueText(task: MaintenanceTask) {
+  if (task.status === "done") return task.lastDoneOn ? t`Done ${ph({ date: formatDate(task.lastDoneOn) })}` : t`Done`;
+  const days = Math.round((Date.parse(`${task.dueOn}T00:00:00`) - Date.parse(`${today()}T00:00:00`)) / 86_400_000);
+  const due =
+    days < 0
+      ? plural(-days, { one: "# day overdue", other: "# days overdue" })
+      : days === 0
+        ? t`Due today`
+        : task.dueEstimated
+          ? t`Due around ${ph({ date: formatDate(task.dueOn!) })}`
+          : days === 1
+            ? t`Due tomorrow`
+            : days < 14
+              ? plural(days, { one: "Due in # day", other: "Due in # days" })
+              : t`Due ${ph({ date: formatDate(task.dueOn!) })}`;
   // By use: where the counter has to get to (and an estimated date says so).
-  const at = t.usage ? ` · at ${describeUsage(t.usage.dueAt, t.usage.unit)}` : "";
-  const days = Math.round((Date.parse(`${t.dueOn}T00:00:00`) - Date.parse(`${today()}T00:00:00`)) / 86_400_000);
-  if (days < 0) return `${-days} ${-days === 1 ? "day" : "days"} overdue${at}`;
-  if (days === 0) return `Due today${at}`;
-  if (t.dueEstimated) return `Due around ${formatDate(t.dueOn!)}${at}`;
-  if (days === 1) return `Due tomorrow${at}`;
-  if (days < 14) return `Due in ${days} days${at}`;
-  return `Due ${formatDate(t.dueOn!)}${at}`;
+  return task.usage ? t`${ph({ due })} · at ${ph({ reading: usageText(task.usage.dueAt, task.usage.unit) })}` : due;
 }
 
 const formatDate = (iso: string) =>
@@ -322,22 +335,22 @@ function DoneModal({ task, householdId, onClose }: { task: MaintenanceTask; hous
           </h3>
           <p className="text-base-content/80">
             {task.usage
-              ? `Ferret schedules the next one ${scheduleText(task)} from now.`
+              ? t`Ferret schedules the next one ${ph({ scheduleText: scheduleText(task) })} from now.`
               : task.intervalCount
-                ? `Ferret schedules the next one ${describeInterval(task.intervalCount, task.intervalUnit)} from this day.`
-                : "Marks it done."}
+                ? t`Ferret schedules the next one ${ph({ every: everyText(task.intervalCount, task.intervalUnit) })} from this day.`
+                : t`Marks it done.`}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="label-text" htmlFor="done-on">
-              Done on
+              <Trans>Done on</Trans>
             </label>
             <input id="done-on" name="doneOn" type="date" className="input" defaultValue={today()} max={today()} required />
           </div>
           <div>
             <label className="label-text" htmlFor="done-cost">
-              Cost
+              <Trans>Cost</Trans>
             </label>
             <div className="input">
               <span className="my-auto me-1 text-base-content/70">{currencySymbol()}</span>
@@ -347,7 +360,7 @@ function DoneModal({ task, householdId, onClose }: { task: MaintenanceTask; hous
           {task.usage && (
             <div className="col-span-2">
               <label className="label-text" htmlFor="done-reading">
-                What it says now ({task.usage.unit})
+                <Trans>What it says now ({ph({ unit: task.usage.unit })}</Trans>)
               </label>
               <input
                 id="done-reading"
@@ -364,21 +377,21 @@ function DoneModal({ task, householdId, onClose }: { task: MaintenanceTask; hous
           )}
           <div className="col-span-2">
             <label className="label-text" htmlFor="done-note">
-              Note
+              <Trans>Note</Trans>
             </label>
-            <input id="done-note" name="note" className="input" placeholder="e.g. MERV 11 filter, 16×25×1" maxLength={2000} />
+            <input id="done-note" name="note" className="input" placeholder={t`e.g. MERV 11 filter, 16×25×1`} maxLength={2000} />
           </div>
         </div>
-        <ProviderPicker householdId={householdId} id="done-by" label="Who did it" value={doneBy} onChange={setDoneBy} noneLabel="We did" />
+        <ProviderPicker householdId={householdId} id="done-by" label={t`Who did it`} value={doneBy} onChange={setDoneBy} noneLabel={t`We did`} />
         {task.part && (
           <label className="flex min-h-11 items-start gap-3">
             <input type="checkbox" className="checkbox checkbox-primary mt-0.5" checked={usePart} onChange={(e) => setUsePart(e.target.checked)} />
             <span>
-              <span className="label-text block text-base">
-                Took {task.part.uses} {task.part.name} from stock
-              </span>
+              <Trans><span className="label-text block text-base">
+                Took {ph({ uses: task.part.uses })} {ph({ name: task.part.name })} from stock
+              </span></Trans>
               <span className="text-sm text-base-content/70">
-                {task.part.left < task.part.uses ? `Only ${task.part.left} recorded — it won't go below 0.` : `${task.part.left} → ${task.part.left - task.part.uses} left`}
+                {task.part.left < task.part.uses ? t`Only ${ph({ left: task.part.left })} recorded — it won't go below 0.` : t`${ph({ left: task.part.left })} → ${ph({ after: task.part.left - task.part.uses })} left`}
               </span>
             </span>
           </label>
@@ -386,11 +399,11 @@ function DoneModal({ task, householdId, onClose }: { task: MaintenanceTask; hous
         {done.isError && <div className="alert alert-soft alert-error">{done.error.message}</div>}
         <div className="flex flex-wrap items-center justify-end gap-4">
           <button type="button" className="btn btn-secondary btn-soft" onClick={onClose}>
-            Cancel
+            <Trans>Cancel</Trans>
           </button>
           <button type="submit" className="btn btn-success" disabled={done.isPending}>
             {done.isPending && <span className="loading loading-spinner loading-sm" />}
-            Mark done
+            <Trans>Mark done</Trans>
           </button>
         </div>
       </form>
@@ -412,7 +425,7 @@ export function TaskModal(props: {
   const refresh = useRefresh(householdId);
   const canEdit = useCanEdit(householdId);
   const [forItem, setForItem] = useState<Choice | null>(
-    task?.itemId ? { id: task.itemId, label: task.itemName ?? "Item", detail: task.place } : null,
+    task?.itemId ? { id: task.itemId, label: task.itemName ?? t`Item`, detail: task.place } : null,
   );
   const [place, setPlace] = useState<string | null>(task?.locationId ?? props.initial?.locationId ?? null);
   const [providerId, setProviderId] = useState<string | null>(task?.providerId ?? null);
@@ -471,24 +484,24 @@ export function TaskModal(props: {
 
   const busy = save.isPending || remove.isPending;
   return (
-    <Modal id="maintenance-task" title={task ? "Edit maintenance" : "New maintenance task"} onClose={onClose}>
+    <Modal id="maintenance-task" title={task ? t`Edit maintenance` : t`New maintenance task`} onClose={onClose}>
       <form className="flex flex-col gap-6" onSubmit={onSubmit}>
         <fieldset className="space-y-4" disabled={!canEdit}>
           <div>
             <label className="label-text" htmlFor="task-title">
-              What needs doing
+              <Trans>What needs doing</Trans>
             </label>
-            <input id="task-title" name="title" className="input" placeholder="e.g. Replace furnace filter" defaultValue={initial.title} maxLength={200} required autoFocus />
+            <input id="task-title" name="title" className="input" placeholder={t`e.g. Replace furnace filter`} defaultValue={initial.title} maxLength={200} required autoFocus />
           </div>
 
           <div className="space-y-2">
             <label className="flex min-h-11 items-center gap-3">
               <input type="checkbox" className="switch switch-primary" checked={repeats} onChange={(e) => setRepeats(e.target.checked)} />
-              <span className="label-text text-base">Repeats</span>
+              <Trans><span className="label-text text-base">Repeats</span></Trans>
             </label>
             {repeats && (
               <div className="flex items-center gap-2">
-                <span className="text-base-content/80">Every</span>
+                <Trans><span className="text-base-content/80">Every</span></Trans>
                 <input
                   name="intervalCount"
                   type="number"
@@ -496,13 +509,13 @@ export function TaskModal(props: {
                   max={1000}
                   className="input w-20"
                   defaultValue={initial.intervalCount ?? 3}
-                  aria-label="How many"
+                  aria-label={t`How many`}
                   required
                 />
-                <select name="intervalUnit" className="select w-32" defaultValue={initial.intervalUnit ?? "month"} aria-label="Unit">
+                <select name="intervalUnit" className="select w-32" defaultValue={initial.intervalUnit ?? "month"} aria-label={t`Unit`}>
                   {intervalUnits.map((u) => (
                     <option key={u} value={u}>
-                      {u}s
+                      {t(UNITS[u])}
                     </option>
                   ))}
                 </select>
@@ -514,20 +527,20 @@ export function TaskModal(props: {
             <div className="space-y-2">
               <label className="flex min-h-11 items-center gap-3">
                 <input type="checkbox" className="switch switch-primary" checked={byUse} onChange={(e) => setByUse(e.target.checked)} />
-                <span className="label-text text-base">{repeats ? "Also by use (whichever comes first)" : "By use (miles, hours…)"}</span>
+                <span className="label-text text-base">{repeats ? t`Also by use (whichever comes first)` : t`By use (miles, hours…)`}</span>
               </label>
               {byUse && !unit && meter.data && (
-                <p className="text-sm text-base-content/70">First say what it counts — on its page, under Track miles / hours.</p>
+                <p className="text-sm text-base-content/70"><Trans>First say what it counts — on its page, under Track miles / hours.</Trans></p>
               )}
               {byUse && unit && (
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-base-content/80">Every</span>
-                  <input name="usageEvery" type="number" min={1} max={10000000} className="input w-28" defaultValue={task?.usage?.every ?? ""} aria-label={`How many ${unit}`} required />
+                  <Trans><span className="text-base-content/80">Every</span></Trans>
+                  <input name="usageEvery" type="number" min={1} max={10000000} className="input w-28" defaultValue={task?.usage?.every ?? ""} aria-label={t`How many ${unit}`} required />
                   <span className="text-base-content/80">{unit}</span>
                   {meter.data?.now == null && (
                     <label className="flex w-full items-center gap-2 text-sm">
-                      It says now
-                      <input name="firstReading" type="number" min={0} step="any" className="input input-sm w-32" aria-label={`What it says now, in ${unit}`} required />
+                      <Trans>It says now</Trans>
+                      <input name="firstReading" type="number" min={0} step="any" className="input input-sm w-32" aria-label={t`What it says now, in ${unit}`} required />
                     </label>
                   )}
                 </div>
@@ -537,26 +550,26 @@ export function TaskModal(props: {
 
           <div>
             <label className="label-text" htmlFor="task-due">
-              {task ? (task.usage ? "Next due by date" : "Next due") : "First due"}
+              {task ? (task.usage ? t`Next due by date` : t`Next due`) : t`First due`}
             </label>
             {/* By use, the date shown is the one by time (the other is an estimate from the readings). */}
             <input id="task-due" name="dueOn" type="date" className="input" defaultValue={(task?.usage ? task.timeDueOn : task?.dueOn) ?? ""} />
-            {!task && <p className="helper-text">Leave empty: {repeats ? "one interval from today" : useOn ? "when its use gets there" : "today"}.</p>}
+            {!task && <p className="helper-text"><Trans>Leave empty:</Trans> {repeats ? t`one interval from today` : useOn ? t`when its use gets there` : "today"}.</p>}
           </div>
 
           {!props.itemId && (
             <div className="space-y-4">
-              <ItemPicker householdId={householdId} id="task-item" name="itemId" label="For an item" value={forItem} onChange={setForItem} noneLabel="No item" />
+              <ItemPicker householdId={householdId} id="task-item" name="itemId" label={t`For an item`} value={forItem} onChange={setForItem} noneLabel={t`No item`} />
               {/* A task on an item is wherever the item is; without one, it can be for a place. */}
               {!forItem && (
                 <PlacePicker
                   householdId={householdId}
                   id="task-place"
                   name="locationId"
-                  label="Or a place"
+                  label={t`Or a place`}
                   value={place}
                   onChange={setPlace}
-                  noneLabel="The whole household"
+                  noneLabel={t`The whole household`}
                 />
               )}
             </div>
@@ -564,11 +577,11 @@ export function TaskModal(props: {
 
           {/* The consumable it uses up: Done takes it out of stock, and it's on the shopping list in time. */}
           <div className="space-y-2">
-            <ItemPicker householdId={householdId} id="task-part" name="partItemId" label="Uses a part (from stock)" value={part} onChange={setPart} noneLabel="Nothing" exclude={forItem ? [forItem.id] : props.itemId ? [props.itemId] : []} />
+            <ItemPicker householdId={householdId} id="task-part" name="partItemId" label={t`Uses a part (from stock)`} value={part} onChange={setPart} noneLabel={t`Nothing`} exclude={forItem ? [forItem.id] : props.itemId ? [props.itemId] : []} />
             {part && (
               <label className="flex items-center gap-2 text-sm">
-                <input name="partQuantity" type="number" min={1} max={1000} className="input input-sm w-20" defaultValue={task?.part?.uses ?? 1} aria-label="How many each time" />
-                each time
+                <input name="partQuantity" type="number" min={1} max={1000} className="input input-sm w-20" defaultValue={task?.part?.uses ?? 1} aria-label={t`How many each time`} />
+                <Trans>each time</Trans>
               </label>
             )}
           </div>
@@ -576,23 +589,23 @@ export function TaskModal(props: {
           <ProviderPicker
             householdId={householdId}
             id="task-provider"
-            label="Who does it"
+            label={t`Who does it`}
             value={providerId}
             onChange={setProviderId}
-            noneLabel="We do it ourselves"
+            noneLabel={t`We do it ourselves`}
           />
 
           <div>
             <label className="label-text" htmlFor="task-notes">
-              Notes
+              <Trans>Notes</Trans>
             </label>
-            <textarea id="task-notes" name="notes" className="textarea" rows={2} defaultValue={initial.notes ?? ""} placeholder="Part numbers, how-to, who to call…" maxLength={5000} />
+            <textarea id="task-notes" name="notes" className="textarea" rows={2} defaultValue={initial.notes ?? ""} placeholder={t`Part numbers, how-to, who to call…`} maxLength={5000} />
           </div>
         </fieldset>
 
         {task && history.data && history.data.data.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-medium text-base-content/70">Done before</h4>
+            <h4 className="text-sm font-medium text-base-content/70"><Trans>Done before</Trans></h4>
             <ul className="space-y-1 text-sm">
               {history.data.data.slice(0, 6).map((h) => (
                 <li key={h.id} className="flex gap-2">
@@ -612,18 +625,18 @@ export function TaskModal(props: {
           <div className="flex flex-wrap items-center gap-3 border-t border-base-300 pt-4">
             {confirmDelete ? (
               <>
-                <span className="text-sm text-base-content/80">Stop tracking it?</span>
+                <Trans><span className="text-sm text-base-content/80">Stop tracking it?</span></Trans>
                 <button type="button" className="btn btn-error btn-sm" disabled={busy} onClick={() => remove.mutate()}>
-                  Remove
+                  <Trans>Remove</Trans>
                 </button>
                 <button type="button" className="btn btn-text btn-sm" onClick={() => setConfirmDelete(false)}>
-                  Keep
+                  <Trans>Keep</Trans>
                 </button>
               </>
             ) : (
               <button type="button" className="btn btn-text btn-error" onClick={() => setConfirmDelete(true)}>
                 <span className="icon-[tabler--trash] size-5" />
-                Remove
+                <Trans>Remove</Trans>
               </button>
             )}
           </div>
@@ -632,11 +645,11 @@ export function TaskModal(props: {
         {canEdit && (
           <DialogActions>
             <button type="button" className="btn btn-secondary btn-soft" onClick={onClose}>
-              Cancel
+              <Trans>Cancel</Trans>
             </button>
             <button type="submit" className="btn btn-primary" disabled={busy}>
               {save.isPending && <span className="loading loading-spinner loading-sm" />}
-              {task ? "Save" : "Add task"}
+              {task ? t`Save` : t`Add task`}
             </button>
           </DialogActions>
         )}

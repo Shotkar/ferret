@@ -8,11 +8,12 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "./lib/api";
 import { useFeatures } from "./lib/features";
+import { t } from "@lingui/core/macro";
 
 const MAX_MS = 10_000;
 const TYPES = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
 
-export function SpeakButton({ onText, label = "Say it" }: { onText: (text: string) => void; label?: string }) {
+export function SpeakButton({ onText, label }: { onText: (text: string) => void; label?: string }) {
   const features = useFeatures();
   const [state, setState] = useState<"idle" | "recording" | "reading">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +21,7 @@ export function SpeakButton({ onText, label = "Say it" }: { onText: (text: strin
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
     if (timer.current) clearTimeout(timer.current);
-    recorder.current?.stream.getTracks().forEach((t) => t.stop());
+    recorder.current?.stream.getTracks().forEach((track) => track.stop());
   }, []);
   if (!features?.speech || typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) return null;
 
@@ -28,19 +29,19 @@ export function SpeakButton({ onText, label = "Say it" }: { onText: (text: strin
     setError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mimeType = TYPES.find((t) => MediaRecorder.isTypeSupported(t));
+      const mimeType = TYPES.find((type) => MediaRecorder.isTypeSupported(type));
       const rec = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       const chunks: Blob[] = [];
       rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
       rec.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
+        stream.getTracks().forEach((track) => track.stop());
         if (timer.current) clearTimeout(timer.current);
         setState("reading");
         try {
           const recorded = new Blob(chunks, { type: rec.mimeType || mimeType || "audio/webm" });
           const { text } = await api.transcribe(await toWav(recorded).catch(() => recorded));
           if (text) onText(text.replace(/[.。!?]+$/, ""));
-          else setError("Didn't catch that — try again");
+          else setError(t`Didn't catch that — try again`);
         } catch (err) {
           setError((err as Error).message);
         }
@@ -51,7 +52,7 @@ export function SpeakButton({ onText, label = "Say it" }: { onText: (text: strin
       setState("recording");
       timer.current = setTimeout(() => rec.state === "recording" && rec.stop(), MAX_MS);
     } catch {
-      setError("Ferret can't use the microphone — check the browser's permission");
+      setError(t`Ferret can't use the microphone — check the browser's permission`);
       setState("idle");
     }
   }
@@ -61,7 +62,7 @@ export function SpeakButton({ onText, label = "Say it" }: { onText: (text: strin
       <button
         type="button"
         className={`btn btn-square ${state === "recording" ? "btn-error" : "btn-soft btn-primary"}`}
-        aria-label={state === "recording" ? "Stop recording" : label}
+        aria-label={state === "recording" ? t`Stop recording` : (label ?? t`Say it`)}
         aria-pressed={state === "recording"}
         disabled={state === "reading"}
         onClick={() => (state === "recording" ? recorder.current?.stop() : void start())}

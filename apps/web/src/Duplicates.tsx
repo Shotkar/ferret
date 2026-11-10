@@ -14,6 +14,9 @@ import { money } from "./lib/money";
 import { itemHref } from "./lib/route";
 import { DialogActions, Modal } from "./Modal";
 import { BarSearch } from "./Nav";
+import { t, ph, msg } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
+import type { MessageDescriptor } from "@lingui/core";
 
 export function Duplicates({ householdId }: { householdId: string }) {
   const canEdit = useCanEdit(householdId);
@@ -31,11 +34,11 @@ export function Duplicates({ householdId }: { householdId: string }) {
     <div className="min-h-dvh bg-base-200">
       <nav className="navbar sticky top-0 z-10 border-b border-base-300 bg-base-100/85 px-4 backdrop-blur-md">
         <div className="navbar-start w-full min-w-0 items-center gap-2">
-          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label="Back">
+          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label={t`Back`}>
             <span className="icon-[tabler--arrow-left] size-5" />
           </a>
-          <h1 className="truncate text-lg font-semibold">Possible duplicates</h1>
-          <HelpLink page="guide/ai.html#possible-duplicates" label="Possible duplicates" />
+          <h1 className="truncate text-lg font-semibold"><Trans>Possible duplicates</Trans></h1>
+          <HelpLink page="guide/ai.html#possible-duplicates" label={t`Possible duplicates`} />
         </div>
         <BarSearch />
       </nav>
@@ -47,9 +50,9 @@ export function Duplicates({ householdId }: { householdId: string }) {
           <div className="card">
             <div className="card-body items-center gap-3 text-center">
               <span className="icon-[tabler--copy-check] size-10 text-primary" />
-              <h2 className="text-lg font-semibold">No duplicates found</h2>
+              <h2 className="text-lg font-semibold"><Trans>No duplicates found</Trans></h2>
               <p className="max-w-sm text-sm text-base-content/70">
-                Things with the same serial number, the same barcode and name, or descriptions that read nearly the same show up here.
+                <Trans>Things with the same serial number, the same barcode and name, or descriptions that read nearly the same show up here.</Trans>
               </p>
             </div>
           </div>
@@ -71,11 +74,11 @@ export function Duplicates({ householdId }: { householdId: string }) {
               {canEdit && (
                 <div className="flex flex-wrap justify-end gap-2">
                   <button type="button" className="btn btn-text btn-sm" disabled={notDup.isPending} onClick={() => notDup.mutate(p)}>
-                    Not a duplicate
+                    <Trans>Not a duplicate</Trans>
                   </button>
                   <button type="button" className="btn btn-primary btn-sm" onClick={() => setMerging(p)}>
                     <span className="icon-[tabler--arrow-merge] size-4" />
-                    Merge…
+                    <Trans>Merge…</Trans>
                   </button>
                 </div>
               )}
@@ -110,30 +113,30 @@ function Side({ side }: { side: DuplicateSide }) {
       <span className="min-w-0 text-sm">
         <span className="block truncate font-semibold text-base-content">{side.name}</span>
         {(side.brand || side.model) && <span className="block truncate text-base-content/80">{[side.brand, side.model].filter(Boolean).join(" ")}</span>}
-        {side.serialNumber && <span className="block truncate text-base-content/70">Serial {side.serialNumber}</span>}
+        {side.serialNumber && <span className="block truncate text-base-content/70"><Trans>Serial {ph({ serialNumber: side.serialNumber })}</Trans></span>}
         {side.place && <span className="block truncate text-base-content/70">{side.place}</span>}
-        <span className="block text-base-content/70">Added {new Date(side.createdAt).toLocaleDateString()}</span>
+        <Trans><span className="block text-base-content/70">Added {ph({ toLocaleDateString: new Date(side.createdAt).toLocaleDateString() })}</span></Trans>
       </span>
     </a>
   );
 }
 
 /** Fields compared in the merge dialog, and how to show them. */
-const FIELDS: { key: keyof ItemListing; label: string; show?: (v: unknown) => string }[] = [
-  { key: "name", label: "Name" },
-  { key: "brand", label: "Brand" },
-  { key: "model", label: "Model" },
-  { key: "serialNumber", label: "Serial number" },
-  { key: "barcode", label: "Barcode" },
-  { key: "place", label: "Place" },
-  { key: "category", label: "Category" },
-  { key: "condition", label: "Condition" },
-  { key: "purchaseDate", label: "Bought" },
-  { key: "purchasePriceCents", label: "Price paid", show: (v) => money(Number(v), true) },
-  { key: "valueCents", label: "Value", show: (v) => money(Number(v), true) },
-  { key: "quantity", label: "Quantity" },
-  { key: "description", label: "Description" },
-  { key: "notes", label: "Notes" },
+const FIELDS: { key: keyof ItemListing; label: MessageDescriptor; show?: (v: unknown) => string }[] = [
+  { key: "name", label: msg`Name` },
+  { key: "brand", label: msg`Brand` },
+  { key: "model", label: msg`Model` },
+  { key: "serialNumber", label: msg`Serial number` },
+  { key: "barcode", label: msg`Barcode` },
+  { key: "place", label: msg`Place` },
+  { key: "category", label: msg`Category` },
+  { key: "condition", label: msg`Condition` },
+  { key: "purchaseDate", label: msg`Bought` },
+  { key: "purchasePriceCents", label: msg`Price paid`, show: (v) => money(Number(v), true) },
+  { key: "valueCents", label: msg`Value`, show: (v) => money(Number(v), true) },
+  { key: "quantity", label: msg`Quantity` },
+  { key: "description", label: msg`Description` },
+  { key: "notes", label: msg`Notes` },
 ];
 /** The server's names for the fields where a place or category is shown by name. */
 const SERVER_FIELD: Partial<Record<keyof ItemListing, string>> = { place: "locationId", category: "categoryId" };
@@ -158,28 +161,28 @@ function MergeDialog({ pair, onClose, onMerged }: { pair: DuplicatePair; onClose
   const fills = kept && other ? FIELDS.filter((f) => !has(kept[f.key]) && has(other[f.key])) : [];
   const shown = (f: (typeof FIELDS)[number], it: ItemListing) => (f.show ? f.show(it[f.key]) : String(it[f.key]));
   return (
-    <Modal id="merge" title="Merge two things" onClose={onClose}>
+    <Modal id="merge" title={t`Merge two things`} onClose={onClose}>
       {(a.isPending || b.isPending) && <span className="loading loading-spinner mx-auto my-8 block text-primary" />}
       {(a.isError || b.isError) && <div className="alert alert-soft alert-error">{(a.error ?? b.error)!.message}</div>}
       {kept && other && (
         <div className="flex flex-col gap-4">
           <fieldset className="flex flex-col gap-2">
-            <legend className="mb-1 text-sm font-medium">Keep</legend>
+            <legend className="mb-1 text-sm font-medium"><Trans>Keep</Trans></legend>
             {(["a", "b"] as const).map((k) => (
               <label key={k} className="flex cursor-pointer items-center gap-3">
                 <input type="radio" className="radio radio-primary" name="keep" checked={keep === k} onChange={() => (setKeep(k), setTake(new Set()))} />
                 <span>
-                  {pair[k].name} <span className="text-sm text-base-content/70">(added {new Date(pair[k].createdAt).toLocaleDateString()})</span>
+                  <Trans>{ph({ name: pair[k].name })} <span className="text-sm text-base-content/70">(added {ph({ toLocaleDateString: new Date(pair[k].createdAt).toLocaleDateString() })})</span></Trans>
                 </span>
               </label>
             ))}
           </fieldset>
           {differ.length > 0 && (
             <div className="flex flex-col gap-2">
-              <p className="text-sm font-medium">Where they differ, use:</p>
+              <p className="text-sm font-medium"><Trans>Where they differ, use:</Trans></p>
               {differ.map((f) => (
                 <div key={String(f.key)} className="flex flex-col gap-1 rounded-box border border-base-content/10 p-3">
-                  <span className="text-sm text-base-content/70">{f.label}</span>
+                  <span className="text-sm text-base-content/70">{t(f.label)}</span>
                   {[false, true].map((fromOther) => (
                     <label key={String(fromOther)} className="flex cursor-pointer items-start gap-2 text-sm">
                       <input
@@ -188,8 +191,8 @@ function MergeDialog({ pair, onClose, onMerged }: { pair: DuplicatePair; onClose
                         name={`take-${String(f.key)}`}
                         checked={take.has(String(f.key)) === fromOther}
                         onChange={() =>
-                          setTake((t) => {
-                            const next = new Set(t);
+                          setTake((value) => {
+                            const next = new Set(value);
                             if (fromOther) next.add(String(f.key));
                             else next.delete(String(f.key));
                             return next;
@@ -205,20 +208,20 @@ function MergeDialog({ pair, onClose, onMerged }: { pair: DuplicatePair; onClose
           )}
           {fills.length > 0 && (
             <p className="text-sm text-base-content/70">
-              From {other.name}, filling gaps: {fills.map((f) => f.label.toLowerCase()).join(", ")}.
+              <Trans>From {ph({ name: other.name })}, filling gaps: {ph({ fields: fills.map((f) => t(f.label).toLowerCase()).join(", ") })}</Trans>.
             </p>
           )}
           <p className="text-sm text-base-content/70">
-            Photos, documents, warranties, maintenance, stock, labels, loans, tags and history all move to the one kept. {other.name} goes to
-            Recently deleted, and its old links lead here.
+            <Trans>Photos, documents, warranties, maintenance, stock, labels, loans, tags and history all move to the one kept. {ph({ name: other.name })} goes to
+            Recently deleted, and its old links lead here.</Trans>
           </p>
           {merge.isError && <div className="alert alert-soft alert-error">{merge.error.message}</div>}
           <DialogActions>
             <button type="button" className="btn btn-text" onClick={onClose}>
-              Cancel
+              <Trans>Cancel</Trans>
             </button>
             <button type="button" className="btn btn-primary" disabled={merge.isPending} onClick={() => merge.mutate()}>
-              Merge
+              <Trans>Merge</Trans>
             </button>
           </DialogActions>
         </div>

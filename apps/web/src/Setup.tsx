@@ -7,6 +7,8 @@ import { useState } from "react";
 import { useCategories } from "./Catalog";
 import { authClient, useCanEdit } from "./lib/auth";
 import { CATEGORIES_HREF, IMPORT_HREF, PLACES_HREF, SETTINGS_HREF, WALKTHROUGH_HREF } from "./lib/route";
+import { t, ph } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 const hiddenKey = (householdId: string) => `ferret-setup-hidden-${householdId}`;
 
@@ -24,28 +26,28 @@ export function SetupChecklist({ householdId, o }: { householdId: string; o: Ove
   const [hidden, setHidden] = useState(() => isHidden(householdId));
   const canEdit = useCanEdit(householdId);
   const steps: { label: string; detail: string; done: boolean; href: string; action: string }[] = [
-    { label: "Add your home", detail: "A property — or several: a cabin, a storage unit.", done: o.properties > 0, href: PLACES_HREF, action: "Places" },
-    { label: "Add its rooms", detail: "Kitchen, garage, shelves and closets inside them.", done: o.locations > 0, href: PLACES_HREF, action: "Places" },
+    { label: t`Add your home`, detail: t`A property — or several: a cabin, a storage unit.`, done: o.properties > 0, href: PLACES_HREF, action: t`Places` },
+    { label: t`Add its rooms`, detail: t`Kitchen, garage, shelves and closets inside them.`, done: o.locations > 0, href: PLACES_HREF, action: t`Places` },
     {
-      label: "Choose categories",
-      detail: "Start from the suggested ones and change them later.",
+      label: t`Choose categories`,
+      detail: t`Start from the suggested ones and change them later.`,
       done: (categories.data?.length ?? 0) > 0,
       href: CATEGORIES_HREF,
-      action: "Categories",
+      action: t`Categories`,
     },
     {
-      label: "Add your first things",
-      detail: "Walk through a room with your camera, or import a spreadsheet.",
+      label: t`Add your first things`,
+      detail: t`Walk through a room with your camera, or import a spreadsheet.`,
       done: o.total.items > 0,
       href: WALKTHROUGH_HREF,
-      action: "Walk through",
+      action: t`Walk through`,
     },
     {
-      label: "Invite your household",
-      detail: "So everyone can find things — viewers can only look.",
+      label: t`Invite your household`,
+      detail: t`So everyone can find things — viewers can only look.`,
       done: (org.data?.members.length ?? 0) > 1,
       href: SETTINGS_HREF,
-      action: "Invite",
+      action: t`Invite`,
     },
   ];
   const left = steps.filter((s) => !s.done).length;
@@ -59,10 +61,10 @@ export function SetupChecklist({ householdId, o }: { householdId: string; o: Ove
           <span className="icon-[tabler--rocket] size-6 text-primary" />
           <div className="min-w-0 flex-1">
             <h2 id="setup-title" className="text-lg font-semibold text-base-content">
-              Getting started
+              <Trans>Getting started</Trans>
             </h2>
             <p className="text-sm text-base-content/70">
-              {steps.length - left} of {steps.length} done
+              <Trans>{ph({ done: steps.length - left })} of {ph({ total: steps.length })} done</Trans>
             </p>
           </div>
           <button
@@ -77,7 +79,7 @@ export function SetupChecklist({ householdId, o }: { householdId: string; o: Ove
               }
             }}
           >
-            Hide
+            <Trans>Hide</Trans>
           </button>
         </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-base-content/10" aria-hidden>
@@ -92,7 +94,7 @@ export function SetupChecklist({ householdId, o }: { householdId: string; o: Ove
                 }`}
               >
                 {s.done ? <span className="icon-[tabler--check] size-4" /> : i + 1}
-                <span className="sr-only">{s.done ? " (done)" : ""}</span>
+                <span className="sr-only">{s.done ? t` (done)` : ""}</span>
               </span>
               <span className="min-w-0 flex-1">
                 <span className={`block font-medium ${s.done ? "text-base-content/70 line-through" : "text-base-content"}`}>{s.label}</span>
@@ -105,7 +107,7 @@ export function SetupChecklist({ householdId, o }: { householdId: string; o: Ove
                   </a>
                   {s.href === WALKTHROUGH_HREF && (
                     <a href={IMPORT_HREF} className="btn btn-soft btn-primary btn-sm">
-                      Import
+                      <Trans>Import</Trans>
                     </a>
                   )}
                 </span>

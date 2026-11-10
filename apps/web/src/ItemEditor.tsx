@@ -5,6 +5,7 @@
  */
 import type { CustomFieldValues, ItemListing, ItemPatch } from "@ferret/shared";
 import { itemConditions } from "@ferret/shared/utils";
+import { conditionWord } from "./lib/words";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { api } from "./lib/api";
@@ -18,6 +19,8 @@ import { type LinkDraft, LinksInput, linksToSave } from "./Links";
 import { GoneDialog } from "./Gone";
 import { navigateTo } from "./lib/navigate";
 import { currencySymbol, toCents, centsToInput } from "./lib/money";
+import { t, ph } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 export function ItemEditor({ item, householdId, onClose }: { item: ItemListing; householdId: string; onClose: () => void }) {
   const qc = useQueryClient();
@@ -63,7 +66,7 @@ export function ItemEditor({ item, householdId, onClose }: { item: ItemListing; 
   // The chosen category's extra fields (its parents' included), then the template's.
   const fields = mergeFields(
     flattenCategories(categories.data ?? []).find((c) => c.id === categoryId)?.allFields ?? [],
-    templates.data?.find((t) => t.id === templateId),
+    templates.data?.find((tpl) => tpl.id === templateId),
   );
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -105,39 +108,39 @@ export function ItemEditor({ item, householdId, onClose }: { item: ItemListing; 
 
   const busy = save.isPending || remove.isPending;
   return (
-    <Modal id="edit-item" title={`Edit ${item.name}`} onClose={onClose}>
+    <Modal id="edit-item" title={t`Edit ${ph({ name: item.name })}`} onClose={onClose}>
       <form className="flex flex-col gap-6" onSubmit={onSubmit}>
         <div className="space-y-4">
-          <Field label="Name" name="name" defaultValue={item.name} required autoFocus maxLength={200} />
+          <Field label={t`Name`} name="name" defaultValue={item.name} required autoFocus maxLength={200} />
 
           <ItemPicker
             householdId={householdId}
             id="item-box"
             name="containerItemId"
-            label="In a box"
+            label={t`In a box`}
             value={box}
             onChange={setBox}
-            noneLabel="Not in a box"
+            noneLabel={t`Not in a box`}
             boxes
             exclude={[item.id]}
           />
           <div>
             {box ? (
-              <p className="text-sm text-base-content/70">It's wherever the box is{item.container?.id === box.id && item.place ? ` (${item.place})` : ""}.</p>
+              <p className="text-sm text-base-content/70"><Trans>It's wherever the box is</Trans>{item.container?.id === box.id && item.place ? ` (${item.place})` : ""}.</p>
             ) : (
               <PlacePicker
                 householdId={householdId}
                 id="item-locationId"
                 name="locationId"
-                label="Kept in"
+                label={t`Kept in`}
                 value={keptIn}
                 onChange={setKeptIn}
-                noneLabel="No particular place"
+                noneLabel={t`No particular place`}
               />
             )}
             {places.data && places.data.properties.every((p) => p.locations.length === 0) && (
               <p className="helper-text">
-                No rooms yet — add them under <a className="link link-primary" href="#/places">Places</a>.
+                <Trans>No rooms yet — add them under <a className="link link-primary" href="#/places">Places</a></Trans>.
               </p>
             )}
           </div>
@@ -145,11 +148,11 @@ export function ItemEditor({ item, householdId, onClose }: { item: ItemListing; 
           <TemplatePicker
             householdId={householdId}
             value={templateId}
-            onChange={(t) => {
-              setTemplateId(t?.id ?? null);
+            onChange={(tpl) => {
+              setTemplateId(tpl?.id ?? null);
               // A template's category and tags, where the thing has none yet.
-              if (t?.categoryId && !categoryId) setCategoryId(t.categoryId);
-              if (t?.tags.length && !tags.length) setTags(t.tags);
+              if (tpl?.categoryId && !categoryId) setCategoryId(tpl.categoryId);
+              if (tpl?.tags.length && !tags.length) setTags(tpl.tags);
             }}
           />
           <CategoryPicker householdId={householdId} value={categoryId} onChange={setCategoryId} />
@@ -158,68 +161,68 @@ export function ItemEditor({ item, householdId, onClose }: { item: ItemListing; 
           <TagInput householdId={householdId} value={tags} onChange={setTags} />
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Brand" name="brand" defaultValue={item.brand} maxLength={120} />
-            <Field label="Model" name="model" defaultValue={item.model} maxLength={120} />
-            <Field label="Serial number" name="serialNumber" defaultValue={item.serialNumber} maxLength={120} />
-            <Field label="Barcode" name="barcode" defaultValue={item.barcode} maxLength={64} inputMode="numeric" />
+            <Field label={t`Brand`} name="brand" defaultValue={item.brand} maxLength={120} />
+            <Field label={t`Model`} name="model" defaultValue={item.model} maxLength={120} />
+            <Field label={t`Serial number`} name="serialNumber" defaultValue={item.serialNumber} maxLength={120} />
+            <Field label={t`Barcode`} name="barcode" defaultValue={item.barcode} maxLength={64} inputMode="numeric" />
           </div>
 
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Field label="Bought on" name="purchaseDate" type="date" defaultValue={item.purchaseDate} />
-            <Money label="Paid" name="purchasePrice" cents={item.purchasePriceCents} />
-            <Money label="Worth now" name="value" cents={item.valueCents} />
-            <Field label="Quantity" name="quantity" type="number" min={0} defaultValue={String(item.quantity)} inputMode="numeric" />
-            <Money label="To replace new" name="replacement" cents={item.replacementCents} />
+            <Field label={t`Bought on`} name="purchaseDate" type="date" defaultValue={item.purchaseDate} />
+            <Money label={t`Paid`} name="purchasePrice" cents={item.purchasePriceCents} />
+            <Money label={t`Worth now`} name="value" cents={item.valueCents} />
+            <Field label={t`Quantity`} name="quantity" type="number" min={0} defaultValue={String(item.quantity)} inputMode="numeric" />
+            <Money label={t`To replace new`} name="replacement" cents={item.replacementCents} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label-text" htmlFor="item-condition">
-                Condition
+                <Trans>Condition</Trans>
               </label>
               <select id="item-condition" name="condition" className="select" defaultValue={item.condition ?? ""}>
-                <option value="">Not recorded</option>
+                <option value="">{t`Not recorded`}</option>
                 {itemConditions.map((c) => (
                   <option key={c} value={c}>
-                    {c[0]!.toUpperCase() + c.slice(1)}
+                    {conditionWord(c)}
                   </option>
                 ))}
               </select>
             </div>
-            <Field label="Goes to (heir)" name="heir" defaultValue={item.heir} maxLength={120} placeholder="e.g. Sam" />
+            <Field label={t`Goes to (heir)`} name="heir" defaultValue={item.heir} maxLength={120} placeholder={t`e.g. Sam`} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Return by" name="returnBy" type="date" defaultValue={item.returnBy} />
-            <p className="self-end pb-2 text-xs text-base-content/70">The store's last day to take it back — Ferret reminds you the week before.</p>
+            <Field label={t`Return by`} name="returnBy" type="date" defaultValue={item.returnBy} />
+            <p className="self-end pb-2 text-xs text-base-content/70"><Trans>The store's last day to take it back — Ferret reminds you the week before.</Trans></p>
           </div>
 
           <div>
             <label className="label-text" htmlFor="item-description">
-              Description
+              <Trans>Description</Trans>
             </label>
             <textarea id="item-description" name="description" className="textarea" rows={2} defaultValue={item.description ?? ""} maxLength={5000} />
           </div>
           <div>
             <label className="label-text" htmlFor="item-notes">
-              Notes
+              <Trans>Notes</Trans>
             </label>
             <textarea id="item-notes" name="notes" className="textarea" rows={3} defaultValue={item.notes ?? ""} maxLength={10000} />
           </div>
           <div>
             <LinksInput value={links} onChange={setLinks} />
-            {linkError && <p className="mt-1 text-sm text-error">Fix or remove the link that isn't a web address.</p>}
+            {linkError && <p className="mt-1 text-sm text-error"><Trans>Fix or remove the link that isn't a web address.</Trans></p>}
           </div>
 
           <label className="flex min-h-11 items-center gap-3">
             <input type="checkbox" name="favorite" className="switch switch-primary" defaultChecked={item.favorite} />
-            <span className="label-text text-base">Favourite</span>
+            <Trans><span className="label-text text-base">Favourite</span></Trans>
           </label>
           <label className="flex min-h-11 items-start gap-3">
             <input type="checkbox" className="switch switch-primary mt-0.5" checked={isBox} onChange={(e) => setIsBox(e.target.checked)} />
             <span>
-              <span className="label-text block text-base">This is a box, bin or case</span>
-              <span className="text-sm text-base-content/70">Other things can go in it, and it can have a QR label.</span>
+              <Trans><span className="label-text block text-base">This is a box, bin or case</span>
+              <span className="text-sm text-base-content/70">Other things can go in it, and it can have a QR label.</span></Trans>
             </span>
           </label>
         </div>
@@ -232,12 +235,12 @@ export function ItemEditor({ item, householdId, onClose }: { item: ItemListing; 
         <div className="flex flex-wrap items-center gap-3 border-t border-base-300 pt-4">
           {confirmDelete ? (
             <>
-              <span className="text-sm text-base-content/80">Remove it? (Kept 30 days in Recently deleted.)</span>
+              <Trans><span className="text-sm text-base-content/80">Remove it? (Kept 30 days in Recently deleted.)</span></Trans>
               <button type="button" className="btn btn-error btn-sm" disabled={busy} onClick={() => remove.mutate()}>
-                Remove
+                <Trans>Remove</Trans>
               </button>
               <button type="button" className="btn btn-text btn-sm" onClick={() => setConfirmDelete(false)}>
-                Keep
+                <Trans>Keep</Trans>
               </button>
             </>
           ) : (
@@ -245,12 +248,12 @@ export function ItemEditor({ item, householdId, onClose }: { item: ItemListing; 
               {!item.disposition && (
                 <button type="button" className="btn btn-text" onClick={() => setGoing(true)}>
                   <span className="icon-[tabler--history] size-5" />
-                  No longer have it?
+                  <Trans>No longer have it?</Trans>
                 </button>
               )}
               <button type="button" className="btn btn-text btn-error" onClick={() => setConfirmDelete(true)}>
                 <span className="icon-[tabler--trash] size-5" />
-                Remove item
+                <Trans>Remove item</Trans>
               </button>
             </>
           )}
@@ -259,11 +262,11 @@ export function ItemEditor({ item, householdId, onClose }: { item: ItemListing; 
 
         <DialogActions>
           <button type="button" className="btn btn-secondary btn-soft" onClick={onClose}>
-            Cancel
+            <Trans>Cancel</Trans>
           </button>
           <button type="submit" className="btn btn-primary" disabled={busy}>
             {save.isPending && <span className="loading loading-spinner loading-sm" />}
-            Save
+            <Trans>Save</Trans>
           </button>
         </DialogActions>
       </form>

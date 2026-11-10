@@ -4,7 +4,8 @@
  * (#/ai-filled). Off unless switched on; only empty fields, only what the model read plainly.
  */
 import type { AiFill, AiFillEntry, AiFillKind, ItemListing } from "@ferret/shared";
-import { AI_FILL_KIND_NAMES, aiFillKinds } from "@ferret/shared/utils";
+import { aiFillKinds } from "@ferret/shared/utils";
+import { aiFillKindWords } from "./lib/words";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { HelpLink } from "./HelpLink";
 import { api } from "./lib/api";
@@ -12,17 +13,21 @@ import { useCanEdit } from "./lib/auth";
 import { money } from "./lib/money";
 import { itemHref } from "./lib/route";
 import { BarSearch } from "./Nav";
+import { t, ph, plural, msg } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
+import type { MessageDescriptor } from "@lingui/core";
 
-const LABELS: Record<string, string> = {
-  name: "Name",
-  brand: "Brand",
-  model: "Model",
-  serialNumber: "Serial number",
-  barcode: "Barcode",
-  purchaseDate: "Purchase date",
-  purchasePriceCents: "Price paid",
-  returnBy: "Return by",
-  warranty: "Warranty until",
+const label = (field: string) => (LABELS[field] ? t(LABELS[field]) : field);
+const LABELS: Record<string, MessageDescriptor> = {
+  name: msg`Name`,
+  brand: msg`Brand`,
+  model: msg`Model`,
+  serialNumber: msg`Serial number`,
+  barcode: msg`Barcode`,
+  purchaseDate: msg`Purchase date`,
+  purchasePriceCents: msg`Price paid`,
+  returnBy: msg`Return by`,
+  warranty: msg`Warranty until`,
 };
 
 const show = (field: string, value: string | number) =>
@@ -43,12 +48,12 @@ export function AiFillCard({ householdId, canManage }: { householdId: string; ca
       <div className="card-body gap-3">
         <h2 id="ai-fill-title" className="card-title flex items-center gap-2">
           <span className="icon-[tabler--sparkles] size-5 text-primary" />
-          Let AI fill in
-          <HelpLink page="guide/ai.html#let-ai-fill-in" label="Let AI fill in" />
+          <Trans>Let AI fill in</Trans>
+          <HelpLink page="guide/ai.html#let-ai-fill-in" label={t`Let AI fill in`} />
         </h2>
         <p className="text-sm text-base-content/70">
-          Normally what the AI reads from photos and receipts waits as a suggestion for you to apply. Switch a kind on and it fills
-          in by itself — only empty fields, only what it read plainly, each marked until someone checks it, and each can be undone.
+          <Trans>Normally what the AI reads from photos and receipts waits as a suggestion for you to apply. Switch a kind on and it fills
+          in by itself — only empty fields, only what it read plainly, each marked until someone checks it, and each can be undone.</Trans>
         </p>
         <ul className="flex flex-col gap-3">
           {aiFillKinds.map((k) => {
@@ -64,13 +69,13 @@ export function AiFillCard({ householdId, canManage }: { householdId: string; ca
                     onChange={(e) => save.mutate({ [k]: e.target.checked })}
                   />
                   <span className="min-w-0">
-                    <span className="block font-medium">{AI_FILL_KIND_NAMES[k].label}</span>
-                    <span className="block text-sm text-base-content/70">{AI_FILL_KIND_NAMES[k].hint}</span>
+                    <span className="block font-medium">{aiFillKindWords(k).label}</span>
+                    <span className="block text-sm text-base-content/70">{aiFillKindWords(k).hint}</span>
                   </span>
                 </label>
                 {chosen && s.aiFill[k] !== s.aiFillDefaults[k] && canManage && (
                   <button type="button" className="tap link link-hover ms-14 self-start text-xs text-base-content/70" onClick={() => save.mutate({ [k]: null })}>
-                    Use the server's default ({s.aiFillDefaults[k] ? "on" : "off"})
+                    {s.aiFillDefaults[k] ? t`Use the server's default (on)` : t`Use the server's default (off)`}
                   </button>
                 )}
               </li>
@@ -78,8 +83,8 @@ export function AiFillCard({ householdId, canManage }: { householdId: string; ca
           })}
         </ul>
         <p className="text-sm text-base-content/70">
-          Never by itself: merging duplicates, values or replacement costs, renaming what you named, marking things gone, or
-          maintenance schedules — those always wait for you. <a className="tap link link-primary" href="#/ai-filled">See what it filled in</a>
+          <Trans>Never by itself: merging duplicates, values or replacement costs, renaming what you named, marking things gone, or
+          maintenance schedules — those always wait for you. <a className="tap link link-primary" href="#/ai-filled">See what it filled in</a></Trans>
         </p>
         {save.isError && <div className="alert alert-soft alert-error text-sm">{save.error.message}</div>}
       </div>
@@ -104,18 +109,18 @@ export function ServerAiFillCard() {
       <div className="card-body gap-3">
         <h2 id="server-ai-fill-title" className="card-title flex items-center gap-2">
           <span className="icon-[tabler--sparkles] size-5 text-primary" />
-          Let AI fill in, by default
-          <HelpLink page="guide/ai.html#let-ai-fill-in" label="Let AI fill in" />
+          <Trans>Let AI fill in, by default</Trans>
+          <HelpLink page="guide/ai.html#let-ai-fill-in" label={t`Let AI fill in`} />
         </h2>
         <p className="text-sm text-base-content/70">
-          For households on this server that haven't chosen for themselves (Settings → Household). Off unless you switch a kind on.
+          <Trans>For households on this server that haven't chosen for themselves (Settings → Household). Off unless you switch a kind on.</Trans>
         </p>
         {aiFillKinds.map((k) => (
           <label key={k} className="flex cursor-pointer items-start gap-3">
             <input type="checkbox" className="switch switch-primary mt-0.5" checked={defaults.data[k]} disabled={save.isPending} onChange={(e) => save.mutate({ [k]: e.target.checked })} />
             <span className="min-w-0">
-              <span className="block font-medium">{AI_FILL_KIND_NAMES[k].label}</span>
-              <span className="block text-sm text-base-content/70">{AI_FILL_KIND_NAMES[k].hint}</span>
+              <span className="block font-medium">{aiFillKindWords(k).label}</span>
+              <span className="block text-sm text-base-content/70">{aiFillKindWords(k).hint}</span>
             </span>
           </label>
         ))}
@@ -146,27 +151,27 @@ export function AiFilledCard({ item, householdId }: { item: ItemListing; househo
   const fills = Object.entries(item.aiFilled ?? {}) as [string, AiFill][];
   if (!fills.length) return null;
   return (
-    <section className="card border border-primary/20" aria-label="Filled in by AI">
+    <section className="card border border-primary/20" aria-label={t`Filled in by AI`}>
       <div className="card-body gap-2 p-4">
         <h2 className="flex items-center gap-2 font-semibold">
-          <span className="badge badge-soft badge-primary badge-sm">AI</span>
-          Filled in by AI — check {fills.length === 1 ? "it" : "these"}
+          <span className="badge badge-soft badge-primary badge-sm"><Trans>AI</Trans></span>
+          {plural(fills.length, { one: "Filled in by AI — check it", other: "Filled in by AI — check these" })}
         </h2>
         <ul className="divide-base-content/10 flex flex-col divide-y">
           {fills.map(([field, f]) => (
             <li key={field} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
-              <span className="w-28 shrink-0 text-sm text-base-content/70">{LABELS[field] ?? field}</span>
+              <span className="w-28 shrink-0 text-sm text-base-content/70">{label(field)}</span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium">{show(field, f.value)}</span>
-                {f.from && <span className="block truncate text-xs text-base-content/70">from {f.from}</span>}
+                {f.from && <span className="block truncate text-xs text-base-content/70"><Trans>from {ph({ from: f.from })}</Trans></span>}
               </span>
               {canEdit && (
                 <span className="flex gap-1">
-                  <button type="button" className="btn btn-text btn-primary btn-sm" disabled={busy} onClick={() => confirm.mutate({ itemId: item.id, field })} aria-label={`${LABELS[field] ?? field} looks right`}>
-                    Looks right
+                  <button type="button" className="btn btn-text btn-primary btn-sm" disabled={busy} onClick={() => confirm.mutate({ itemId: item.id, field })} aria-label={t`${ph({ field: label(field) })} looks right`}>
+                    <Trans>Looks right</Trans>
                   </button>
-                  <button type="button" className="btn btn-text btn-sm" disabled={busy} onClick={() => undo.mutate({ itemId: item.id, field })} aria-label={`Undo ${LABELS[field] ?? field}`}>
-                    Undo
+                  <button type="button" className="btn btn-text btn-sm" disabled={busy} onClick={() => undo.mutate({ itemId: item.id, field })} aria-label={t`Undo ${ph({ field: label(field) })}`}>
+                    <Trans>Undo</Trans>
                   </button>
                 </span>
               )}
@@ -191,11 +196,11 @@ export function AiFilled({ householdId }: { householdId: string }) {
     <div className="min-h-dvh bg-base-200">
       <nav className="navbar sticky top-0 z-10 border-b border-base-300 bg-base-100/85 px-4 backdrop-blur-md">
         <div className="navbar-start w-full min-w-0 items-center gap-2">
-          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label="Back">
+          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label={t`Back`}>
             <span className="icon-[tabler--arrow-left] size-5" />
           </a>
-          <h1 className="truncate text-lg font-semibold">Filled in by AI</h1>
-          <HelpLink page="guide/ai.html#let-ai-fill-in" label="Let AI fill in" />
+          <h1 className="truncate text-lg font-semibold"><Trans>Filled in by AI</Trans></h1>
+          <HelpLink page="guide/ai.html#let-ai-fill-in" label={t`Let AI fill in`} />
         </div>
         <BarSearch />
       </nav>
@@ -207,13 +212,13 @@ export function AiFilled({ householdId }: { householdId: string }) {
           <div className="card">
             <div className="card-body items-center gap-3 text-center">
               <span className="icon-[tabler--sparkles] size-10 text-primary" />
-              <h2 className="text-lg font-semibold">Nothing to check</h2>
+              <h2 className="text-lg font-semibold"><Trans>Nothing to check</Trans></h2>
               <p className="max-w-sm text-sm text-base-content/70">
-                When the household lets AI fill in (Settings → Household), what it fills in waits here until someone says it looks right.
+                <Trans>When the household lets AI fill in (Settings → Household), what it fills in waits here until someone says it looks right.</Trans>
               </p>
-              <a href="#/settings" className="btn btn-soft btn-primary btn-sm">
+              <Trans><a href="#/settings" className="btn btn-soft btn-primary btn-sm">
                 Settings
-              </a>
+              </a></Trans>
             </div>
           </div>
         )}
@@ -226,21 +231,20 @@ export function AiFilled({ householdId }: { householdId: string }) {
               <ul className="divide-base-content/10 flex flex-col divide-y">
                 {entries.map((e) => (
                   <li key={e.field} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
-                    <span className="w-28 shrink-0 text-sm text-base-content/70">{LABELS[e.field] ?? e.label}</span>
+                    <span className="w-28 shrink-0 text-sm text-base-content/70">{e.field in LABELS ? label(e.field) : e.label}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium">{show(e.field, e.value)}</span>
                       <span className="block truncate text-xs text-base-content/70">
-                        {e.from ? `from ${e.from} · ` : ""}
-                        {new Date(e.at).toLocaleDateString()}
+                        {e.from ? t`from ${ph({ from: e.from })} · ${ph({ date: new Date(e.at).toLocaleDateString() })}` : new Date(e.at).toLocaleDateString()}
                       </span>
                     </span>
                     {canEdit && (
                       <span className="flex gap-1">
                         <button type="button" className="btn btn-text btn-primary btn-sm" disabled={busy} onClick={() => confirm.mutate(e)}>
-                          Looks right
+                          <Trans>Looks right</Trans>
                         </button>
                         <button type="button" className="btn btn-text btn-sm" disabled={busy} onClick={() => undo.mutate(e)}>
-                          Undo
+                          <Trans>Undo</Trans>
                         </button>
                       </span>
                     )}

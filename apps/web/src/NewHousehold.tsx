@@ -9,6 +9,8 @@ import { navigateTo } from "./lib/navigate";
 import { Modal } from "./Modal";
 import { deviceTimeZone } from "./TimeZone";
 import { currencyForLocale } from "@ferret/shared/utils";
+import { t } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 /** The longest household name the server takes (HOUSEHOLD_NAME_MAX in auth.ts). */
 export const HOUSEHOLD_NAME_MAX = 100;
@@ -22,7 +24,7 @@ export const HOUSEHOLD_NAME_MAX = 100;
 export async function createHousehold(name: string) {
   const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${crypto.randomUUID().slice(0, 6)}`;
   const result = await authClient.organization.create({ name, slug });
-  if (result.error || !result.data) throw new Error(result.error?.message || "Could not create the household");
+  if (result.error || !result.data) throw new Error(result.error?.message || t`Could not create the household`);
   await api.setHouseholdSettings({ timeZone: deviceTimeZone(), currency: currencyForLocale(navigator.language) }, result.data.id).catch(() => {});
   return result.data;
 }
@@ -50,34 +52,34 @@ export function NewHouseholdDialog({ onClose }: { onClose: () => void }) {
       <form className="flex flex-col gap-6" onSubmit={onSubmit}>
         <div className="space-y-1 text-center">
           <h3 id="new-household-title" className="text-2xl font-semibold text-base-content">
-            New household
+            <Trans>New household</Trans>
           </h3>
-          <p className="text-base-content/80">A separate inventory — say, a holiday home or your parents' place. You can invite people to it later.</p>
+          <p className="text-base-content/80"><Trans>A separate inventory — say, a holiday home or your parents' place. You can invite people to it later.</Trans></p>
         </div>
         <div>
           <label className="label-text" htmlFor="new-household-name">
-            Household name
+            <Trans>Household name</Trans>
           </label>
           <input
             id="new-household-name"
             name="name"
             className="input"
-            placeholder="e.g. The Lake House"
+            placeholder={t`e.g. The Lake House`}
             maxLength={HOUSEHOLD_NAME_MAX}
             required
             pattern=".*\S.*"
-            title="A name with at least one letter or number"
+            title={t`A name with at least one letter or number`}
             autoFocus
           />
         </div>
         {error && <div className="alert alert-soft alert-error">{error}</div>}
         <div className="flex flex-wrap items-center justify-end gap-4">
           <button type="button" className="btn btn-secondary btn-soft" onClick={onClose}>
-            Cancel
+            <Trans>Cancel</Trans>
           </button>
           <button type="submit" className="btn btn-primary" disabled={busy}>
             {busy && <span className="loading loading-spinner loading-sm" />}
-            Create household
+            <Trans>Create household</Trans>
           </button>
         </div>
       </form>

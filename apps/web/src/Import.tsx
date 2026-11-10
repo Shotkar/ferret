@@ -14,26 +14,28 @@ import { ImportHomeAssistant } from "./ImportHomeAssistant";
 import { api } from "./lib/api";
 import { useCanEdit } from "./lib/auth";
 import { DELETED_HREF, IMPORT_HREF, ITEMS_HREF, importHref } from "./lib/route";
+import { t, ph, plural } from "@lingui/core/macro";
+import { Trans, Plural } from "@lingui/react/macro";
 
 const PART = 100;
 
 export function Import({ householdId, source }: { householdId: string; source: ImportSource | null }) {
   const canEdit = useCanEdit(householdId);
-  const title = source === "csv" ? "Import a spreadsheet" : source === "homeassistant" ? "Import from Home Assistant" : "Import";
+  const title = source === "csv" ? t`Import a spreadsheet` : source === "homeassistant" ? t`Import from Home Assistant` : t`Import`;
   return (
     <div className="min-h-dvh bg-base-200">
       <nav className="navbar sticky top-0 z-10 border-b border-base-300 bg-base-100/85 backdrop-blur-md px-4">
         <div className="navbar-start w-full min-w-0 items-center gap-2">
-          <a href={source ? IMPORT_HREF : "#/"} className="btn btn-text btn-sm btn-square" aria-label="Back">
+          <a href={source ? IMPORT_HREF : "#/"} className="btn btn-text btn-sm btn-square" aria-label={t`Back`}>
             <span className="icon-[tabler--arrow-left] size-5" />
           </a>
           <h1 className="truncate text-lg font-semibold">{title}</h1>
-          <HelpLink page="guide/importing.html" label="Importing" />
+          <HelpLink page="guide/importing.html" label={t`Importing`} />
         </div>
       </nav>
       <main className="mx-auto flex max-w-3xl flex-col gap-4 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         {!canEdit ? (
-          <div className="alert alert-soft alert-info">You can look around, but not add things, in this household.</div>
+          <div className="alert alert-soft alert-info"><Trans>You can look around, but not add things, in this household.</Trans></div>
         ) : source === "csv" ? (
           <ImportCsv householdId={householdId} />
         ) : source === "homeassistant" ? (
@@ -55,14 +57,14 @@ function Choices() {
     {
       href: importHref("csv"),
       icon: "icon-[tabler--file-spreadsheet]",
-      title: "A spreadsheet (CSV)",
-      text: "Any list of things — you say which column is which. Ferret's own export and Amazon's order history are recognised.",
+      title: t`A spreadsheet (CSV)`,
+      text: t`Any list of things — you say which column is which. Ferret's own export and Amazon's order history are recognised.`,
     },
     {
       href: importHref("homeassistant"),
       icon: "icon-[tabler--smart-home]",
-      title: "Home Assistant",
-      text: "The appliances, TVs, speakers, cameras and network gear it knows — with their maker, model and room.",
+      title: t`Home Assistant`,
+      text: t`The appliances, TVs, speakers, cameras and network gear it knows — with their maker, model and room.`,
       // Only where the server can reach a Home Assistant.
       hidden: features?.homeAssistant === false,
     },
@@ -101,7 +103,7 @@ function RecentImports({ householdId }: { householdId: string }) {
     <section className="card" aria-labelledby="recent-imports">
       <div className="card-body gap-3">
         <h2 id="recent-imports" className="card-title text-base">
-          Recent imports
+          <Trans>Recent imports</Trans>
         </h2>
         <ul className="divide-y divide-base-content/10">
           {rows.map((b) => (
@@ -112,7 +114,7 @@ function RecentImports({ householdId }: { householdId: string }) {
                 <p className="text-sm text-base-content/70">
                   {new Date(b.importedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
                   {b.by ? ` · ${b.by}` : ""} ·{" "}
-                  {b.undoneAt ? "undone" : `${b.items} ${b.items === 1 ? "thing" : "things"}`}
+                  {b.undoneAt ? t`undone` : plural(b.items, { one: "# thing", other: "# things" })}
                 </p>
               </div>
               {!b.undoneAt &&
@@ -120,15 +122,15 @@ function RecentImports({ householdId }: { householdId: string }) {
                   <div className="flex flex-wrap items-center gap-2">
                     <button type="button" className="btn btn-error btn-sm" disabled={undo.isPending} onClick={() => undo.mutate(b.id)}>
                       {undo.isPending && <span className="loading loading-spinner loading-xs" />}
-                      Undo — remove {b.items}
+                      <Trans>Undo — remove {ph({ items: b.items })}</Trans>
                     </button>
                     <button type="button" className="btn btn-text btn-sm" onClick={() => setConfirming(null)}>
-                      Keep
+                      <Trans>Keep</Trans>
                     </button>
                   </div>
                 ) : (
                   <button type="button" className="btn btn-soft btn-sm" onClick={() => setConfirming(b.id)}>
-                    Undo…
+                    <Trans>Undo…</Trans>
                   </button>
                 ))}
             </li>
@@ -137,11 +139,13 @@ function RecentImports({ householdId }: { householdId: string }) {
         {undo.isError && <div className="alert alert-soft alert-error">{undo.error.message}</div>}
         {undo.data && (
           <p className="text-sm text-base-content/70">
-            {undo.data.removed} {undo.data.removed === 1 ? "thing" : "things"} moved to{" "}
-            <a href={DELETED_HREF} className="link tap">
-              Recently deleted
-            </a>
-            .
+            <Trans>
+              <Plural value={undo.data.removed} one="# thing" other="# things" /> moved to{" "}
+              <a href={DELETED_HREF} className="link tap">
+                Recently deleted
+              </a>
+              .
+            </Trans>
           </p>
         )}
       </div>
@@ -216,9 +220,9 @@ export function ImportStatus({
       <div className="card">
         <div className="card-body gap-3">
           <p className="font-medium">
-            {progress.total ? `Importing… ${progress.done} of ${progress.total}` : "Importing…"}
+            {progress.total ? t`Importing… ${ph({ done: progress.done })} of ${ph({ total: progress.total })}` : t`Importing…`}
           </p>
-          <progress className="progress progress-primary w-full" value={progress.done} max={progress.total} aria-label="Import progress" />
+          <progress className="progress progress-primary w-full" value={progress.done} max={progress.total} aria-label={t`Import progress`} />
         </div>
       </div>
     );
@@ -227,36 +231,36 @@ export function ImportStatus({
     return (
       <div className="alert alert-soft alert-error" role="alert">
         {run.error.message}
-        {progress && progress.done > 0 ? ` — the first ${progress.done} went in; see Recent imports to undo them.` : ""}
+        {progress && progress.done > 0 ? t` — the first ${ph({ done: progress.done })} went in; see Recent imports to undo them.` : ""}
       </div>
     );
   }
   const r = run.data;
   if (!r) return null;
-  const made = [r.placesCreated && `${r.placesCreated} new ${r.placesCreated === 1 ? "place" : "places"}`, r.categoriesCreated && `${r.categoriesCreated} new ${r.categoriesCreated === 1 ? "category" : "categories"}`].filter(Boolean);
+  const made = [r.placesCreated && plural(r.placesCreated, { one: "# new place", other: "# new places" }), r.categoriesCreated && plural(r.categoriesCreated, { one: "# new category", other: "# new categories" })].filter((x): x is string => typeof x === "string");
   return (
     <section className="card" aria-live="polite">
       <div className="card-body gap-3">
         <h2 className="card-title flex items-center gap-2">
           <span className="icon-[tabler--circle-check] size-6 text-success" />
           {r.created
-            ? `Imported ${r.created} ${r.created === 1 ? "thing" : "things"}`
+            ? plural(r.created, { one: "Imported # thing", other: "Imported # things" })
             : r.placesCreated
-              ? `Made ${r.placesCreated} ${r.placesCreated === 1 ? "place" : "places"}`
+              ? plural(r.placesCreated, { one: "Made # place", other: "Made # places" })
               : r.updated
-                ? "Updated from Home Assistant"
-                : "Nothing new to import"}
+                ? t`Updated from Home Assistant`
+                : t`Nothing new to import`}
         </h2>
-        {r.created > 0 && made.length > 0 && <p className="text-sm text-base-content/70">And made {made.join(" and ")}.</p>}
+        {r.created > 0 && made.length > 0 && <p className="text-sm text-base-content/70">{made.length === 2 ? t`And made ${ph({ places: made[0]! })} and ${ph({ categories: made[1]! })}.` : t`And made ${ph({ what: made[0]! })}.`}</p>}
         {r.updated > 0 && (
           <p className="text-sm text-base-content/70">
-            {r.updated} {r.updated === 1 ? "thing" : "things"} changed to match Home Assistant.
+            {plural(r.updated, { one: "# thing changed to match Home Assistant.", other: "# things changed to match Home Assistant." })}
           </p>
         )}
         {r.skipped.length > 0 && (
           <details className="rounded-box bg-base-200 p-3">
             <summary className="cursor-pointer font-medium">
-              {r.skipped.length} not imported
+              <Trans>{ph({ count: r.skipped.length })} not imported</Trans>
             </summary>
             <ul className="mt-2 space-y-1 text-sm">
               {r.skipped.slice(0, 200).map((s) => (
@@ -268,14 +272,14 @@ export function ImportStatus({
           </details>
         )}
         <div className="flex flex-wrap gap-2">
-          <a href={ITEMS_HREF} className="btn btn-primary">
+          <Trans><a href={ITEMS_HREF} className="btn btn-primary">
             See everything
           </a>
           <a href={IMPORT_HREF} className="btn btn-soft">
             Done
-          </a>
+          </a></Trans>
         </div>
-        <p className="text-sm text-base-content/70">Not what you wanted? Undo it under Import → Recent imports.</p>
+        <p className="text-sm text-base-content/70"><Trans>Not what you wanted? Undo it under Import → Recent imports.</Trans></p>
       </div>
     </section>
   );

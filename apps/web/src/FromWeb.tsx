@@ -9,6 +9,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { api } from "./lib/api";
 import { asWebAddress, siteOf } from "./Links";
+import { t, ph } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 export function FromWeb({ itemId, householdId, onArrived }: { itemId: string; householdId: string; onArrived: () => void }) {
   const qc = useQueryClient();
@@ -54,7 +56,7 @@ export function FromWeb({ itemId, householdId, onArrived }: { itemId: string; ho
       {open ? (
         <form className="flex flex-col gap-2 rounded-box bg-base-100 p-3" onSubmit={onSubmit}>
           <label className="label-text" htmlFor="from-web-url">
-            Address of a photo or PDF
+            <Trans>Address of a photo or PDF</Trans>
           </label>
           <div className="flex gap-2">
             <input
@@ -73,28 +75,28 @@ export function FromWeb({ itemId, householdId, onArrived }: { itemId: string; ho
             />
             <button type="submit" className="btn btn-primary" disabled={add.isPending}>
               {add.isPending && <span className="loading loading-spinner loading-xs" />}
-              Add
+              <Trans>Add</Trans>
             </button>
           </div>
           <p className="text-xs text-base-content/70">
-            Ferret downloads it from the internet — photos and PDFs only, not web pages. Tip: on a product page, copy the link of
-            the image or the manual itself.
+            <Trans>Ferret downloads it from the internet — photos and PDFs only, not web pages. Tip: on a product page, copy the link of
+            the image or the manual itself.</Trans>
           </p>
-          {badAddress && <p className="text-sm text-error">That doesn't look like a web address.</p>}
+          {badAddress && <p className="text-sm text-error"><Trans>That doesn't look like a web address.</Trans></p>}
           {add.isError && <p className="text-sm text-error">{add.error.message}</p>}
           <button type="button" className="btn btn-text btn-sm self-start" onClick={() => setOpen(false)}>
-            Cancel
+            <Trans>Cancel</Trans>
           </button>
         </form>
       ) : (
         <button type="button" className="btn btn-soft btn-secondary btn-sm self-start" onClick={() => setOpen(true)}>
           <span className="icon-[tabler--world-download] size-4" />
-          Add from a web address
+          <Trans>Add from a web address</Trans>
         </button>
       )}
 
       {downloads.data && downloads.data.data.length > 0 && (
-        <ul className="flex flex-col gap-2" aria-label="Downloads">
+        <ul className="flex flex-col gap-2" aria-label={t`Downloads`}>
           {downloads.data.data.map((d) => (
             <li key={d.id} className="flex items-center gap-3 rounded-box bg-base-100 p-3 text-sm">
               {d.status === "pending" ? (
@@ -104,8 +106,7 @@ export function FromWeb({ itemId, householdId, onArrived }: { itemId: string; ho
               )}
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium" title={d.url}>
-                  {d.status === "pending" ? "Downloading from " : "Couldn't add from "}
-                  {siteOf(d.url)}
+                  {d.status === "pending" ? t`Downloading from ${ph({ site: siteOf(d.url) })}` : t`Couldn't add from ${ph({ site: siteOf(d.url) })}`}
                 </p>
                 {d.error && <p className="text-error">{d.error}</p>}
               </div>
@@ -113,7 +114,7 @@ export function FromWeb({ itemId, householdId, onArrived }: { itemId: string; ho
                 <button
                   type="button"
                   className="btn btn-text btn-sm btn-square"
-                  aria-label="Dismiss"
+                  aria-label={t`Dismiss`}
                   disabled={dismiss.isPending}
                   onClick={() => dismiss.mutate(d.id)}
                 >

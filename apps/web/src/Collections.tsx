@@ -21,13 +21,15 @@ import { DialogActions, Modal } from "./Modal";
 import { BarSearch } from "./Nav";
 import { templateIcon, useTemplates } from "./Templates";
 import { money, currencySymbol, toCents } from "./lib/money";
+import { t, ph, plural } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 export const collectionsKey = (householdId: string) => ["collections", householdId];
 export function useCollections(householdId: string) {
   return useQuery({ queryKey: collectionsKey(householdId), queryFn: async () => (await api.collections()).data });
 }
 
-const things = (n: number) => `${n.toLocaleString()} ${n === 1 ? "thing" : "things"}`;
+const things = (n: number) => plural(n, { one: "# thing", other: "# things" });
 /** Owned ÷ everything on its list, when there's a want list. */
 const complete = (c: CollectionSummary) => (c.wanted ? Math.round((c.owned / (c.owned + c.wanted)) * 100) : null);
 
@@ -35,11 +37,11 @@ function Bar({ title, back, actions }: { title: string; back: string; actions?: 
   return (
     <nav className="navbar sticky top-0 z-10 border-b border-base-300 bg-base-100/85 px-4 backdrop-blur-md">
       <div className="navbar-start w-full min-w-0 items-center gap-2">
-        <a href={back} className="btn btn-text btn-sm btn-square" aria-label="Back">
+        <a href={back} className="btn btn-text btn-sm btn-square" aria-label={t`Back`}>
           <span className="icon-[tabler--arrow-left] size-5" />
         </a>
         <h1 className="truncate text-lg font-semibold">{title}</h1>
-        <HelpLink page="guide/collections.html" label="Collections" />
+        <HelpLink page="guide/collections.html" label={t`Collections`} />
       </div>
       <BarSearch />
       {actions && <div className="ms-2 flex shrink-0 items-center gap-2">{actions}</div>}
@@ -56,13 +58,13 @@ export function CollectionsScreen({ householdId }: { householdId: string }) {
   return (
     <div className="min-h-dvh bg-base-200">
       <Bar
-        title="Collections"
+        title={t`Collections`}
         back="#/"
         actions={
           canEdit && (
             <button type="button" className="btn btn-primary btn-sm" onClick={() => setAdding(true)}>
               <span className="icon-[tabler--plus] size-4" />
-              Collection
+              <Trans>Collection</Trans>
             </button>
           )
         }
@@ -73,14 +75,14 @@ export function CollectionsScreen({ householdId }: { householdId: string }) {
           <div className="card">
             <div className="card-body items-center gap-3 text-center">
               <span className="icon-[tabler--stack-2] size-10 text-primary" />
-              <h2 className="text-lg font-semibold">Start a collection</h2>
+              <h2 className="text-lg font-semibold"><Trans>Start a collection</Trans></h2>
               <p className="max-w-md text-sm text-base-content/70">
-                Coins, dolls, trading cards, records — keep them together, with the details that matter for each kind (year,
-                grade, edition…), what they're worth, and a want list of the ones you're still looking for.
+                <Trans>Coins, dolls, trading cards, records — keep them together, with the details that matter for each kind (year,
+                grade, edition…), what they're worth, and a want list of the ones you're still looking for.</Trans>
               </p>
               {canEdit && (
                 <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>
-                  Start a collection
+                  <Trans>Start a collection</Trans>
                 </button>
               )}
             </div>
@@ -88,7 +90,7 @@ export function CollectionsScreen({ householdId }: { householdId: string }) {
         )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {collections.data?.map((c) => {
-            const t = templates.data?.find((x) => x.id === c.templateId);
+            const tpl = templates.data?.find((x) => x.id === c.templateId);
             const pct = complete(c);
             return (
               <a key={c.id} href={collectionHref(c.id)} className="card shadow-none transition-colors hover:bg-base-100/70">
@@ -97,14 +99,14 @@ export function CollectionsScreen({ householdId }: { householdId: string }) {
                     <img src={api.thumbnailUrl(c.photoId)} alt="" className="size-16 shrink-0 rounded-box object-cover" />
                   ) : (
                     <span className="flex size-16 shrink-0 items-center justify-center rounded-box bg-primary/10 text-primary">
-                      <span className={`${t ? templateIcon(t) : "icon-[tabler--stack-2]"} size-7`} />
+                      <span className={`${tpl ? templateIcon(tpl) : "icon-[tabler--stack-2]"} size-7`} />
                     </span>
                   )}
                   <div className="min-w-0 flex-1">
                     <h2 className="truncate font-semibold text-base-content">{c.name}</h2>
                     <p className="text-sm text-base-content/70">
                       {things(c.owned)}
-                      {c.wanted > 0 && ` · ${c.wanted} wanted`}
+                      {c.wanted > 0 && t` · ${ph({ wanted: c.wanted })} wanted`}
                     </p>
                     {c.valueCents > 0 && <p className="text-sm font-medium text-base-content">{money(c.valueCents)}</p>}
                     {pct !== null && <Completion percent={pct} className="mt-1 h-1.5" />}
@@ -160,21 +162,21 @@ export function CollectionScreen({ householdId, id, show }: { householdId: strin
   const got = useMutation({ mutationFn: (itemId: string) => api.updateItem(itemId, { wanted: false }), onSuccess: refresh });
 
   const c = collection.data;
-  const template = templates.data?.find((t) => t.id === c?.templateId);
+  const template = templates.data?.find((tpl) => tpl.id === c?.templateId);
   const fields = template?.fields ?? [];
   const pct = c ? complete(c) : null;
 
   return (
     <div className="min-h-dvh bg-base-200">
       <Bar
-        title={c?.name ?? "Collection"}
+        title={c?.name ?? t`Collection`}
         back={COLLECTIONS_HREF}
         actions={
           canEdit &&
           c && (
             <button type="button" className="btn btn-primary btn-sm" onClick={() => setAdding(true)}>
               <span className="icon-[tabler--plus] size-4" />
-              Add
+              <Trans>Add</Trans>
             </button>
           )
         }
@@ -188,22 +190,22 @@ export function CollectionScreen({ householdId, id, show }: { householdId: strin
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 text-sm text-base-content/70">
                     <span className={`${template ? templateIcon(template) : "icon-[tabler--stack-2]"} size-4`} />
-                    {template ? template.name : "Collection"}
+                    {template ? template.name : t`Collection`}
                   </p>
                   {c.description && <p className="mt-1 max-w-prose text-base-content/80">{c.description}</p>}
                 </div>
                 {canEdit && (
                   <button type="button" className="btn btn-soft btn-sm" onClick={() => setEditing(true)}>
                     <span className="icon-[tabler--pencil] size-4" />
-                    Edit
+                    <Trans>Edit</Trans>
                   </button>
                 )}
               </div>
               <dl className="grid grid-cols-2 gap-3 @container sm:grid-cols-4">
-                <Stat label="Have" value={things(c.owned)} detail={c.pieces > c.owned ? `${c.pieces} pieces with duplicates` : undefined} />
-                <Stat label="Worth" value={money(c.valueCents)} detail={c.costCents ? `paid ${money(c.costCents)}` : undefined} />
-                <Stat label="Wanted" value={things(c.wanted)} />
-                {pct !== null && <Stat label="Complete" value={`${pct}%`} />}
+                <Stat label={t`Have`} value={things(c.owned)} detail={c.pieces > c.owned ? t`${ph({ pieces: c.pieces })} pieces with duplicates` : undefined} />
+                <Stat label={t`Worth`} value={money(c.valueCents)} detail={c.costCents ? t`paid ${ph({ amount: money(c.costCents) })}` : undefined} />
+                <Stat label={t`Wanted`} value={things(c.wanted)} />
+                {pct !== null && <Stat label={t`Complete`} value={`${pct}%`} />}
               </dl>
               {pct !== null && <Completion percent={pct} className="h-2" />}
             </div>
@@ -211,19 +213,19 @@ export function CollectionScreen({ householdId, id, show }: { householdId: strin
         )}
 
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="join" role="tablist" aria-label="Show">
+          <div className="join" role="tablist" aria-label={t`Show`}>
             <a href={collectionHref(id)} role="tab" aria-selected={show === "owned"} className={`btn join-item btn-sm ${show === "owned" ? "btn-primary" : "btn-soft"}`}>
-              Have {c ? `(${c.owned})` : ""}
+              <Trans>Have</Trans> {c ? `(${c.owned})` : ""}
             </a>
             <a href={collectionHref(id, "wanted")} role="tab" aria-selected={show === "wanted"} className={`btn join-item btn-sm ${show === "wanted" ? "btn-primary" : "btn-soft"}`}>
-              Want list {c ? `(${c.wanted})` : ""}
+              <Trans>Want list</Trans> {c ? `(${c.wanted})` : ""}
             </a>
           </div>
-          <div className="join" role="radiogroup" aria-label="View">
-            <button type="button" role="radio" aria-checked={view === "grid"} className={`btn join-item btn-sm ${view === "grid" ? "btn-primary" : "btn-soft"}`} onClick={() => pickView("grid")} aria-label="Photos">
+          <div className="join" role="radiogroup" aria-label={t`View`}>
+            <button type="button" role="radio" aria-checked={view === "grid"} className={`btn join-item btn-sm ${view === "grid" ? "btn-primary" : "btn-soft"}`} onClick={() => pickView("grid")} aria-label={t`Photos`}>
               <span className="icon-[tabler--layout-grid] size-4" />
             </button>
-            <button type="button" role="radio" aria-checked={view === "table"} className={`btn join-item btn-sm ${view === "table" ? "btn-primary" : "btn-soft"}`} onClick={() => pickView("table")} aria-label="Table">
+            <button type="button" role="radio" aria-checked={view === "table"} className={`btn join-item btn-sm ${view === "table" ? "btn-primary" : "btn-soft"}`} onClick={() => pickView("table")} aria-label={t`Table`}>
               <span className="icon-[tabler--table] size-4" />
             </button>
           </div>
@@ -232,7 +234,7 @@ export function CollectionScreen({ householdId, id, show }: { householdId: strin
         {items.isPending && <span className="loading loading-spinner mx-auto my-8 text-primary" />}
         {items.data?.data.length === 0 && (
           <p className="py-10 text-center text-base-content/70">
-            {show === "wanted" ? "Nothing on the want list — add the ones you're still looking for." : "Nothing in it yet — add the first one."}
+            {show === "wanted" ? t`Nothing on the want list — add the ones you're still looking for.` : t`Nothing in it yet — add the first one.`}
           </p>
         )}
         {items.data && items.data.data.length > 0 && view === "grid" && (
@@ -266,12 +268,12 @@ export function CollectionScreen({ householdId, id, show }: { householdId: strin
             <table className="table">
               <thead>
                 <tr>
-                  <th>Name</th>
+                  <th><Trans>Name</Trans></th>
                   {fields.map((f) => (
                     <th key={f.key}>{f.label}</th>
                   ))}
-                  <th className="text-end">Qty</th>
-                  <th className="text-end">Worth</th>
+                  <th className="text-end"><Trans>Qty</Trans></th>
+                  <th className="text-end"><Trans>Worth</Trans></th>
                   {show === "wanted" && canEdit && <th />}
                 </tr>
               </thead>
@@ -294,7 +296,7 @@ export function CollectionScreen({ householdId, id, show }: { householdId: strin
                     {show === "wanted" && canEdit && (
                       <td className="text-end">
                         <button type="button" className="btn btn-soft btn-primary btn-xs" disabled={got.isPending} onClick={() => got.mutate(it.id)}>
-                          Got it
+                          <Trans>Got it</Trans>
                         </button>
                       </td>
                     )}
@@ -314,7 +316,7 @@ export function CollectionScreen({ householdId, id, show }: { householdId: strin
 /** How complete a collection is (FlyonUI's progress: a track and its bar). */
 function Completion({ percent, className }: { percent: number; className: string }) {
   return (
-    <span className={`progress flex w-full ${className}`} role="progressbar" aria-label={`${percent}% complete`} aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
+    <span className={`progress flex w-full ${className}`} role="progressbar" aria-label={t`${percent}% complete`} aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
       <span className={`progress-bar ${percent === 100 ? "progress-success" : "progress-primary"}`} style={{ width: `${percent}%` }} />
     </span>
   );
@@ -335,7 +337,7 @@ function GotIt({ onClick, busy }: { onClick: () => void; busy: boolean }) {
     <div className="px-3 pb-3">
       <button type="button" className="btn btn-soft btn-primary btn-sm w-full" disabled={busy} onClick={onClick}>
         <span className="icon-[tabler--check] size-4" />
-        Got it
+        <Trans>Got it</Trans>
       </button>
     </div>
   );
@@ -372,35 +374,35 @@ function CollectionDialog(props: { householdId: string; collection?: CollectionS
     });
   }
   return (
-    <Modal id="collection-dialog" title={collection ? `Edit ${collection.name}` : "Start a collection"} onClose={onClose}>
+    <Modal id="collection-dialog" title={collection ? t`Edit ${ph({ name: collection.name })}` : t`Start a collection`} onClose={onClose}>
       <form className="flex flex-col gap-6" onSubmit={onSubmit}>
         <div className="space-y-4">
           <div>
             <label className="label-text" htmlFor="collection-name">
-              Name
+              <Trans>Name</Trans>
             </label>
-            <input id="collection-name" name="name" className="input" defaultValue={collection?.name} placeholder="e.g. Morgan silver dollars" maxLength={80} required autoFocus />
+            <input id="collection-name" name="name" className="input" defaultValue={collection?.name} placeholder={t`e.g. Morgan silver dollars`} maxLength={80} required autoFocus />
           </div>
           <div>
             <label className="label-text" htmlFor="collection-template">
-              What it's of
+              <Trans>What it's of</Trans>
             </label>
             <select id="collection-template" name="templateId" className="select" defaultValue={collection?.templateId ?? ""}>
-              <option value="">Anything (no template)</option>
-              {templates.data?.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
+              <option value="">{t`Anything (no template)`}</option>
+              {templates.data?.map((tpl) => (
+                <option key={tpl.id} value={tpl.id}>
+                  {tpl.name}
                 </option>
               ))}
             </select>
             <p className="helper-text">
-              The template's details (a coin's year, mint mark, grade…) are the collection's columns, and what you add starts from it.
-              {!templates.data?.length && " Add templates under Categories & tags."}
+              <Trans>The template's details (a coin's year, mint mark, grade…) are the collection's columns, and what you add starts from it.</Trans>
+              {!templates.data?.length && t` Add templates under Categories & tags.`}
             </p>
           </div>
           <div>
             <label className="label-text" htmlFor="collection-description">
-              About it <span className="text-base-content/70">(optional)</span>
+              <Trans>About it <span className="text-base-content/70">(optional)</span></Trans>
             </label>
             <textarea id="collection-description" name="description" className="textarea" rows={2} maxLength={2000} defaultValue={collection?.description ?? ""} />
           </div>
@@ -409,18 +411,20 @@ function CollectionDialog(props: { householdId: string; collection?: CollectionS
           <div className="rounded-box bg-base-200 p-3 text-sm">
             {!confirmRemove ? (
               <button type="button" className="btn btn-text btn-error btn-sm" onClick={() => setConfirmRemove(true)}>
-                Remove this collection
+                <Trans>Remove this collection</Trans>
               </button>
             ) : (
               <div className="flex flex-wrap items-center gap-2">
                 <span>
-                  Remove it? The {collection.owned} you have stay in Ferret{collection.wanted ? `; the ${collection.wanted} on the want list go to Recently deleted` : ""}.
+                  {collection.wanted
+                    ? t`Remove it? The ${ph({ owned: collection.owned })} you have stay in Ferret; the ${ph({ wanted: collection.wanted })} on the want list go to Recently deleted.`
+                    : t`Remove it? The ${ph({ owned: collection.owned })} you have stay in Ferret.`}
                 </span>
                 <button type="button" className="btn btn-error btn-sm" disabled={remove.isPending} onClick={() => remove.mutate()}>
-                  Remove
+                  <Trans>Remove</Trans>
                 </button>
                 <button type="button" className="btn btn-text btn-sm" onClick={() => setConfirmRemove(false)}>
-                  Keep
+                  <Trans>Keep</Trans>
                 </button>
               </div>
             )}
@@ -429,11 +433,11 @@ function CollectionDialog(props: { householdId: string; collection?: CollectionS
         {(save.isError || remove.isError) && <div className="alert alert-soft alert-error">{(save.error ?? remove.error)!.message}</div>}
         <DialogActions>
           <button type="button" className="btn btn-secondary btn-soft" onClick={onClose}>
-            Cancel
+            <Trans>Cancel</Trans>
           </button>
           <button type="submit" className="btn btn-primary" disabled={save.isPending}>
             {save.isPending && <span className="loading loading-spinner loading-sm" />}
-            {collection ? "Save" : "Start it"}
+            {collection ? t`Save` : t`Start it`}
           </button>
         </DialogActions>
       </form>
@@ -445,7 +449,7 @@ function CollectionDialog(props: { householdId: string; collection?: CollectionS
 function AddToCollection(props: { householdId: string; collection: CollectionSummary; wanted: boolean; onClose: () => void; onSaved: () => void }) {
   const { collection, householdId } = props;
   const templates = useTemplates(householdId);
-  const template = templates.data?.find((t) => t.id === collection.templateId);
+  const template = templates.data?.find((tpl) => tpl.id === collection.templateId);
   const [wanted, setWanted] = useState(props.wanted);
   const [custom, setCustom] = useState<CustomFieldValues>({});
   const [another, setAnother] = useState(false);
@@ -478,33 +482,33 @@ function AddToCollection(props: { householdId: string; collection: CollectionSum
     );
   }
   return (
-    <Modal id="add-to-collection" title={`Add to ${collection.name}`} onClose={props.onClose}>
+    <Modal id="add-to-collection" title={t`Add to ${ph({ name: collection.name })}`} onClose={props.onClose}>
       <form className="flex flex-col gap-5" onSubmit={onSubmit}>
-        <div className="join w-full" role="radiogroup" aria-label="Have it or want it">
+        <div className="join w-full" role="radiogroup" aria-label={t`Have it or want it`}>
           <button type="button" role="radio" aria-checked={!wanted} className={`btn join-item grow ${!wanted ? "btn-primary" : "btn-soft"}`} onClick={() => setWanted(false)}>
-            I have it
+            <Trans>I have it</Trans>
           </button>
           <button type="button" role="radio" aria-checked={wanted} className={`btn join-item grow ${wanted ? "btn-primary" : "btn-soft"}`} onClick={() => setWanted(true)}>
-            I'm looking for it
+            <Trans>I'm looking for it</Trans>
           </button>
         </div>
         <div>
           <label className="label-text" htmlFor="collect-name">
-            What is it?
+            <Trans>What is it?</Trans>
           </label>
-          <input id="collect-name" name="name" className="input" required maxLength={200} autoFocus placeholder={template?.name === "Coin" ? "e.g. 1881-S Morgan dollar" : "Its name"} />
+          <input id="collect-name" name="name" className="input" required maxLength={200} autoFocus placeholder={template?.name === "Coin" ? t`e.g. 1881-S Morgan dollar` : t`Its name`} />
         </div>
         {template && <CustomFieldInputs fields={template.fields} values={custom} onChange={setCustom} />}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="label-text" htmlFor="collect-quantity">
-              How many
+              <Trans>How many</Trans>
             </label>
             <input id="collect-quantity" name="quantity" type="number" min={1} defaultValue={1} className="input" />
           </div>
           <div>
             <label className="label-text" htmlFor="collect-value">
-              {wanted ? "Usually goes for" : "Worth (each)"}
+              {wanted ? t`Usually goes for` : t`Worth (each)`}
             </label>
             <div className="input">
               <span className="my-auto me-1 text-base-content/70">{currencySymbol()}</span>
@@ -514,21 +518,21 @@ function AddToCollection(props: { householdId: string; collection: CollectionSum
         </div>
         <label className="flex cursor-pointer items-center gap-2 text-sm">
           <input type="checkbox" className="checkbox checkbox-primary checkbox-sm" checked={another} onChange={(e) => setAnother(e.target.checked)} />
-          Add another after this one
+          <Trans>Add another after this one</Trans>
         </label>
         {added && (
           <div className="alert alert-soft alert-success text-sm" role="status">
-            Added {added}.
+            <Trans>Added {added}</Trans>.
           </div>
         )}
         {add.isError && <div className="alert alert-soft alert-error">{add.error.message}</div>}
         <DialogActions>
           <button type="button" className="btn btn-secondary btn-soft" onClick={props.onClose}>
-            {added ? "Done" : "Cancel"}
+            {added ? t`Done` : t`Cancel`}
           </button>
           <button type="submit" className="btn btn-primary" disabled={add.isPending}>
             {add.isPending && <span className="loading loading-spinner loading-sm" />}
-            {wanted ? "Add to the want list" : "Add it"}
+            {wanted ? t`Add to the want list` : t`Add it`}
           </button>
         </DialogActions>
       </form>
@@ -549,7 +553,7 @@ export function CollectionFields(props: {
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:items-end">
       <div>
         <label className="label-text" htmlFor="item-collection">
-          Collection
+          <Trans>Collection</Trans>
         </label>
         <select
           id="item-collection"
@@ -557,7 +561,7 @@ export function CollectionFields(props: {
           value={props.collectionId ?? ""}
           onChange={(e) => props.onChange({ collectionId: e.target.value || null, wanted: e.target.value ? props.wanted : false })}
         >
-          <option value="">None</option>
+          <option value="">{t`None`}</option>
           {collections.data?.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -568,7 +572,7 @@ export function CollectionFields(props: {
       {props.collectionId && (
         <label className="flex h-11 cursor-pointer items-center gap-2 text-sm">
           <input type="checkbox" className="checkbox checkbox-primary checkbox-sm" checked={props.wanted} onChange={(e) => props.onChange({ collectionId: props.collectionId, wanted: e.target.checked })} />
-          On the want list (don't have it yet)
+          <Trans>On the want list (don't have it yet)</Trans>
         </label>
       )}
     </div>
@@ -590,7 +594,7 @@ export function CollectionBanner({ householdId, item }: { householdId: string; i
     return (
       <a href={collectionHref(item.collectionId)} className="tap badge badge-soft badge-primary gap-1 self-start">
         <span className="icon-[tabler--stack-2] size-4" />
-        {c?.name ?? "Collection"}
+        {c?.name ?? t`Collection`}
       </a>
     );
   }
@@ -598,12 +602,12 @@ export function CollectionBanner({ householdId, item }: { householdId: string; i
     <div className="alert alert-soft alert-info flex flex-wrap items-center gap-3" role="status">
       <span className="icon-[tabler--heart] size-5 shrink-0" />
       <span className="grow">
-        On the want list for <a href={collectionHref(item.collectionId, "wanted")} className="link">{c?.name ?? "its collection"}</a> — not one of your things yet.
+        <Trans>On the want list for</Trans> <a href={collectionHref(item.collectionId, "wanted")} className="link">{c?.name ?? t`its collection`}</a> <Trans>— not one of your things yet.</Trans>
       </span>
       {canEdit && (
         <button type="button" className="btn btn-primary btn-sm" disabled={got.isPending} onClick={() => got.mutate()}>
           <span className="icon-[tabler--check] size-4" />
-          Got it
+          <Trans>Got it</Trans>
         </button>
       )}
     </div>

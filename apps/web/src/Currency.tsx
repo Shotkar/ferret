@@ -7,6 +7,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { currencyChoices, currencyName, currencySymbol, formatMoney } from "@ferret/shared/utils";
 import { useMemo } from "react";
 import { api } from "./lib/api";
+import { Trans } from "@lingui/react/macro";
+import { t } from "@lingui/core/macro";
 
 const label = (code: string) => {
   const symbol = currencySymbol(code);
@@ -32,11 +34,11 @@ export function CurrencyCard({ householdId, canManage }: { householdId: string; 
       <div className="card-body gap-3">
         <h2 id="currency-title" className="card-title flex items-center gap-2">
           <span className="icon-[tabler--coins] size-5 text-primary" />
-          Currency
+          <Trans>Currency</Trans>
         </h2>
         <p className="text-sm text-base-content/70">
-          What prices and values are in — on every screen, the insurance report and spreadsheets. Changing it doesn't convert
-          anything: amounts already entered stay the same numbers.
+          <Trans>What prices and values are in — on every screen, the insurance report and spreadsheets. Changing it doesn't convert
+          anything: amounts already entered stay the same numbers.</Trans>
         </p>
         {settings.isError && <div className="alert alert-soft alert-error text-sm">{settings.error.message}</div>}
         {currency && (
@@ -44,17 +46,17 @@ export function CurrencyCard({ householdId, canManage }: { householdId: string; 
             {canManage ? (
               <div>
                 <label className="label-text" htmlFor="household-currency">
-                  This household's money
+                  <Trans>This household's money</Trans>
                 </label>
                 <select id="household-currency" className="select" value={currency} disabled={save.isPending} onChange={(e) => save.mutate(e.target.value)}>
-                  <optgroup label="Most used">
+                  <optgroup label={t`Most used`}>
                     {choices.common.map((c) => (
                       <option key={c} value={c}>
                         {label(c)}
                       </option>
                     ))}
                   </optgroup>
-                  <optgroup label="All currencies">
+                  <optgroup label={t`All currencies`}>
                     {choices.rest.map((c) => (
                       <option key={c} value={c}>
                         {label(c)}
@@ -69,7 +71,7 @@ export function CurrencyCard({ householdId, canManage }: { householdId: string; 
               </p>
             )}
             <p className="text-sm text-base-content/70">
-              On this device, 1234.50 reads <span className="font-medium text-base-content">{formatMoney(123_450, currency, { exact: true })}</span>.
+              <Trans>On this device, 1234.50 reads</Trans> <span className="font-medium text-base-content">{formatMoney(123_450, currency, { exact: true })}</span>.
             </p>
             {save.isError && <div className="alert alert-soft alert-error text-sm">{save.error.message}</div>}
           </>

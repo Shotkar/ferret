@@ -9,20 +9,23 @@ import { type FormEvent, useState } from "react";
 import { HelpLink } from "./HelpLink";
 import { api } from "./lib/api";
 import { Scanner } from "./Scanner";
+import { t, ph, msg } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
+import type { MessageDescriptor } from "@lingui/core";
 
-const BEHAVIOURS: { value: StockBehaviour; label: string }[] = [
-  { value: "use", label: "Use (take out)" },
-  { value: "restock", label: "Restock (put in)" },
-  { value: "ask", label: "Ask each time" },
-  { value: "lookup", label: "Just open it" },
+const BEHAVIOURS: { value: StockBehaviour; label: MessageDescriptor }[] = [
+  { value: "use", label: msg`Use (take out)` },
+  { value: "restock", label: msg`Restock (put in)` },
+  { value: "ask", label: msg`Ask each time` },
+  { value: "lookup", label: msg`Just open it` },
 ];
 
-const REASONS: Record<StockMovement["reason"], string> = {
-  scan: "scanned",
-  manual: "by hand",
-  edit: "edited",
-  undo: "undo",
-  maintenance: "maintenance",
+const REASONS: Record<StockMovement["reason"], MessageDescriptor> = {
+  scan: msg`scanned`,
+  manual: msg`by hand`,
+  edit: msg`edited`,
+  undo: msg`undo`,
+  maintenance: msg`maintenance`,
 };
 
 export function StockCard({
@@ -52,7 +55,7 @@ export function StockCard({
       <div>
         <button type="button" className="btn btn-soft btn-secondary btn-sm" onClick={() => setOpen(true)}>
           <span className="icon-[tabler--stack-2] size-4" />
-          Track stock
+          <Trans>Track stock</Trans>
         </button>
       </div>
     ) : null;
@@ -65,20 +68,20 @@ export function StockCard({
         <div className="flex items-center justify-between gap-3">
           <h2 id="stock-title" className="card-title flex items-center gap-2">
             <span className="icon-[tabler--stack-2] size-5 text-primary" />
-            Stock
-            <HelpLink page="guide/stock.html" label="Stock" />
+            <Trans>Stock</Trans>
+            <HelpLink page="guide/stock.html" label={t`Stock`} />
           </h2>
           <div className="flex items-center gap-2" aria-live="polite">
             {canEdit && (
-              <button type="button" className="btn btn-soft btn-square" aria-label={`Use one ${item.name}`} disabled={adjust.isPending || s.quantity === 0} onClick={() => adjust.mutate(-1)}>
+              <button type="button" className="btn btn-soft btn-square" aria-label={t`Use one ${ph({ name: item.name })}`} disabled={adjust.isPending || s.quantity === 0} onClick={() => adjust.mutate(-1)}>
                 <span className="icon-[tabler--minus] size-5" />
               </button>
             )}
-            <span className="min-w-12 text-center text-2xl font-semibold tabular-nums" aria-label={`${s.quantity} left`}>
+            <span className="min-w-12 text-center text-2xl font-semibold tabular-nums" aria-label={t`${ph({ quantity: s.quantity })} left`}>
               {s.quantity}
             </span>
             {canEdit && (
-              <button type="button" className="btn btn-soft btn-square" aria-label={`Add one ${item.name}`} disabled={adjust.isPending} onClick={() => adjust.mutate(1)}>
+              <button type="button" className="btn btn-soft btn-square" aria-label={t`Add one ${ph({ name: item.name })}`} disabled={adjust.isPending} onClick={() => adjust.mutate(1)}>
                 <span className="icon-[tabler--plus] size-5" />
               </button>
             )}
@@ -91,7 +94,7 @@ export function StockCard({
 
         {s.movements.length > 0 && (
           <div className="space-y-1">
-            <h3 className="text-sm font-medium">History</h3>
+            <h3 className="text-sm font-medium"><Trans>History</Trans></h3>
             <ul className="divide-y divide-base-content/10 text-sm">
               {s.movements.slice(0, 10).map((m) => (
                 <li key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5">
@@ -99,13 +102,13 @@ export function StockCard({
                     {m.delta > 0 ? `+${m.delta}` : `−${-m.delta}`}
                   </span>
                   <span className="min-w-0 flex-1 text-base-content/70">
-                    {m.quantityAfter} left · {REASONS[m.reason]}
-                    {m.by ? ` by ${m.by}` : ""} · {formatWhen(m.at)}
+                    <Trans>{ph({ left: m.quantityAfter })} left · {ph({ reason: t(REASONS[m.reason]) })}</Trans>
+                    {m.by ? t` by ${ph({ by: m.by })}` : ""} · {formatWhen(m.at)}
                     {m.note ? ` — ${m.note}` : ""}
                   </span>
                   {canEdit && !m.undone && m.reason !== "undo" && m.reason !== "edit" && (
                     <button type="button" className="btn btn-text btn-xs" disabled={undo.isPending} onClick={() => undo.mutate(m.id)}>
-                      Undo
+                      <Trans>Undo</Trans>
                     </button>
                   )}
                 </li>
@@ -138,7 +141,7 @@ function Codes({
   const has = (barcode: string) => rules.some((r) => !r.code.startsWith("label:") && r.code.endsWith(barcode.replace(/\D/g, "")));
   const suggestions = [
     item.barcode && !has(item.barcode) ? { code: item.barcode, text: `its barcode (${item.barcode})` } : null,
-    item.labelCode && !rules.some((r) => r.code === `label:${item.labelCode}`) ? { code: `label:${item.labelCode}`, text: `its QR label (${item.labelCode})` } : null,
+    item.labelCode && !rules.some((r) => r.code === `label:${item.labelCode}`) ? { code: `label:${item.labelCode}`, text: t`its QR label (${ph({ code: item.labelCode })})` } : null,
   ].filter((x): x is { code: string; text: string } => x !== null);
 
   function onAdd(e: FormEvent) {
@@ -148,8 +151,8 @@ function Codes({
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-medium">When it's scanned</h3>
-      {rules.length === 0 && <p className="text-sm text-base-content/70">No codes yet — scanning one can count it in or out.</p>}
+      <h3 className="text-sm font-medium"><Trans>When it's scanned</Trans></h3>
+      {rules.length === 0 && <p className="text-sm text-base-content/70"><Trans>No codes yet — scanning one can count it in or out.</Trans></p>}
       <ul className="space-y-2">
         {rules.map((r) => (
           <RuleRow key={`${r.id}-${r.behaviour}-${r.step}`} rule={r} canEdit={canEdit} busy={save.isPending || remove.isPending} onSave={(b, step) => save.mutate({ code: r.code, behaviour: b, step })} onRemove={() => remove.mutate(r.id)} />
@@ -160,23 +163,23 @@ function Codes({
           {suggestions.map((sug) => (
             <button key={sug.code} type="button" className="btn btn-soft btn-primary btn-sm btn-wrap" disabled={save.isPending} onClick={() => save.mutate({ code: sug.code, behaviour: "use", step: 1 })}>
               <span className="icon-[tabler--plus] size-4" />
-              Count with {sug.text}
+              <Trans>Count with {ph({ text: sug.text })}</Trans>
             </button>
           ))}
           <form className="flex flex-wrap items-end gap-2" onSubmit={onAdd}>
             <div className="min-w-0 grow">
               <label className="label-text" htmlFor={`stock-code-${item.id}`}>
-                Another code (a pack's barcode, a bin's label…)
+                <Trans>Another code (a pack's barcode, a bin's label…)</Trans>
               </label>
               <div className="input">
-                <input id={`stock-code-${item.id}`} className="grow" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Type or scan it" inputMode="text" />
-                <button type="button" className="btn btn-text btn-sm btn-square my-auto" aria-label="Scan it" onClick={() => setScanning(true)}>
+                <input id={`stock-code-${item.id}`} className="grow" value={code} onChange={(e) => setCode(e.target.value)} placeholder={t`Type or scan it`} inputMode="text" />
+                <button type="button" className="btn btn-text btn-sm btn-square my-auto" aria-label={t`Scan it`} onClick={() => setScanning(true)}>
                   <span className="icon-[tabler--barcode] size-5" />
                 </button>
               </div>
             </div>
             <button type="submit" className="btn btn-soft btn-primary" disabled={!code.trim() || save.isPending}>
-              Add
+              <Trans>Add</Trans>
             </button>
           </form>
         </>
@@ -203,7 +206,7 @@ function KeepAtLeast({ itemId, value, quantity, canEdit, onChanged }: { itemId: 
   const dirty = parsed !== value && (parsed === null || Number.isFinite(parsed));
   const low = value != null ? quantity <= value : quantity === 0;
   if (!canEdit) {
-    return value != null ? <p className="text-sm text-base-content/70">Keep at least {value}{low ? " — on the shopping list" : ""}</p> : null;
+    return value != null ? <p className="text-sm text-base-content/70">{low ? t`Keep at least ${ph({ min: value })} — on the shopping list` : t`Keep at least ${ph({ min: value })}`}</p> : null;
   }
   return (
     <form
@@ -213,7 +216,7 @@ function KeepAtLeast({ itemId, value, quantity, canEdit, onChanged }: { itemId: 
         if (dirty) save.mutate(parsed);
       }}
     >
-      <label htmlFor={`keep-${itemId}`}>Keep at least</label>
+      <label htmlFor={`keep-${itemId}`}><Trans>Keep at least</Trans></label>
       <input
         id={`keep-${itemId}`}
         type="number"
@@ -227,11 +230,11 @@ function KeepAtLeast({ itemId, value, quantity, canEdit, onChanged }: { itemId: 
       />
       {dirty ? (
         <button type="submit" className="btn btn-primary btn-sm" disabled={save.isPending}>
-          Save
+          <Trans>Save</Trans>
         </button>
       ) : (
         <span className="text-base-content/70">
-          {low ? "On the shopping list" : value != null ? "On the shopping list at or below this" : "On the shopping list when it runs out"}
+          {low ? t`On the shopping list` : value != null ? t`On the shopping list at or below this` : t`On the shopping list when it runs out`}
         </span>
       )}
       {save.isError && <span className="w-full text-error">{save.error.message}</span>}
@@ -247,8 +250,8 @@ function RuleRow({ rule, canEdit, busy, onSave, onRemove }: { rule: StockRule; c
   if (!canEdit) {
     return (
       <li className="text-sm">
-        <span className="font-medium">{rule.label}</span> — {BEHAVIOURS.find((b) => b.value === rule.behaviour)?.label}
-        {rule.behaviour !== "lookup" ? `, ${rule.step} at a time` : ""}
+        <span className="font-medium">{rule.label}</span> — {(() => { const b = BEHAVIOURS.find((x) => x.value === rule.behaviour); return b ? t(b.label) : null; })()}
+        {rule.behaviour !== "lookup" ? t`, ${ph({ step: rule.step })} at a time` : ""}
       </li>
     );
   }
@@ -256,10 +259,10 @@ function RuleRow({ rule, canEdit, busy, onSave, onRemove }: { rule: StockRule; c
     <li className="rounded-box border border-base-content/10 p-2">
       <p className="mb-2 truncate text-sm font-medium">{rule.label}</p>
       <div className="flex flex-wrap items-center gap-2">
-        <select className="select select-sm w-auto grow" aria-label={`What scanning ${rule.label} does`} value={behaviour} onChange={(e) => setBehaviour(e.target.value as StockBehaviour)}>
+        <select className="select select-sm w-auto grow" aria-label={t`What scanning ${ph({ label: rule.label })} does`} value={behaviour} onChange={(e) => setBehaviour(e.target.value as StockBehaviour)}>
           {BEHAVIOURS.map((b) => (
             <option key={b.value} value={b.value}>
-              {b.label}
+              {t(b.label)}
             </option>
           ))}
         </select>
@@ -270,29 +273,29 @@ function RuleRow({ rule, canEdit, busy, onSave, onRemove }: { rule: StockRule; c
               min={1}
               max={1000}
               className="input input-sm w-20"
-              aria-label="How many at a time"
+              aria-label={t`How many at a time`}
               value={step}
               onChange={(e) => setStep(Math.max(1, Math.min(1000, Number(e.target.value) || 1)))}
             />
-            at a time
+            <Trans>at a time</Trans>
           </label>
         )}
         {dirty && (
           <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={() => onSave(behaviour, step)}>
-            Save
+            <Trans>Save</Trans>
           </button>
         )}
         {confirming ? (
           <span className="flex items-center gap-1">
             <button type="button" className="btn btn-error btn-sm" disabled={busy} onClick={onRemove}>
-              Remove
+              <Trans>Remove</Trans>
             </button>
             <button type="button" className="btn btn-text btn-sm" onClick={() => setConfirming(false)}>
-              Keep
+              <Trans>Keep</Trans>
             </button>
           </span>
         ) : (
-          <button type="button" className="btn btn-text btn-sm btn-square btn-error ms-auto" aria-label={`Stop counting with ${rule.label}`} onClick={() => setConfirming(true)}>
+          <button type="button" className="btn btn-text btn-sm btn-square btn-error ms-auto" aria-label={t`Stop counting with ${ph({ label: rule.label })}`} onClick={() => setConfirming(true)}>
             <span className="icon-[tabler--trash] size-5" />
           </button>
         )}

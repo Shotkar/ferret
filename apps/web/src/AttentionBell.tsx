@@ -11,21 +11,24 @@ import { useEffect, useState } from "react";
 import { api } from "./lib/api";
 import { COVERAGE_HREF, itemHref, MAINTENANCE_HREF, roomScanHref, SHOPPING_HREF, settingsHref } from "./lib/route";
 import { Mascot } from "./Mascot";
+import { t, plural, msg } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
+import type { MessageDescriptor } from "@lingui/core";
 
-const KIND: Record<AttentionItem["kind"], { icon: string; label: string }> = {
-  maintenance: { icon: "icon-[tabler--tool]", label: "Maintenance" },
-  warranty: { icon: "icon-[tabler--shield-check]", label: "Warranty" },
-  return: { icon: "icon-[tabler--receipt-refund]", label: "Return" },
-  claim: { icon: "icon-[tabler--file-alert]", label: "Claim" },
-  review: { icon: "icon-[tabler--photo-check]", label: "To name" },
-  roomscan: { icon: "icon-[tabler--scan-eye]", label: "Room scan" },
-  backup: { icon: "icon-[tabler--database-exclamation]", label: "Backup" },
-  shopping: { icon: "icon-[tabler--shopping-cart]", label: "To buy" },
-  loan: { icon: "icon-[tabler--arrows-exchange]", label: "Lent & borrowed" },
-  recall: { icon: "icon-[tabler--alert-triangle]", label: "Recall" },
-  coverage: { icon: "icon-[tabler--umbrella]", label: "Coverage" },
-  service: { icon: "icon-[tabler--plug-connected-x]", label: "Service" },
-  ai: { icon: "icon-[tabler--sparkles]", label: "Suggestion" },
+const KIND: Record<AttentionItem["kind"], { icon: string; label: MessageDescriptor }> = {
+  maintenance: { icon: "icon-[tabler--tool]", label: msg`Maintenance` },
+  warranty: { icon: "icon-[tabler--shield-check]", label: msg`Warranty` },
+  return: { icon: "icon-[tabler--receipt-refund]", label: msg`Return` },
+  claim: { icon: "icon-[tabler--file-alert]", label: msg`Claim` },
+  review: { icon: "icon-[tabler--photo-check]", label: msg`To name` },
+  roomscan: { icon: "icon-[tabler--scan-eye]", label: msg`Room scan` },
+  backup: { icon: "icon-[tabler--database-exclamation]", label: msg`Backup` },
+  shopping: { icon: "icon-[tabler--shopping-cart]", label: msg`To buy` },
+  loan: { icon: "icon-[tabler--arrows-exchange]", label: msg`Lent & borrowed` },
+  recall: { icon: "icon-[tabler--alert-triangle]", label: msg`Recall` },
+  coverage: { icon: "icon-[tabler--umbrella]", label: msg`Coverage` },
+  service: { icon: "icon-[tabler--plug-connected-x]", label: msg`Service` },
+  ai: { icon: "icon-[tabler--sparkles]", label: msg`Suggestion` },
 };
 
 const hrefFor = (a: AttentionItem) =>
@@ -55,7 +58,7 @@ export function AttentionBell({ householdId }: { householdId: string }) {
 
   const list = attention.data ?? [];
   const urgent = list.some((a) => a.severity === "urgent");
-  const label = list.length ? `${list.length} ${list.length === 1 ? "thing needs" : "things need"} attention` : "Nothing needs attention";
+  const label = list.length ? plural(list.length, { one: "# thing needs attention", other: "# things need attention" }) : t`Nothing needs attention`;
 
   return (
     <div id="attention-menu" className={`dropdown relative inline-flex ${open ? "open" : ""}`}>
@@ -82,17 +85,17 @@ export function AttentionBell({ householdId }: { householdId: string }) {
           // On a phone, a full-width panel under the top bar (an end-aligned menu would run off the screen).
           className="dropdown-menu dropdown-open:opacity-100 absolute end-0 top-full w-88 p-0 max-sm:fixed max-sm:inset-x-3 max-sm:top-15 max-sm:w-auto"
           role="menu"
-          aria-label="Needs attention"
+          aria-label={t`Needs attention`}
         >
           <div className="flex items-center justify-between border-b border-base-content/10 px-4 py-3">
-            <h6 className="font-semibold text-base-content">Needs attention</h6>
+            <h6 className="font-semibold text-base-content"><Trans>Needs attention</Trans></h6>
             {list.length > 0 && <span className={`badge badge-soft badge-sm ${urgent ? "badge-error" : "badge-primary"}`}>{list.length}</span>}
           </div>
           {list.length === 0 ? (
             <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
               <Mascot pose="asleep" className="size-24" />
-              <p className="font-medium text-base-content">All caught up</p>
-              <p className="text-sm text-base-content/70">Nothing overdue, ending soon or waiting on you.</p>
+              <p className="font-medium text-base-content"><Trans>All caught up</Trans></p>
+              <p className="text-sm text-base-content/70"><Trans>Nothing overdue, ending soon or waiting on you.</Trans></p>
             </div>
           ) : (
             <ul className="max-h-[60vh] overflow-y-auto py-1">
@@ -116,11 +119,11 @@ export function AttentionBell({ householdId }: { householdId: string }) {
           <div className="flex justify-between gap-2 border-t border-base-content/10 p-2">
             <a href={MAINTENANCE_HREF} className="btn btn-text btn-sm" onClick={() => setOpen(false)}>
               <span className="icon-[tabler--tool] size-4" />
-              Maintenance
+              <Trans>Maintenance</Trans>
             </a>
             <a href={settingsHref("notifications")} className="btn btn-text btn-sm" onClick={() => setOpen(false)}>
               <span className="icon-[tabler--settings] size-4" />
-              Reminder settings
+              <Trans>Reminder settings</Trans>
             </a>
           </div>
         </div>

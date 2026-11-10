@@ -44,6 +44,9 @@ import { navigateTo } from "./lib/navigate";
 import { HOUSEHOLD_NAME_MAX, NewHouseholdDialog, createHousehold } from "./NewHousehold";
 import { Mascot } from "./Mascot";
 import { money, rememberedCurrency, toCents, showAmountsIn } from "./lib/money";
+import { t, ph, plural, msg } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
+import type { MessageDescriptor } from "@lingui/core";
 
 /** The root: a splash on the first load, then the route's screen (router.tsx). */
 export function App() {
@@ -103,14 +106,14 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
   const resendChecking = options.data?.humanCheck;
   const resend = useMutation({
     mutationFn: async (email: string) => {
-      if (resendChecking && !resendToken) throw new Error("Tick the \"I'm a person\" check first.");
+      if (resendChecking && !resendToken) throw new Error(t`Tick the "I'm a person" check first.`);
       const result = await authClient.sendVerificationEmail({
         email,
         callbackURL: verifyCallback(invitationId),
         fetchOptions: resendToken ? { headers: { "X-Turnstile-Token": resendToken } } : undefined,
       });
       if (resendChecking) resendCheck.current?.reset();
-      if (result.error) throw new Error(result.error.message || "Couldn't send it — try again in a minute");
+      if (result.error) throw new Error(result.error.message || t`Couldn't send it — try again in a minute`);
     },
   });
   const resendWidget = resendChecking ? <HumanCheck ref={resendCheck} siteKey={resendChecking.siteKey} onToken={setResendToken} /> : null;
@@ -137,7 +140,7 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
     mutationFn: async (provider: string) => {
       // Back to the page that was asked for (its #/… link), not always home.
       const { error } = await authClient.signIn.social({ provider: provider as "google", callbackURL: `/${window.location.hash}`, errorCallbackURL: "/?sso=failed" });
-      if (error) throw new Error(error.message ?? "Single sign-on didn't work");
+      if (error) throw new Error(error.message ?? t`Single sign-on didn't work`);
     },
   });
   // Behind a sign-in proxy (Authelia, Authentik…): it has already said who this is.
@@ -153,13 +156,13 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
   const emailLink = useMutation({
     mutationFn: async (email: string) => {
       const { error } = await authClient.signIn.magicLink({ email, callbackURL: "/" });
-      if (error) throw new Error(error.status === 429 ? "Too many requests from here — try again in a minute." : (error.message ?? "Something went wrong"));
+      if (error) throw new Error(error.status === 429 ? t`Too many requests from here — try again in a minute.` : (error.message ?? t`Something went wrong`));
     },
   });
   const passkey = useMutation({
     mutationFn: async () => {
       const { error } = await authClient.signIn.passkey();
-      if (error && !/cancel|abort|not allowed/i.test(error.message ?? "")) throw new Error(error.message ?? "That passkey didn't work");
+      if (error && !/cancel|abort|not allowed/i.test(error.message ?? "")) throw new Error(error.message ?? t`That passkey didn't work`);
     },
   });
   // Passkeys in the Email box's suggestions (the browser's "conditional UI"): pick one and you're in.
@@ -180,7 +183,7 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
     const email = String(form.get("email"));
     const password = String(form.get("password"));
     if (checkingHuman && !humanToken) {
-      setError("Tick the \"I'm a person\" check first.");
+      setError(t`Tick the "I'm a person" check first.`);
       return;
     }
     setBusy(true);
@@ -220,8 +223,8 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
     if (code === "SIGN_IN_BACKOFF" || code === "CHALLENGE_REQUIRED") setHeld(email);
     if (code === "EMAIL_NOT_VERIFIED") {
       setUnconfirmed(email);
-      setError("Confirm your email first — open the link we sent you.");
-    } else if (result.error) setError(result.error.message ?? "Something went wrong");
+      setError(t`Confirm your email first — open the link we sent you.`);
+    } else if (result.error) setError(result.error.message ?? t`Something went wrong`);
     else if (mode === "signUp" && result.data && "token" in result.data && !result.data.token) {
       // The very first account is confirmed as it's made (no email to open): straight in. Everyone else checks their email.
       if ("user" in result.data && result.data.user.emailVerified) await signInWithCheck(email, password);
@@ -256,22 +259,22 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
     return (
       <AuthLayout
         icon="icon-[tabler--mail-check]"
-        title="Check your email"
+        title={t`Check your email`}
         subtitle={
           <>
-            We sent a link to <span className="font-medium text-base-content">{checkEmail}</span>. Open it to confirm it's your
-            address, then sign in. It works for a day.
+            <Trans>We sent a link to <span className="font-medium text-base-content">{checkEmail}</span>. Open it to confirm it's your
+            address, then sign in. It works for a day.</Trans>
           </>
         }
       >
           <div className="flex flex-col gap-3">
             {resend.isSuccess ? (
-              <div className="alert alert-soft alert-success text-sm">Sent again.</div>
+              <div className="alert alert-soft alert-success text-sm"><Trans>Sent again.</Trans></div>
             ) : (
               <>
                 {resendWidget}
                 <button type="button" className="btn btn-soft btn-primary" disabled={resend.isPending} onClick={() => resend.mutate(checkEmail)}>
-                  Send it again
+                  <Trans>Send it again</Trans>
                 </button>
               </>
             )}
@@ -280,7 +283,7 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
               setCheckEmail(null);
               setMode("signIn");
             }}>
-              Back to sign in
+              <Trans>Back to sign in</Trans>
             </button>
           </div>
       </AuthLayout>
@@ -289,8 +292,8 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
 
   return (
     <AuthLayout
-      title={invited ? "Join your household" : mode === "signIn" ? "Welcome back" : "Create your account"}
-      subtitle={intro ?? (mode === "signIn" ? "Sign in to find your stuff." : "Start keeping track of everything you own.")}
+      title={invited ? t`Join your household` : mode === "signIn" ? t`Welcome back` : t`Create your account`}
+      subtitle={intro ?? (mode === "signIn" ? t`Sign in to find your stuff.` : t`Start keeping track of everything you own.`)}
     >
         <div className="flex flex-col gap-4">
           {mode === "signIn" && !invited && options.data?.demo && (
@@ -302,7 +305,7 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
                 setError(null);
                 const result = await signInWithCheck(options.data!.demo!.email, options.data!.demo!.password);
                 setBusy(false);
-                if (result.error) setError(result.error.message ?? "Something went wrong");
+                if (result.error) setError(result.error.message ?? t`Something went wrong`);
               }}
             />
           )}
@@ -310,7 +313,7 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
           {viaProxy && (
             <div className="alert alert-soft alert-info text-sm" role="status">
               <span className="loading loading-spinner loading-xs" />
-              Signing you in…
+              <Trans>Signing you in…</Trans>
             </div>
           )}
           {ssoResult && (
@@ -320,38 +323,38 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
           )}
           {confirm && (
             <div className="alert alert-soft alert-info text-sm" role="status">
-              Sign in with the password you chose to confirm your email.
+              <Trans>Sign in with the password you chose to confirm your email.</Trans>
             </div>
           )}
           {verified === "ok" && !confirm && (
             <div className="alert alert-soft alert-success text-sm" role="status">
-              Your email is confirmed. Sign in to carry on.
+              <Trans>Your email is confirmed. Sign in to carry on.</Trans>
             </div>
           )}
           {verified === "failed" && (
             <div className="alert alert-soft alert-warning text-sm" role="status">
-              That link didn't work — it may have expired. Sign in, and we'll offer a new one.
+              <Trans>That link didn't work — it may have expired. Sign in, and we'll offer a new one.</Trans>
             </div>
           )}
           {linkResult && (
             <div className="alert alert-soft alert-warning text-sm" role="status">
               {linkResult === "two-step"
-                ? "Your account uses two-step sign-in, so a link can't sign you in — use your password and code (or a passkey)."
-                : "That sign-in link didn't work — each one works once, for 15 minutes. Ask for a new one below."}
+                ? t`Your account uses two-step sign-in, so a link can't sign you in — use your password and code (or a passkey).`
+                : t`That sign-in link didn't work — each one works once, for 15 minutes. Ask for a new one below.`}
             </div>
           )}
           <form onSubmit={onSubmit} className="flex flex-col gap-3">
             {mode === "signUp" && (
               <div>
                 <label className="label-text" htmlFor="auth-name">
-                  Your name
+                  <Trans>Your name</Trans>
                 </label>
                 <input id="auth-name" name="name" className="input" required autoComplete="name" />
               </div>
             )}
             <div>
               <label className="label-text" htmlFor="auth-email">
-                Email
+                <Trans>Email</Trans>
               </label>
               <input
                 id="auth-email"
@@ -368,7 +371,7 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
             <div>
               <div className="flex items-end justify-between gap-2">
                 <label className="label-text" htmlFor="auth-password">
-                  Password
+                  <Trans>Password</Trans>
                 </label>
                 {mode === "signIn" && options.data?.passwordReset && (
                   <button
@@ -379,7 +382,7 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
                       setMode("forgot");
                     }}
                   >
-                    Forgot it?
+                    <Trans>Forgot it?</Trans>
                   </button>
                 )}
               </div>
@@ -388,7 +391,7 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
                 name="password"
                 type="password"
                 className="input"
-                placeholder={mode === "signUp" ? "10 characters or more" : undefined}
+                placeholder={mode === "signUp" ? t`10 characters or more` : undefined}
                 minLength={10}
                 required
                 autoComplete={mode === "signIn" ? "current-password" : "new-password"}
@@ -399,13 +402,13 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
             {unconfirmed && mode === "signIn" && (
               <div className="rounded-box bg-base-200 p-3 text-sm">
                 {resend.isSuccess ? (
-                  <p>A new link is on its way to {unconfirmed}.</p>
+                  <p><Trans>A new link is on its way to {unconfirmed}</Trans>.</p>
                 ) : (
                   <div className="flex flex-col gap-2">
                     {resendWidget}
                     <button type="button" className="btn btn-soft btn-primary btn-sm w-full" disabled={resend.isPending} onClick={() => resend.mutate(unconfirmed)}>
                       {resend.isPending ? <span className="loading loading-spinner loading-xs" /> : <span className="icon-[tabler--mail] size-4" />}
-                      Send the link again
+                      <Trans>Send the link again</Trans>
                     </button>
                   </div>
                 )}
@@ -416,44 +419,44 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
               <div className="rounded-box bg-base-200 p-3 text-sm">
                 {unlock.isSuccess ? (
                   <p>
-                    If there's an account for {held}, a link to sign in again is on its way — by email, and to any devices
-                    with Ferret notifications on. It works once, for 30 minutes.
+                    <Trans>If there's an account for {held}, a link to sign in again is on its way — by email, and to any devices
+                    with Ferret notifications on. It works once, for 30 minutes.</Trans>
                   </p>
                 ) : (
                   <button type="button" className="btn btn-soft btn-primary btn-sm w-full" disabled={unlock.isPending} onClick={() => unlock.mutate(held)}>
                     {unlock.isPending ? <span className="loading loading-spinner loading-xs" /> : <span className="icon-[tabler--mail] size-4" />}
-                    Email me a link to sign in again
+                    <Trans>Email me a link to sign in again</Trans>
                   </button>
                 )}
               </div>
             )}
             <button className="btn btn-primary" disabled={busy}>
               {busy && <span className="loading loading-spinner loading-sm" />}
-              {checking ? "Checking you're not a robot…" : mode === "signIn" ? "Sign in" : "Create account"}
+              {checking ? t`Checking you're not a robot…` : mode === "signIn" ? t`Sign in` : t`Create account`}
             </button>
           </form>
           {mode === "signIn" && !invited && !confirm && (passkeysSupported() || options.data?.signInLink || options.data?.sso) && (
             <div className="flex flex-col gap-2">
-              <div className="divider my-0 text-xs text-base-content/70">or</div>
+              <div className="divider my-0 text-xs text-base-content/70"><Trans>or</Trans></div>
               {options.data?.sso && (
                 <button type="button" className="btn btn-soft btn-primary btn-wrap" disabled={sso.isPending} onClick={() => sso.mutate(options.data!.sso!.providerId)}>
                   {sso.isPending ? <span className="loading loading-spinner loading-sm" /> : <span className="icon-[tabler--key] size-5" />}
-                  Sign in with {options.data.sso.name}
+                  <Trans>Sign in with {ph({ name: options.data.sso.name })}</Trans>
                 </button>
               )}
               {sso.isError && <div className="alert alert-soft alert-error text-sm">{sso.error.message}</div>}
               {passkeysSupported() && (
                 <button type="button" className="btn btn-soft btn-primary" disabled={passkey.isPending} onClick={() => passkey.mutate()}>
                   {passkey.isPending ? <span className="loading loading-spinner loading-sm" /> : <span className="icon-[tabler--fingerprint] size-5" />}
-                  Sign in with a passkey
+                  <Trans>Sign in with a passkey</Trans>
                 </button>
               )}
               {passkey.isError && <div className="alert alert-soft alert-error text-sm">{passkey.error.message}</div>}
               {options.data?.signInLink &&
                 (emailLink.isSuccess ? (
                   <div className="alert alert-soft alert-success text-sm" role="status">
-                    If there's an account for {emailLink.variables}, a sign-in link is on its way — it works once, for 15
-                    minutes. (Accounts with two-step sign-in use their password and code instead.)
+                    <Trans>If there's an account for {ph({ variables: emailLink.variables })}, a sign-in link is on its way — it works once, for 15
+                    minutes. (Accounts with two-step sign-in use their password and code instead.)</Trans>
                   </div>
                 ) : (
                   <button
@@ -471,7 +474,7 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
                     }}
                   >
                     {emailLink.isPending ? <span className="loading loading-spinner loading-sm" /> : <span className="icon-[tabler--mail-forward] size-5" />}
-                    Email me a sign-in link
+                    <Trans>Email me a sign-in link</Trans>
                   </button>
                 ))}
               {emailLink.isError && <div className="alert alert-soft alert-error text-sm">{emailLink.error.message}</div>}
@@ -479,10 +482,21 @@ export function AuthScreen({ email: invited, invitationId, intro }: { email?: st
           )}
           {canSignUp && (
             <p className="text-center text-sm text-base-content/70">
-              {mode === "signIn" ? "New here? " : "Have an account? "}
-              <button type="button" className="link link-primary tap" onClick={() => setMode(mode === "signIn" ? "signUp" : "signIn")}>
-                {mode === "signIn" ? "Create an account" : "Sign in"}
-              </button>
+              {mode === "signIn" ? (
+                <Trans>
+                  New here?{" "}
+                  <button type="button" className="link link-primary tap" onClick={() => setMode("signUp")}>
+                    Create an account
+                  </button>
+                </Trans>
+              ) : (
+                <Trans>
+                  Have an account?{" "}
+                  <button type="button" className="link link-primary tap" onClick={() => setMode("signIn")}>
+                    Sign in
+                  </button>
+                </Trans>
+              )}
             </p>
           )}
         </div>
@@ -517,8 +531,8 @@ async function confirmEmail(token: string, password: string): Promise<{ ok: true
   }).catch(() => null);
   if (res?.ok) return { ok: true };
   const body = (await res?.json().catch(() => null)) as { code?: string; message?: string } | null;
-  if (res?.status === 429) return { ok: false, message: "Too many tries from here — wait a minute.", expired: false };
-  return { ok: false, message: body?.message ?? "Couldn't confirm it just now — try again.", expired: body?.code === "LINK_EXPIRED" };
+  if (res?.status === 429) return { ok: false, message: t`Too many tries from here — wait a minute.`, expired: false };
+  return { ok: false, message: body?.message ?? t`Couldn't confirm it just now — try again.`, expired: body?.code === "LINK_EXPIRED" };
 }
 
 /** Back from a confirmation link: "ok", "failed" (expired or used), or null if not. */
@@ -534,9 +548,9 @@ function ssoReturn(): string | null {
   const params = new URLSearchParams(window.location.search);
   if (params.get("sso") !== "failed") return null;
   const error = params.get("error");
-  if (error === "invite_only") return "There's no Ferret account for you yet, and Ferret is invite-only — ask someone in your household for an invitation link.";
-  if (error === "account_not_linked" || error === "email_not_verified") return "Your sign-in provider hasn't confirmed your email address, so Ferret can't tell which account is yours.";
-  return "Single sign-on didn't work — try again, or sign in with your password.";
+  if (error === "invite_only") return t`There's no Ferret account for you yet, and Ferret is invite-only — ask someone in your household for an invitation link.`;
+  if (error === "account_not_linked" || error === "email_not_verified") return t`Your sign-in provider hasn't confirmed your email address, so Ferret can't tell which account is yours.`;
+  return t`Single sign-on didn't work — try again, or sign in with your password.`;
 }
 
 /** A forward-auth proxy in front of Ferret says who you are: ask for a session once per visit (sessionStorage). */
@@ -569,17 +583,17 @@ function ForgotPassword({ email, onBack }: { email?: string; onBack: () => void 
   const ask = useMutation({
     mutationFn: async (address: string) => {
       const { error } = await authClient.requestPasswordReset({ email: address });
-      if (error) throw new Error(error.status === 429 ? "Too many requests from here — try again in a minute." : (error.message ?? "Something went wrong"));
+      if (error) throw new Error(error.status === 429 ? t`Too many requests from here — try again in a minute.` : (error.message ?? t`Something went wrong`));
     },
   });
   return (
     <AuthLayout
       icon={ask.isSuccess ? "icon-[tabler--mail-check]" : "icon-[tabler--key]"}
-      title={ask.isSuccess ? "Check your email" : "Forgot your password?"}
+      title={ask.isSuccess ? t`Check your email` : t`Forgot your password?`}
       subtitle={
         ask.isSuccess
-          ? "If an account uses that email, a link to choose a new password is on its way. It works once, for an hour. Nothing there? Check spam, or ask again in ten minutes."
-          : "Type your email and we'll send a link to choose a new one."
+          ? t`If an account uses that email, a link to choose a new password is on its way. It works once, for an hour. Nothing there? Check spam, or ask again in ten minutes.`
+          : t`Type your email and we'll send a link to choose a new one.`
       }
     >
         <div className="flex flex-col gap-4">
@@ -594,21 +608,21 @@ function ForgotPassword({ email, onBack }: { email?: string; onBack: () => void 
               >
                 <div>
                   <label className="label-text" htmlFor="forgot-email">
-                    Email
+                    <Trans>Email</Trans>
                   </label>
                   <input id="forgot-email" name="email" type="email" className="input" required autoComplete="email" defaultValue={email} autoFocus />
                 </div>
                 {ask.isError && <div className="alert alert-soft alert-error text-sm">{ask.error.message}</div>}
                 <button className="btn btn-primary" disabled={ask.isPending}>
                   {ask.isPending && <span className="loading loading-spinner loading-sm" />}
-                  Email me a link
+                  <Trans>Email me a link</Trans>
                 </button>
               </form>
             </>
           )}
           <button type="button" className="btn btn-text btn-sm self-center" onClick={onBack}>
             <span className="icon-[tabler--arrow-left] size-4" />
-            Back to sign in
+            <Trans>Back to sign in</Trans>
           </button>
         </div>
     </AuthLayout>
@@ -623,7 +637,7 @@ export function ResetPasswordScreen({ token }: { token: string }) {
       const { error } = await authClient.resetPassword({ newPassword, token });
       if (error) {
         throw new Error(
-          error.code === "INVALID_TOKEN" ? "This link was used already or has expired — ask for a new one from the sign-in screen." : (error.message ?? "Something went wrong"),
+          error.code === "INVALID_TOKEN" ? t`This link was used already or has expired — ask for a new one from the sign-in screen.` : (error.message ?? t`Something went wrong`),
         );
       }
     },
@@ -633,7 +647,7 @@ export function ResetPasswordScreen({ token }: { token: string }) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     const password = String(form.get("password"));
-    if (password !== String(form.get("confirm"))) return setError("The two passwords don't match");
+    if (password !== String(form.get("confirm"))) return setError(t`The two passwords don't match`);
     setError(null);
     reset.mutate(password);
   }
@@ -641,33 +655,33 @@ export function ResetPasswordScreen({ token }: { token: string }) {
   return (
     <AuthLayout
       icon={reset.isSuccess ? "icon-[tabler--circle-check]" : "icon-[tabler--lock]"}
-      title={reset.isSuccess ? "Password changed" : "Choose a new password"}
-      subtitle={reset.isSuccess ? "Every device was signed out. Sign in with the new one." : "10 characters or more."}
+      title={reset.isSuccess ? t`Password changed` : t`Choose a new password`}
+      subtitle={reset.isSuccess ? t`Every device was signed out. Sign in with the new one.` : t`10 characters or more.`}
     >
         <div className="flex flex-col gap-4">
           {!reset.isSuccess && (
             <form className="flex flex-col gap-3" onSubmit={onSubmit}>
               <div>
                 <label className="label-text" htmlFor="reset-password">
-                  New password
+                  <Trans>New password</Trans>
                 </label>
                 <input id="reset-password" name="password" type="password" className="input" minLength={10} required autoComplete="new-password" autoFocus />
               </div>
               <div>
                 <label className="label-text" htmlFor="reset-confirm">
-                  The same again
+                  <Trans>The same again</Trans>
                 </label>
                 <input id="reset-confirm" name="confirm" type="password" className="input" minLength={10} required autoComplete="new-password" />
               </div>
               {(error ?? reset.error?.message) && <div className="alert alert-soft alert-error text-sm">{error ?? reset.error?.message}</div>}
               <button className="btn btn-primary" disabled={reset.isPending}>
                 {reset.isPending && <span className="loading loading-spinner loading-sm" />}
-                Set new password
+                <Trans>Set new password</Trans>
               </button>
             </form>
           )}
           <a href="#/" className={reset.isSuccess ? "btn btn-primary" : "btn btn-text btn-sm self-center"}>
-            {reset.isSuccess ? "Sign in" : "Back to sign in"}
+            {reset.isSuccess ? t`Sign in` : t`Back to sign in`}
           </a>
         </div>
     </AuthLayout>
@@ -687,15 +701,15 @@ export function UnlockScreen({ token }: { token: string }) {
   return (
     <AuthLayout
       icon="icon-[tabler--lock-open]"
-      title="Sign in again"
-      subtitle={use.isSuccess ? "Done — you can sign in again straight away." : use.isPending ? "One moment…" : undefined}
+      title={t`Sign in again`}
+      subtitle={use.isSuccess ? t`Done — you can sign in again straight away.` : use.isPending ? t`One moment…` : undefined}
     >
         <div className="flex flex-col gap-4">
           {use.isPending && <span className="loading loading-spinner text-primary" />}
           {use.isError && <div className="alert alert-soft alert-error text-sm">{use.error.message}</div>}
-          <a href="#/" className="btn btn-primary">
+          <Trans><a href="#/" className="btn btn-primary">
             Sign in
-          </a>
+          </a></Trans>
         </div>
     </AuthLayout>
   );
@@ -716,14 +730,14 @@ function SignInCode({ onCancel }: { onCancel: () => void }) {
       : await authClient.twoFactor.verifyTotp({ code, trustDevice: trust });
     setBusy(false);
     // On success the session updates and the app moves on by itself.
-    if (result.error) setError(result.error.message ?? "That code didn't work");
+    if (result.error) setError(result.error.message ?? t`That code didn't work`);
   }
 
   return (
     <AuthLayout
       icon={backup ? "icon-[tabler--key]" : "icon-[tabler--device-mobile-message]"}
-      title="Two-step sign-in"
-      subtitle={backup ? "Type one of your backup codes. Each works once." : "Open your authenticator app and type the code for Ferret."}
+      title={t`Two-step sign-in`}
+      subtitle={backup ? t`Type one of your backup codes. Each works once.` : t`Open your authenticator app and type the code for Ferret.`}
     >
         <div className="flex flex-col gap-4">
           {backup ? (
@@ -734,22 +748,22 @@ function SignInCode({ onCancel }: { onCancel: () => void }) {
                 void verify(String(new FormData(e.currentTarget).get("code")).trim());
               }}
             >
-              <input name="code" className="input font-mono" placeholder="Backup code" autoComplete="off" autoCapitalize="off" required autoFocus />
+              <input name="code" className="input font-mono" placeholder={t`Backup code`} autoComplete="off" autoCapitalize="off" required autoFocus />
               <TrustDevice checked={trust} onChange={setTrust} />
               {error && <div className="alert alert-soft alert-error text-sm">{error}</div>}
               <button className="btn btn-primary" disabled={busy}>
                 {busy && <span className="loading loading-spinner loading-sm" />}
-                Sign in
+                <Trans>Sign in</Trans>
               </button>
             </form>
           ) : (
-            <CodeForm busy={busy} error={error ?? undefined} submit="Sign in" onSubmit={(code) => void verify(code)}>
+            <CodeForm busy={busy} error={error ?? undefined} submit={t`Sign in`} onSubmit={(code) => void verify(code)}>
               <TrustDevice checked={trust} onChange={setTrust} />
             </CodeForm>
           )}
           <div className="flex flex-wrap justify-between gap-2">
             <button type="button" className="btn btn-text btn-sm" onClick={onCancel}>
-              Back
+              <Trans>Back</Trans>
             </button>
             <button
               type="button"
@@ -759,7 +773,7 @@ function SignInCode({ onCancel }: { onCancel: () => void }) {
                 setError(null);
               }}
             >
-              {backup ? "Use the app instead" : "Lost your phone? Use a backup code"}
+              {backup ? t`Use the app instead` : t`Lost your phone? Use a backup code`}
             </button>
           </div>
         </div>
@@ -771,7 +785,7 @@ function TrustDevice({ checked, onChange }: { checked: boolean; onChange: (on: b
   return (
     <label className="flex items-center gap-3 text-sm">
       <input type="checkbox" className="checkbox checkbox-primary checkbox-sm" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      Trust this device for 30 days
+      <Trans>Trust this device for 30 days</Trans>
     </label>
   );
 }
@@ -827,22 +841,22 @@ function CreateHousehold() {
     await createHousehold(name).catch((err: Error) => setError(err.message));
   }
   return (
-    <AuthLayout icon="icon-[tabler--home-heart]" title="Name your household" subtitle="Everything you track lives in a household. You can invite family later.">
+    <AuthLayout icon="icon-[tabler--home-heart]" title={t`Name your household`} subtitle={t`Everything you track lives in a household. You can invite family later.`}>
       <form onSubmit={onSubmit} className="flex flex-col gap-3">
         <div>
           <label className="label-text" htmlFor="household-name">
-            Household name
+            <Trans>Household name</Trans>
           </label>
-          <input id="household-name" name="name" className="input" placeholder="e.g. The Highland House" maxLength={HOUSEHOLD_NAME_MAX} required pattern=".*\S.*" title="A name with at least one letter or number" />
+          <input id="household-name" name="name" className="input" placeholder={t`e.g. The Highland House`} maxLength={HOUSEHOLD_NAME_MAX} required pattern=".*\S.*" title={t`A name with at least one letter or number`} />
         </div>
         {error && <div className="alert alert-soft alert-error text-sm">{error}</div>}
-        <button className="btn btn-primary">Create household</button>
+        <button className="btn btn-primary"><Trans>Create household</Trans></button>
         <div className="flex flex-wrap justify-center gap-2">
           <button type="button" className="btn btn-text btn-sm" onClick={() => signOut()}>
-            Sign out
+            <Trans>Sign out</Trans>
           </button>
           <button type="button" className="btn btn-text btn-sm text-error" onClick={() => setDeleting(true)}>
-            Delete my account
+            <Trans>Delete my account</Trans>
           </button>
         </div>
       </form>
@@ -881,13 +895,13 @@ function AccountMenu({ householdName, householdId }: { householdName: string; ho
         className="dropdown-toggle btn btn-circle btn-soft btn-primary"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Account menu"
+        aria-label={t`Account menu`}
         onClick={() => setOpen(!open)}
       >
         {initial}
       </button>
       {open && (
-        <ul className="dropdown-menu dropdown-open:opacity-100 absolute end-0 top-full max-h-[calc(100dvh-5rem)] w-72 space-y-0.5 overflow-y-auto" role="menu" aria-label="Account">
+        <ul className="dropdown-menu dropdown-open:opacity-100 absolute end-0 top-full max-h-[calc(100dvh-5rem)] w-72 space-y-0.5 overflow-y-auto" role="menu" aria-label={t`Account`}>
           <li className="dropdown-header mb-1 gap-3 px-4 pt-4 pb-3">
             <div className="avatar avatar-placeholder">
               <div className="w-10 rounded-full bg-primary/10 text-primary">
@@ -901,7 +915,7 @@ function AccountMenu({ householdName, householdId }: { householdName: string; ho
             </div>
           </li>
           {/* Households: switch between them, or make another. Below xl only — from xl the sidebar has the switcher. */}
-          <li className="dropdown-title px-4 pt-1 text-xs uppercase xl:hidden">{households && households.length > 1 ? "Switch household" : "Household"}</li>
+          <li className="dropdown-title px-4 pt-1 text-xs uppercase xl:hidden">{households && households.length > 1 ? t`Switch household` : t`Household`}</li>
           {households?.map((h) => (
             <li key={h.id} className="xl:hidden">
               <button
@@ -930,7 +944,7 @@ function AccountMenu({ householdName, householdId }: { householdName: string; ho
               }}
             >
               <span className="icon-[tabler--plus] size-5" />
-              New household…
+              <Trans>New household…</Trans>
             </button>
           </li>
           <li className="dropdown-divider my-1 xl:hidden" role="separator" />
@@ -947,7 +961,7 @@ function AccountMenu({ householdName, householdId }: { householdName: string; ho
               onClick={() => signOut()}
             >
               <span className="icon-[tabler--logout] size-5" />
-              Sign out
+              <Trans>Sign out</Trans>
             </button>
           </li>
         </ul>
@@ -1050,7 +1064,7 @@ export function Home({ householdName, householdId, view }: { householdName: stri
     <div className="min-h-dvh bg-base-200">
       {/* The top bar stays put: the logo, search and scan, the actions. On a phone the search is its own row under the logo. */}
       <nav className="sticky top-0 z-10 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-base-300 bg-base-100/85 px-4 py-2.5 backdrop-blur-md sm:min-h-16 sm:flex-nowrap">
-        <a href={HOME_HREF} className="tap shrink-0 xl:hidden" aria-label="Ferret home">
+        <a href={HOME_HREF} className="tap shrink-0 xl:hidden" aria-label={t`Ferret home`}>
           <Logo className="text-lg text-primary" />
         </a>
         <div className="order-last w-full min-w-0 sm:order-none sm:mx-auto sm:max-w-2xl sm:flex-1">
@@ -1060,11 +1074,11 @@ export function Home({ householdName, householdId, view }: { householdName: stri
             onChange={setSearch}
             query={query}
             onSubmit={() => setNow(search.trim())}
-            placeholder={place ? `Search in ${place.node.name}…` : kind ? `Search in ${kind.name}…` : tag ? `Search in ${tag}…` : "Where's the…?"}
+            placeholder={place ? t`Search in ${ph({ name: place.node.name })}…` : kind ? t`Search in ${ph({ name: kind.name })}…` : tag ? t`Search in ${tag}…` : t`Where's the…?`}
             busy={Boolean(query) && items.isFetching}
             results={results}
             scan={
-              <button type="button" className="btn btn-soft btn-primary btn-square" aria-label="Scan a barcode" title="Scan a barcode" onClick={() => setScanning("scan")}>
+              <button type="button" className="btn btn-soft btn-primary btn-square" aria-label={t`Scan a barcode`} title={t`Scan a barcode`} onClick={() => setScanning("scan")}>
                 <span className="icon-[tabler--barcode] size-5" />
               </button>
             }
@@ -1088,8 +1102,8 @@ export function Home({ householdName, householdId, view }: { householdName: stri
           <div className="flex items-center gap-2">
             <span className="badge badge-soft badge-warning badge-lg h-auto max-w-full gap-1.5 py-1">
               <span className="icon-[tabler--list-check] size-4 shrink-0" />
-              <span className="truncate">{MISSING_LABELS[missing].filter}</span>
-              <a href={HOME_HREF} className="tap inline-flex shrink-0" aria-label="Back to the dashboard">
+              <span className="truncate">{t(MISSING_LABELS[missing].filter)}</span>
+              <a href={HOME_HREF} className="tap inline-flex shrink-0" aria-label={t`Back to the dashboard`}>
                 <span className="icon-[tabler--x] size-4" />
               </a>
             </span>
@@ -1112,7 +1126,7 @@ export function Home({ householdName, householdId, view }: { householdName: stri
             <UnknownBarcode code={scanned} onDone={() => setScanned(null)} locationId={locationId} />
           ) : (
             <div className="alert alert-soft alert-info text-sm" role="status">
-              Nothing has barcode <span className="font-mono">{scanned}</span>.
+              <Trans>Nothing has barcode</Trans> <span className="font-mono">{scanned}</span>.
             </div>
           ))}
 
@@ -1129,10 +1143,10 @@ export function Home({ householdName, householdId, view }: { householdName: stri
             <>
               <PropertyHeader property={property} canEdit={canEdit} maps={Boolean(places.data?.maps)} />
               {property.locations.length ? (
-                <PlaceTiles nodes={property.locations} title="Rooms" />
+                <PlaceTiles nodes={property.locations} title={t`Rooms`} />
               ) : (
                 <p className="text-sm text-base-content/70">
-                  No rooms yet.{canEdit && <> Add them under <a className="link link-primary" href={PLACES_HREF}>Places</a>.</>}
+                  <Trans>No rooms yet.</Trans>{canEdit && <> <Trans>Add them under <a className="link link-primary" href={PLACES_HREF}>Places</a></Trans>.</>}
                 </p>
               )}
             </>
@@ -1158,7 +1172,7 @@ export function Home({ householdName, householdId, view }: { householdName: stri
                 )
               }
             />
-            {place && place.node.children.length > 0 && <PlaceTiles nodes={place.node.children} title={`Inside ${place.node.name}`} />}
+            {place && place.node.children.length > 0 && <PlaceTiles nodes={place.node.children} title={t`Inside ${ph({ name: place.node.name })}`} />}
           </>
         )}
 
@@ -1177,7 +1191,7 @@ export function Home({ householdName, householdId, view }: { householdName: stri
           <CollectionHeader
             icon={kind ? categoryIcon(kind) : "icon-[tabler--tag]"}
             title={kind?.name ?? tag ?? ""}
-            subtitle={kind ? (kind.path !== kind.name ? kind.path : "Category") : "Tag"}
+            subtitle={kind ? (kind.path !== kind.name ? kind.path : t`Category`) : t`Tag`}
             items={items.data?.total}
             valueCents={items.data?.valueCents}
 
@@ -1185,13 +1199,13 @@ export function Home({ householdName, householdId, view }: { householdName: stri
               <ShareButton
                 householdId={householdId}
                 target={kind ? { kind: "category", categoryId: kind.id } : { kind: "tag", tag: tag! }}
-                what={kind ? `everything in ${kind.name}` : `everything tagged ${tag}`}
+                what={kind ? t`everything in ${ph({ name: kind.name })}` : t`everything tagged ${ph({ tag: tag ?? "" })}`}
                 className="btn btn-soft btn-primary btn-sm"
               />
             }
           />
         )}
-        {!query && kind && kind.children.length > 0 && <CategoryTiles nodes={kind.children} title={`Inside ${kind.name}`} />}
+        {!query && kind && kind.children.length > 0 && <CategoryTiles nodes={kind.children} title={t`Inside ${ph({ name: kind.name })}`} />}
 
         {listing && (
           <>
@@ -1205,24 +1219,24 @@ export function Home({ householdName, householdId, view }: { householdName: stri
                     <input
                       name="name"
                       className="grow"
-                      aria-label="Name"
-                      placeholder={place ? `Add to ${place.node.name}…` : kind ? `Add to ${kind.name}…` : tag ? `Add to ${tag}…` : "Add an item…"}
+                      aria-label={t`Name`}
+                      placeholder={place ? t`Add to ${ph({ name: place.node.name })}…` : kind ? t`Add to ${ph({ name: kind.name })}…` : tag ? t`Add to ${tag}…` : t`Add an item…`}
                       required
                       onFocus={() => setAdding(true)}
                     />
                   </label>
                   {adding && (
                     <>
-                      <input name="brand" className="input w-36 max-w-full" placeholder="Brand" />
-                      <input name="value" className="input w-28" placeholder="Value $" inputMode="decimal" />
+                      <input name="brand" className="input w-36 max-w-full" placeholder={t`Brand`} />
+                      <input name="value" className="input w-28" placeholder={t`Value $`} inputMode="decimal" />
                       <label className="flex h-11 items-center gap-2 text-sm text-base-content/80">
                         <input type="checkbox" name="isContainer" className="checkbox checkbox-primary checkbox-sm" />
-                        It's a box
+                        <Trans>It's a box</Trans>
                       </label>
                     </>
                   )}
                   <button className="btn btn-primary" disabled={create.isPending}>
-                    Add
+                    <Trans>Add</Trans>
                   </button>
                   {adding && (
                     <div className="flex w-full flex-wrap gap-2">
@@ -1230,13 +1244,13 @@ export function Home({ householdName, householdId, view }: { householdName: stri
                       {locationId && roomScanOn && (
                         <a href={scanRoomHref({ locationId })} className="btn btn-wrap btn-soft btn-primary">
                           <span className="icon-[tabler--scan-eye] size-5" />
-                          Scan this room
+                          <Trans>Scan this room</Trans>
                         </a>
                       )}
                       {locationId && (
                         <a href={walkthroughHref(locationId)} className="btn btn-wrap btn-soft btn-primary">
                           <span className="icon-[tabler--walk] size-5" />
-                          Walk through this room
+                          <Trans>Walk through this room</Trans>
                         </a>
                       )}
                     </div>
@@ -1248,12 +1262,12 @@ export function Home({ householdName, householdId, view }: { householdName: stri
             {query && items.data && !(stillChecking && items.data.total === 0) && (
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm text-base-content/70" aria-live="polite">
                 <span>
-                  {items.data.total === 0 ? "No matches" : `${items.data.total} ${items.data.total === 1 ? "match" : "matches"}`}
-                  {place ? ` in ${place.node.name}` : kind ? ` in ${kind.name}` : tag ? ` tagged ${tag}` : ""}
+                  {items.data.total === 0 ? t`No matches` : plural(items.data.total, { one: "# match", other: "# matches" })}
+                  {place ? t` in ${ph({ name: place.node.name })}` : kind ? t` in ${ph({ name: kind.name })}` : tag ? t` tagged ${tag}` : ""}
                 </span>
                 {(place || kind || tag || missing || origin) && (
                   <a href={`#/?q=${encodeURIComponent(query)}`} className="link link-primary tap">
-                    Search everywhere
+                    <Trans>Search everywhere</Trans>
                   </a>
                 )}
               </div>
@@ -1264,13 +1278,13 @@ export function Home({ householdName, householdId, view }: { householdName: stri
             {items.isError && <div className="alert alert-soft alert-error">{items.error.message}</div>}
 
             {view.name === "place" && !query && place && place.node.children.length > 0 && (
-              <h2 className="font-semibold text-base-content">Things kept here</h2>
+              <h2 className="font-semibold text-base-content"><Trans>Things kept here</Trans></h2>
             )}
             <div ref={results}>
             {stillChecking && (
               <p className="mb-2 flex items-center gap-2 text-sm text-base-content/70" role="status">
                 <span className="loading loading-spinner loading-xs" />
-                Checking {first.data!.checking === 1 ? "one more possible match" : `${first.data!.checking} more possible matches`}…
+                {plural(first.data!.checking ?? 0, { one: "Checking one more possible match…", other: "Checking # more possible matches…" })}
               </p>
             )}
             <ul className="flex flex-col gap-2">
@@ -1291,15 +1305,15 @@ export function Home({ householdName, householdId, view }: { householdName: stri
                 {query ? <Mascot pose="searching" /> : !origin && !locationId && (missing ? <Mascot pose="asleep" /> : <Mascot pose="box" />)}
                 {query
                   ? place || kind || tag
-                    ? "Nothing here matches that — try Search everywhere."
-                    : "Nothing matches that yet. Try fewer words, or what it's for (\u201csomething to cut wood\u201d)."
+                    ? t`Nothing here matches that — try Search everywhere.`
+                    : t`Nothing matches that yet. Try fewer words, or what it's for (“something to cut wood”).`
                   : origin
-                    ? "Nothing added this way yet."
+                    ? t`Nothing added this way yet.`
                     : missing
-                    ? "All done — nothing is missing that."
+                    ? t`All done — nothing is missing that.`
                     : locationId
-                      ? "Nothing kept here yet."
-                      : "Nothing here yet — add your first item above."}
+                      ? t`Nothing kept here yet.`
+                      : t`Nothing here yet — add your first item above.`}
               </div>
             )}
           </>
@@ -1334,7 +1348,7 @@ function CollectionHeader(props: {
             <h1 className="truncate text-xl font-semibold text-base-content">{props.title}</h1>
             {props.items !== undefined && (
               <p className="text-sm text-base-content/70">
-                {props.items} {props.items === 1 ? "thing" : "things"}
+                {plural(props.items, { one: "# thing", other: "# things" })}
                 {props.valueCents ? ` · ${money(props.valueCents)}` : ""}
               </p>
             )}
@@ -1349,8 +1363,8 @@ function CollectionHeader(props: {
 function useDebounced<T>(value: T, ms: number) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), ms);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setDebounced(value), ms);
+    return () => clearTimeout(timer);
   }, [value, ms]);
   return debounced;
 }
@@ -1362,27 +1376,27 @@ function AskFerret({ question }: { question: string }) {
     return (
       <button type="button" className="btn btn-soft btn-primary self-start" onClick={() => ask.mutate()}>
         <span className="icon-[tabler--sparkles] size-5" />
-        Ask Ferret
+        <Trans>Ask Ferret</Trans>
       </button>
     );
   }
   return (
-    <section className="card border border-primary/20" aria-live="polite" aria-label="Ferret's answer">
+    <section className="card border border-primary/20" aria-live="polite" aria-label={t`Ferret's answer`}>
       <div className="card-body gap-2 p-4">
         <h2 className="text-base-content/70 flex items-center gap-2 text-sm font-medium">
           <span className="icon-[tabler--sparkles] text-primary size-4" />
-          Ferret
+          <Trans>Ferret</Trans>
         </h2>
         {ask.isPending && (
           <p className="text-base-content/70 flex items-center gap-2">
-            <span className="loading loading-dots loading-sm" /> Looking through your things…
+            <span className="loading loading-dots loading-sm" /> <Trans>Looking through your things…</Trans>
           </p>
         )}
         {ask.isError && (
           <div className="flex items-center gap-2">
             <p className="text-error flex-1 text-sm">{ask.error.message}</p>
             <button type="button" className="btn btn-text btn-sm" onClick={() => ask.mutate()}>
-              Try again
+              <Trans>Try again</Trans>
             </button>
           </div>
         )}
@@ -1405,7 +1419,7 @@ function AskFerret({ question }: { question: string }) {
                 ))}
               </ul>
             )}
-            <p className="text-base-content/70 text-xs">Answered by AI from your inventory — check the sources.</p>
+            <p className="text-base-content/70 text-xs"><Trans>Answered by AI from your inventory — check the sources.</Trans></p>
           </>
         )}
       </div>
@@ -1438,7 +1452,7 @@ function UnknownBarcode({ code, onDone, locationId }: { code: string; onDone: ()
       <div className="card border border-primary/20">
         <div className="card-body flex-row items-center gap-3 p-4 text-sm text-base-content/70">
           <span className="loading loading-spinner loading-sm text-primary" />
-          Looking up <span className="font-mono">{code}</span>…
+          <Trans>Looking up</Trans> <span className="font-mono">{code}</span>…
         </div>
       </div>
     );
@@ -1446,11 +1460,11 @@ function UnknownBarcode({ code, onDone, locationId }: { code: string; onDone: ()
 
   if (match && !other) {
     return (
-      <section className="card border border-primary/20" aria-label="Is it this?">
+      <section className="card border border-primary/20" aria-label={t`Is it this?`}>
         <div className="card-body gap-3 p-4">
           <p className="text-sm text-base-content/70">
             <span className="icon-[tabler--barcode] me-1 inline-block size-4 align-[-3px]" />
-            Is it this?
+            <Trans>Is it this?</Trans>
           </p>
           <div className="flex items-center gap-3">
             {match.images[0] ? (
@@ -1464,8 +1478,8 @@ function UnknownBarcode({ code, onDone, locationId }: { code: string; onDone: ()
               <p className="line-clamp-2 font-medium text-base-content">{match.name}</p>
               <p className="truncate text-sm text-base-content/70">{[match.brand, match.model].filter(Boolean).join(" · ")}</p>
               <p className="text-xs text-base-content/70">
-                {match.source === "ferret" ? "Saved in Ferret before" : "From the UPCitemdb product database"}
-                {match.typicalPriceCents ? ` · usually ${money(match.typicalPriceCents)}` : ""}
+                {match.source === "ferret" ? t`Saved in Ferret before` : t`From the UPCitemdb product database`}
+                {match.typicalPriceCents ? t` · usually ${ph({ amount: money(match.typicalPriceCents) })}` : ""}
               </p>
             </div>
           </div>
@@ -1478,13 +1492,13 @@ function UnknownBarcode({ code, onDone, locationId }: { code: string; onDone: ()
               onClick={() => add.mutate({ name: match.name, brand: match.brand, model: match.model })}
             >
               {add.isPending && <span className="loading loading-spinner loading-sm" />}
-              Add it
+              <Trans>Add it</Trans>
             </button>
             <button type="button" className="btn btn-soft btn-primary" onClick={() => setOther(true)}>
-              Something else
+              <Trans>Something else</Trans>
             </button>
             <button type="button" className="btn btn-text" onClick={onDone}>
-              Never mind
+              <Trans>Never mind</Trans>
             </button>
           </div>
         </div>
@@ -1505,18 +1519,18 @@ function UnknownBarcode({ code, onDone, locationId }: { code: string; onDone: ()
       <div className="card-body gap-3 p-4">
         <p className="text-base-content/80 text-sm">
           <span className="icon-[tabler--barcode] me-1 inline-block size-4 align-[-3px]" />
-          {other ? "What is it?" : <>Nothing has barcode <span className="font-mono">{code}</span> yet. What is it?</>}
+          {other ? t`What is it?` : <><Trans>Nothing has barcode <span className="font-mono">{code}</span> yet. What is it?</Trans></>}
         </p>
         <div className="flex gap-2">
-          <input name="name" className="input flex-1" placeholder="e.g. Cordless drill" autoFocus required />
+          <input name="name" className="input flex-1" placeholder={t`e.g. Cordless drill`} autoFocus required />
           <button className="btn btn-primary" disabled={add.isPending}>
-            Add
+            <Trans>Add</Trans>
           </button>
         </div>
         {add.isError && <p className="text-error text-sm">{add.error.message}</p>}
-        <p className="text-xs text-base-content/70">Ferret remembers it: next time anyone scans this code, it knows.</p>
+        <p className="text-xs text-base-content/70"><Trans>Ferret remembers it: next time anyone scans this code, it knows.</Trans></p>
         <button type="button" className="btn btn-text btn-sm self-start" onClick={onDone}>
-          Never mind
+          <Trans>Never mind</Trans>
         </button>
       </div>
     </form>
@@ -1533,36 +1547,36 @@ function StickLabel({ code, onDone }: { code: string; onDone: () => void }) {
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<Choice | null>(null);
   const stick = useMutation({
-    mutationFn: (t: Choice) => api.attachLabel(code, { itemId: t.id }),
-    onSuccess: (_, t) => {
+    mutationFn: (value: Choice) => api.attachLabel(code, { itemId: value.id }),
+    onSuccess: (_, value) => {
       void qc.invalidateQueries({ queryKey: ["item", householdId] });
       onDone();
-      navigateTo(itemHref(t.id));
+      navigateTo(itemHref(value.id));
     },
   });
   if (!open) {
     return (
       <button type="button" className="btn btn-soft btn-sm btn-wrap self-start" onClick={() => setOpen(true)}>
         <span className="icon-[tabler--tag] size-4" />
-        It's a label — put it on something I have
+        <Trans>It's a label — put it on something I have</Trans>
       </button>
     );
   }
   return (
     <div className="flex flex-col gap-2 rounded-box bg-base-200 p-3">
-      <ItemPicker householdId={householdId} id="label-item" name="labelItem" label="Which thing is it on?" value={target} onChange={setTarget} />
+      <ItemPicker householdId={householdId} id="label-item" name="labelItem" label={t`Which thing is it on?`} value={target} onChange={setTarget} />
       {stick.isError && <p className="text-sm text-error">{stick.error.message}</p>}
       <button type="button" className="btn btn-primary btn-sm self-start" disabled={!target || stick.isPending} onClick={() => target && stick.mutate(target)}>
-        Put the label on it
+        <Trans>Put the label on it</Trans>
       </button>
     </div>
   );
 }
 
-export const APPEARANCES: { value: Appearance; label: string; icon: string; help: string }[] = [
-  { value: "auto", label: "Auto", icon: "icon-[tabler--device-mobile]", help: "Automatic: follow this device" },
-  { value: "light", label: "Light", icon: "icon-[tabler--sun]", help: "Light" },
-  { value: "dark", label: "Dark", icon: "icon-[tabler--moon]", help: "Dark" },
+export const APPEARANCES: { value: Appearance; label: MessageDescriptor; icon: string; help: MessageDescriptor }[] = [
+  { value: "auto", label: msg`Auto`, icon: "icon-[tabler--device-mobile]", help: msg`Automatic: follow this device` },
+  { value: "light", label: msg`Light`, icon: "icon-[tabler--sun]", help: msg`Light` },
+  { value: "dark", label: msg`Dark`, icon: "icon-[tabler--moon]", help: msg`Dark` },
 ];
 
 /** Appearance in the account menu: Automatic / Light / Dark, for this device (lib/appearance.ts). */
@@ -1571,7 +1585,7 @@ function AppearanceChoice() {
   return (
     <li className="px-3 pb-1" role="none">
       <p className="dropdown-title px-1 pt-1 text-xs" id="appearance-label">
-        Appearance
+        <Trans>Appearance</Trans>
       </p>
       <div className="join w-full" role="group" aria-labelledby="appearance-label">
         {APPEARANCES.map((a) => (
@@ -1580,13 +1594,13 @@ function AppearanceChoice() {
             type="button"
             role="menuitemradio"
             aria-checked={choice === a.value}
-            aria-label={a.help}
-            title={a.help}
+            aria-label={t(a.help)}
+            title={t(a.help)}
             className={`btn join-item btn-sm grow gap-1 ${choice === a.value ? "btn-primary" : "btn-soft btn-secondary"}`}
             onClick={() => set(a.value)}
           >
             <span className={`${a.icon} size-4`} />
-            {a.label}
+            {t(a.label)}
           </button>
         ))}
       </div>

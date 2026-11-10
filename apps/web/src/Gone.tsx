@@ -15,13 +15,16 @@ import { useCanEdit } from "./lib/auth";
 import { itemHref } from "./lib/route";
 import { DialogActions, Modal } from "./Modal";
 import { money, currencySymbol, toCents } from "./lib/money";
+import { t, ph, plural, msg } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
+import type { MessageDescriptor } from "@lingui/core";
 
-export const DISPOSITIONS: { value: ItemDisposition; label: string; past: string; icon: string; amount?: string }[] = [
-  { value: "sold", label: "Sold it", past: "Sold", icon: "icon-[tabler--cash]", amount: "Sold for" },
-  { value: "given", label: "Gave it away", past: "Given away", icon: "icon-[tabler--gift]" },
-  { value: "discarded", label: "Threw it out", past: "Thrown out", icon: "icon-[tabler--trash-x]" },
-  { value: "lost", label: "Lost it", past: "Lost", icon: "icon-[tabler--map-pin-question]", amount: "Insurance paid" },
-  { value: "stolen", label: "It was stolen", past: "Stolen", icon: "icon-[tabler--shield-x]", amount: "Insurance paid" },
+export const DISPOSITIONS: { value: ItemDisposition; label: MessageDescriptor; past: MessageDescriptor; icon: string; amount?: MessageDescriptor }[] = [
+  { value: "sold", label: msg`Sold it`, past: msg`Sold`, icon: "icon-[tabler--cash]", amount: msg`Sold for` },
+  { value: "given", label: msg`Gave it away`, past: msg`Given away`, icon: "icon-[tabler--gift]" },
+  { value: "discarded", label: msg`Threw it out`, past: msg`Thrown out`, icon: "icon-[tabler--trash-x]" },
+  { value: "lost", label: msg`Lost it`, past: msg`Lost`, icon: "icon-[tabler--map-pin-question]", amount: msg`Insurance paid` },
+  { value: "stolen", label: msg`It was stolen`, past: msg`Stolen`, icon: "icon-[tabler--shield-x]", amount: msg`Insurance paid` },
 ];
 const byValue = (v: ItemDisposition | null | undefined) => DISPOSITIONS.find((d) => d.value === v);
 const formatDate = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -61,17 +64,17 @@ export function GoneDialog({ item, householdId, onClose, onDone }: { item: ItemL
     });
   }
   return (
-    <Modal id="item-gone" title={`No longer have ${item.name}?`} onClose={onClose}>
+    <Modal id="item-gone" title={t`No longer have ${ph({ name: item.name })}?`} onClose={onClose}>
       <form className="flex flex-col gap-5" onSubmit={onSubmit}>
         <fieldset>
-          <legend className="label-text mb-2">What happened</legend>
+          <legend className="label-text mb-2"><Trans>What happened</Trans></legend>
           <div className="@container">
             <div className="grid grid-cols-1 gap-2 @sm:grid-cols-2">
               {DISPOSITIONS.map((d) => (
                 <label key={d.value} className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-field border px-3 ${what === d.value ? "border-primary bg-primary/10" : "border-base-content/15"}`}>
                   <input type="radio" name="what" className="radio radio-primary radio-sm" checked={what === d.value} onChange={() => setWhat(d.value)} />
                   <span className={`${d.icon} size-5 text-base-content/70`} />
-                  {d.label}
+                  {t(d.label)}
                 </label>
               ))}
             </div>
@@ -80,14 +83,14 @@ export function GoneDialog({ item, householdId, onClose, onDone }: { item: ItemL
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="label-text" htmlFor="gone-when">
-              When
+              <Trans>When</Trans>
             </label>
             <input id="gone-when" name="when" type="date" className="input" defaultValue={today()} max={today()} required />
           </div>
           {kind.amount && (
             <div>
               <label className="label-text" htmlFor="gone-amount">
-                {kind.amount}
+                {t(kind.amount)}
               </label>
               <div className="input">
                 <span className="my-auto me-1 text-base-content/70">{currencySymbol()}</span>
@@ -98,28 +101,28 @@ export function GoneDialog({ item, householdId, onClose, onDone }: { item: ItemL
         </div>
         <div>
           <label className="label-text" htmlFor="gone-note">
-            Note
+            <Trans>Note</Trans>
           </label>
           <input
             id="gone-note"
             name="note"
             className="input"
             maxLength={2000}
-            placeholder={what === "stolen" ? "e.g. from the garage — police report 26-1234" : what === "sold" ? "e.g. to a neighbour, on Marketplace" : "optional"}
+            placeholder={what === "stolen" ? t`e.g. from the garage — police report 26-1234` : what === "sold" ? t`e.g. to a neighbour, on Marketplace` : "optional"}
           />
         </div>
         <p className="text-sm text-base-content/70">
-          It leaves your lists, totals and the insurance report, and its maintenance stops — but it keeps its page, photos and
-          history, and you can bring it back.
+          <Trans>It leaves your lists, totals and the insurance report, and its maintenance stops — but it keeps its page, photos and
+          history, and you can bring it back.</Trans>
         </p>
         {save.isError && <div className="alert alert-soft alert-error">{save.error.message}</div>}
         <DialogActions>
           <button type="button" className="btn btn-secondary btn-soft" onClick={onClose}>
-            Cancel
+            <Trans>Cancel</Trans>
           </button>
           <button type="submit" className="btn btn-primary" disabled={save.isPending}>
             {save.isPending && <span className="loading loading-spinner loading-sm" />}
-            {kind.past}
+            {t(kind.past)}
           </button>
         </DialogActions>
       </form>
@@ -139,16 +142,16 @@ export function GoneBanner({ item, householdId }: { item: ItemListing; household
       <span className={`${kind.icon} size-6 shrink-0`} />
       <div className="min-w-0 flex-1">
         <p className="font-medium">
-          {kind.past}
-          {item.disposedOn ? ` on ${formatDate(item.disposedOn)}` : ""}
+          {t(kind.past)}
+          {item.disposedOn ? t` on ${ph({ formatDate: formatDate(item.disposedOn) })}` : ""}
           {item.disposalCents != null ? ` — ${kind.value === "sold" ? "for" : "insurance paid"} ${money(item.disposalCents)}` : ""}
         </p>
         {item.disposalNote && <p className="text-sm">{item.disposalNote}</p>}
-        <p className="text-sm">Not in your lists or totals any more.</p>
+        <p className="text-sm"><Trans>Not in your lists or totals any more.</Trans></p>
       </div>
       {canEdit && (
         <button type="button" className="btn btn-soft btn-sm" disabled={back.isPending} onClick={() => back.mutate()}>
-          Bring it back
+          <Trans>Bring it back</Trans>
         </button>
       )}
       {back.isError && <p className="w-full text-sm text-error">{back.error.message}</p>}
@@ -165,11 +168,11 @@ export function Past({ householdId }: { householdId: string }) {
     <div className="min-h-dvh bg-base-200">
       <nav className="navbar sticky top-0 z-10 border-b border-base-300 bg-base-100/85 backdrop-blur-md px-4">
         <div className="navbar-start w-full min-w-0 items-center gap-2">
-          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label="Back">
+          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label={t`Back`}>
             <span className="icon-[tabler--arrow-left] size-5" />
           </a>
-          <h1 className="truncate text-lg font-semibold">Past things</h1>
-          <HelpLink page="guide/past-things.html" label="Past things" />
+          <h1 className="truncate text-lg font-semibold"><Trans>Past things</Trans></h1>
+          <HelpLink page="guide/past-things.html" label={t`Past things`} />
         </div>
         <BarSearch />
       </nav>
@@ -180,10 +183,10 @@ export function Past({ householdId }: { householdId: string }) {
           <div className="card">
             <div className="card-body items-center gap-3 text-center">
               <span className="icon-[tabler--history] size-10 text-primary" />
-              <h2 className="text-lg font-semibold">Nothing here yet</h2>
+              <h2 className="text-lg font-semibold"><Trans>Nothing here yet</Trans></h2>
               <p className="max-w-sm text-sm text-base-content/70">
-                When you sell, give away, throw out, lose or have something stolen, mark it on its page (Edit → No longer have
-                it?). It leaves your lists and totals and comes here.
+                <Trans>When you sell, give away, throw out, lose or have something stolen, mark it on its page (Edit → No longer have
+                it?). It leaves your lists and totals and comes here.</Trans>
               </p>
             </div>
           </div>
@@ -192,12 +195,11 @@ export function Past({ householdId }: { householdId: string }) {
           <div className="alert alert-soft alert-info flex flex-wrap items-center gap-3">
             <span className="icon-[tabler--file-spreadsheet] size-6 shrink-0" />
             <p className="min-w-0 flex-1 text-sm">
-              {lostOrStolen.length} lost or stolen {lostOrStolen.length === 1 ? "thing" : "things"} — the list an insurer asks for, with what
-              happened and when.
+              {plural(lostOrStolen.length, { one: "# lost or stolen thing — the list an insurer asks for, with what happened and when.", other: "# lost or stolen things — the list an insurer asks for, with what happened and when." })}
             </p>
-            <a className="btn btn-soft btn-info btn-sm" href="/api/v1/export/items.csv?gone=lost" download>
+            <Trans><a className="btn btn-soft btn-info btn-sm" href="/api/v1/export/items.csv?gone=lost" download>
               Download for a claim (CSV)
-            </a>
+            </a></Trans>
           </div>
         )}
         {DISPOSITIONS.map((d) => {
@@ -209,7 +211,7 @@ export function Past({ householdId }: { householdId: string }) {
               <div className="card-body gap-2 p-4 sm:p-6">
                 <h2 id={`past-${d.value}`} className="card-title flex items-center gap-2 text-base">
                   <span className={`${d.icon} size-5 text-primary`} />
-                  {d.past}
+                  {t(d.past)}
                   <span className="badge badge-soft">{group.length}</span>
                   {d.amount && total > 0 && <span className="ms-auto text-sm font-normal text-base-content/70">{money(total)}</span>}
                 </h2>

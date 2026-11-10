@@ -13,6 +13,8 @@ import { api } from "./lib/api";
 import { useCanEdit } from "./lib/auth";
 import { itemHref } from "./lib/route";
 import { money } from "./lib/money";
+import { t, ph, plural } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 export function Shopping({ householdId }: { householdId: string }) {
   const list = useQuery({ queryKey: ["shopping", householdId], queryFn: api.shopping });
@@ -58,11 +60,11 @@ export function Shopping({ householdId }: { householdId: string }) {
     <div className="min-h-dvh bg-base-200">
       <nav className="navbar sticky top-0 z-10 border-b border-base-300 bg-base-100/85 backdrop-blur-md px-4">
         <div className="navbar-start w-full min-w-0 items-center gap-2">
-          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label="Back">
+          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label={t`Back`}>
             <span className="icon-[tabler--arrow-left] size-5" />
           </a>
-          <h1 className="truncate text-lg font-semibold">Shopping list</h1>
-          <HelpLink page="guide/stock.html#shopping-list" label="Shopping list" />
+          <h1 className="truncate text-lg font-semibold"><Trans>Shopping list</Trans></h1>
+          <HelpLink page="guide/stock.html#shopping-list" label={t`Shopping list`} />
         </div>
         <BarSearch />
       </nav>
@@ -72,17 +74,17 @@ export function Shopping({ householdId }: { householdId: string }) {
         {bought.isSuccess && (
           <div className="alert alert-soft alert-success" role="status">
             <span className="icon-[tabler--circle-check] size-5" />
-            Added to stock — {bought.data} {bought.data === 1 ? "thing" : "things"} off the list.
+            {plural(bought.data, { one: "Added to stock — # thing off the list.", other: "Added to stock — # things off the list." })}
           </div>
         )}
         {list.data && items.length === 0 && (
           <div className="card">
             <div className="card-body items-center gap-3 text-center">
               <span className="icon-[tabler--shopping-cart-check] size-10 text-primary" />
-              <h2 className="text-lg font-semibold">Nothing to buy</h2>
+              <h2 className="text-lg font-semibold"><Trans>Nothing to buy</Trans></h2>
               <p className="max-w-sm text-sm text-base-content/70">
-                Things you track show up here when they run out, or drop to the number you keep at least — set it on the item's
-                Stock card.
+                <Trans>Things you track show up here when they run out, or drop to the number you keep at least — set it on the item's
+                Stock card.</Trans>
               </p>
             </div>
           </div>
@@ -111,32 +113,32 @@ export function Shopping({ householdId }: { householdId: string }) {
             <section className="card lg:sticky lg:top-20" aria-labelledby="cart-title">
               <div className="card-body gap-4">
                 <h2 id="cart-title" className="text-lg font-semibold text-base-content">
-                  {canEdit ? "In the trolley" : "To buy"}
+                  {canEdit ? t`In the trolley` : t`To buy`}
                 </h2>
                 <dl className="flex flex-col gap-2 text-sm">
                   <div className="flex justify-between gap-2">
-                    <dt className="text-base-content/70">On the list</dt>
+                    <dt className="text-base-content/70"><Trans>On the list</Trans></dt>
                     <dd className="font-medium">{items.length}</dd>
                   </div>
                   {canEdit && (
                     <div className="flex justify-between gap-2">
-                      <dt className="text-base-content/70">Ticked</dt>
+                      <dt className="text-base-content/70"><Trans>Ticked</Trans></dt>
                       <dd className="font-medium">{ticked.length}</dd>
                     </div>
                   )}
                   {priced && (
                     <div className="flex justify-between gap-2 border-t border-base-content/10 pt-2">
-                      <dt className="text-base-content/70">About{canEdit && ticked.length ? " (ticked)" : ""}</dt>
+                      <dt className="text-base-content/70"><Trans>About</Trans>{canEdit && ticked.length ? t` (ticked)` : ""}</dt>
                       <dd className="font-semibold">{money(estimate(canEdit && ticked.length ? ticked : items))}</dd>
                     </div>
                   )}
                 </dl>
-                {priced && <p className="-mt-2 text-xs text-base-content/70">From what each cost last time, where it's known.</p>}
+                {priced && <p className="-mt-2 text-xs text-base-content/70"><Trans>From what each cost last time, where it's known.</Trans></p>}
                 {canEdit && (
                   <>
                     <button type="button" className="btn btn-primary" disabled={!ticked.length || bought.isPending} onClick={() => bought.mutate(ticked)}>
                       {bought.isPending ? <span className="loading loading-spinner loading-sm" /> : <span className="icon-[tabler--shopping-cart-check] size-5" />}
-                      {ticked.length ? `Bought ${ticked.length === 1 ? "it" : `these ${ticked.length}`}` : "Tick what you bought"}
+                      {ticked.length ? plural(ticked.length, { one: "Bought it", other: "Bought these #" }) : t`Tick what you bought`}
                     </button>
                     {bought.isError && <p className="text-sm text-error">{bought.error.message}</p>}
                   </>
@@ -148,22 +150,22 @@ export function Shopping({ householdId }: { householdId: string }) {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="btn btn-soft btn-secondary btn-wrap"
-                    title="Puts them in your Amazon cart, as many as above (Amazon asks you to sign in if you aren't)"
+                    title={t`Puts them in your Amazon cart, as many as above (Amazon asks you to sign in if you aren't)`}
                   >
                     <span className="icon-[tabler--shopping-cart-plus] size-5" />
-                    {c.count === 1 ? "Add the Amazon one to your cart" : `Add the ${c.count} from Amazon to your cart`}
+                    {plural(c.count, { one: "Add the Amazon one to your cart", other: "Add the # from Amazon to your cart" })}
                     {amazonCarts.length > 1 ? ` (${c.site.replace(/^www\./, "")})` : ""}
                   </a>
                 ))}
                 <div className="flex flex-wrap gap-2 border-t border-base-content/10 pt-3">
                   <button type="button" className="btn btn-soft btn-primary btn-sm" onClick={() => void copy()}>
                     <span className={`${copied ? "icon-[tabler--check]" : "icon-[tabler--copy]"} size-4`} />
-                    {copied ? "Copied" : "Copy list"}
+                    {copied ? t`Copied` : t`Copy list`}
                   </button>
                   {canShare && (
-                    <button type="button" className="btn btn-soft btn-primary btn-sm" onClick={() => void navigator.share({ title: "Shopping list", text: list.data!.text }).catch(() => {})}>
+                    <button type="button" className="btn btn-soft btn-primary btn-sm" onClick={() => void navigator.share({ title: t`Shopping list`, text: list.data!.text }).catch(() => {})}>
                       <span className="icon-[tabler--share] size-4" />
-                      Share
+                      <Trans>Share</Trans>
                     </button>
                   )}
                 </div>
@@ -185,7 +187,7 @@ function Row(props: { item: ShoppingItem; canEdit: boolean; count: number; onCou
         <input
           type="checkbox"
           className="checkbox checkbox-primary"
-          aria-label={`${item.name} is in the trolley`}
+          aria-label={t`${ph({ name: item.name })} is in the trolley`}
           checked={props.inCart}
           onChange={(e) => props.onCart(e.target.checked)}
         />
@@ -202,28 +204,28 @@ function Row(props: { item: ShoppingItem; canEdit: boolean; count: number; onCou
           {item.name}
         </a>
         <p className="text-sm text-base-content/70">
-          <span className={out ? "font-medium text-error" : "text-warning"}>{out ? "None left" : `${item.quantity} left`}</span>
-          {item.minQuantity != null ? ` · keep at least ${item.minQuantity}` : ""}
+          <span className={out ? "font-medium text-error" : "text-warning"}>{out ? t`None left` : t`${ph({ quantity: item.quantity })} left`}</span>
+          {item.minQuantity != null ? t` · keep at least ${ph({ minQuantity: item.minQuantity })}` : ""}
           {item.place ? ` · ${item.place}` : ""}
         </p>
-        {item.forTask && <p className="text-sm text-warning">For {forTaskText(item.forTask)}</p>}
+        {item.forTask && <p className="text-sm text-warning"><Trans>For {ph({ forTaskText: forTaskText(item.forTask) })}</Trans></p>}
       </div>
       <div className="ms-auto flex items-center gap-3">
         {canEdit ? (
           // How many to buy: a stepper.
-          <div className="join" role="group" aria-label={`How many ${item.name} to buy`}>
-            <button type="button" className="btn btn-soft btn-sm join-item btn-square" aria-label="One fewer" disabled={count <= 1} onClick={() => props.onCount(count - 1)}>
+          <div className="join" role="group" aria-label={t`How many ${ph({ name: item.name })} to buy`}>
+            <button type="button" className="btn btn-soft btn-sm join-item btn-square" aria-label={t`One fewer`} disabled={count <= 1} onClick={() => props.onCount(count - 1)}>
               <span className="icon-[tabler--minus] size-4" />
             </button>
             <span className="join-item flex min-w-10 items-center justify-center bg-base-200 px-2 text-sm font-medium tabular-nums" aria-live="polite">
               {count}
             </span>
-            <button type="button" className="btn btn-soft btn-sm join-item btn-square" aria-label="One more" disabled={count >= 10000} onClick={() => props.onCount(count + 1)}>
+            <button type="button" className="btn btn-soft btn-sm join-item btn-square" aria-label={t`One more`} disabled={count >= 10000} onClick={() => props.onCount(count + 1)}>
               <span className="icon-[tabler--plus] size-4" />
             </button>
           </div>
         ) : (
-          <span className="text-sm text-base-content/70">Buy {count}</span>
+          <span className="text-sm text-base-content/70"><Trans>Buy {count}</Trans></span>
         )}
         {item.unitCents != null && <span className="w-16 text-end text-sm font-medium tabular-nums">{money(item.unitCents * count)}</span>}
         {item.amazon && (
@@ -232,8 +234,8 @@ function Row(props: { item: ShoppingItem; canEdit: boolean; count: number; onCou
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-text btn-sm btn-square"
-            aria-label={`Add ${count} ${item.name} to your Amazon cart`}
-            title="Add to Amazon cart"
+            aria-label={t`Add ${count} ${ph({ name: item.name })} to your Amazon cart`}
+            title={t`Add to Amazon cart`}
           >
             <span className="icon-[tabler--shopping-cart-plus] size-5" />
           </a>

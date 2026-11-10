@@ -4,19 +4,22 @@
  * Maintenance schedules from manuals are in Suggested maintenance (SuggestedMaintenance.tsx).
  */
 import type { Attachment, Item, ItemPatch, MaintenanceInput, MaintenanceTask, Warranty, WarrantyInput } from "@ferret/shared";
-import { addDays, addMonths, describeInterval, today } from "@ferret/shared/utils";
+import { addDays, addMonths, today } from "@ferret/shared/utils";
 import { money } from "./lib/money";
+import { t, ph, plural, msg } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
+import type { MessageDescriptor } from "@lingui/core";
 
 type Field = "name" | "brand" | "model" | "serialNumber" | "barcode" | "purchaseDate" | "purchasePriceCents" | "returnBy";
 
-const fields: { key: Field; label: string; format?: (v: string | number) => string }[] = [
-  { key: "name", label: "Name" },
-  { key: "brand", label: "Brand" },
-  { key: "model", label: "Model" },
-  { key: "serialNumber", label: "Serial" },
-  { key: "barcode", label: "Barcode" },
-  { key: "purchaseDate", label: "Purchased" },
-  { key: "purchasePriceCents", label: "Price paid", format: (v) => money(Number(v), true) },
+const fields: { key: Field; label: MessageDescriptor; format?: (v: string | number) => string }[] = [
+  { key: "name", label: msg`Name` },
+  { key: "brand", label: msg`Brand` },
+  { key: "model", label: msg`Model` },
+  { key: "serialNumber", label: msg`Serial` },
+  { key: "barcode", label: msg`Barcode` },
+  { key: "purchaseDate", label: msg`Purchased` },
+  { key: "purchasePriceCents", label: msg`Price paid`, format: (v) => money(Number(v), true) },
 ];
 
 const same = (a: unknown, b: unknown) =>
@@ -32,7 +35,7 @@ export function pendingSuggestions(item: Item, attachments: Attachment[], warran
     const source = sources.find((a) => a.analysis!.suggestions[field.key] != null);
     const value = source?.analysis!.suggestions[field.key];
     if (value == null || same(item[field.key], value)) continue;
-    rows.push({ key: field.key, label: field.label, value, display: field.format?.(value) ?? String(value) });
+    rows.push({ key: field.key, label: t(field.label), value, display: field.format?.(value) ?? String(value) });
   }
 
   // A return window from a receipt: the date it prints, else its days from the purchase date — while it's still open.
@@ -41,7 +44,7 @@ export function pendingSuggestions(item: Item, attachments: Attachment[], warran
   const boughtOn = item.purchaseDate ?? sources.find((a) => a.analysis!.suggestions.purchaseDate)?.analysis!.suggestions.purchaseDate;
   const returnBy = printed ?? (window && boughtOn ? addDays(boughtOn, window.analysis!.suggestions.returnDays!) : undefined);
   if (returnBy && returnBy >= today() && returnBy !== item.returnBy) {
-    rows.push({ key: "returnBy", label: "Return by", value: returnBy, display: new Date(`${returnBy}T00:00:00`).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) });
+    rows.push({ key: "returnBy", label: t`Return by`, value: returnBy, display: new Date(`${returnBy}T00:00:00`).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) });
   }
 
   // Warranty terms run from the purchase date: the item's, or one read from a receipt.
@@ -50,14 +53,14 @@ export function pendingSuggestions(item: Item, attachments: Attachment[], warran
   if (terms) {
     const { warrantyMonths: months, warrantyProvider: provider } = terms.analysis!.suggestions;
     const purchased = item.purchaseDate ?? sources.find((a) => a.analysis!.suggestions.purchaseDate)?.analysis!.suggestions.purchaseDate;
-    const length = months! % 12 === 0 ? `${months! / 12} year${months === 12 ? "" : "s"}` : `${months} months`;
+    const length = months! % 12 === 0 ? plural(months! / 12, { one: "# year", other: "# years" }) : plural(months!, { one: "# month", other: "# months" });
     if (purchased) {
       const endsOn = addMonths(purchased, months!);
       const already = warranties.some((w) => w.endsOn === endsOn);
       if (!already) {
         warranty = {
           input: { provider, startsOn: purchased, endsOn, attachmentId: terms.id },
-          display: `${length}${provider ? ` (${provider})` : ""} — until ${endsOn}`,
+          display: provider ? t`${ph({ length })} (${ph({ provider })}) — until ${ph({ endsOn })}` : t`${ph({ length })} — until ${ph({ endsOn })}`,
           needsDate: false,
         };
       }
@@ -84,11 +87,11 @@ export function Suggestions(props: {
   const all = Object.fromEntries(rows.map((r) => [r.key, r.value])) as ItemPatch;
 
   return (
-    <section className="card border border-primary/20" aria-label="Suggestions from your files">
+    <section className="card border border-primary/20" aria-label={t`Suggestions from your files`}>
       <div className="card-body gap-3 p-4">
         <h2 className="text-base-content flex items-center gap-2 font-semibold">
           <span className="icon-[tabler--sparkles] text-primary size-5" />
-          Suggestions from your files
+          <Trans>Suggestions from your files</Trans>
         </h2>
         <ul className="divide-base-content/10 flex flex-col divide-y">
           {rows.map((r) => (
@@ -100,19 +103,19 @@ export function Suggestions(props: {
                 className="btn btn-text btn-primary btn-sm"
                 disabled={props.busy}
                 onClick={() => props.onApply({ [r.key]: r.value } as ItemPatch)}
-                aria-label={`Apply ${r.label}: ${r.display}`}
+                aria-label={t`Apply ${ph({ label: r.label })}: ${ph({ display: r.display })}`}
               >
-                Apply
+                <Trans>Apply</Trans>
               </button>
             </li>
           ))}
           {warranty && (
             <li className="flex items-center gap-3 py-2">
-              <span className="text-base-content/70 w-20 shrink-0 text-sm">Warranty</span>
+              <Trans><span className="text-base-content/70 w-20 shrink-0 text-sm">Warranty</span></Trans>
               <span className="min-w-0 flex-1">
                 <span className="text-base-content block truncate font-medium">{warranty.display}</span>
                 {warranty.needsDate && (
-                  <span className="text-base-content/70 text-xs">Add the purchase date to work out when it ends.</span>
+                  <span className="text-base-content/70 text-xs"><Trans>Add the purchase date to work out when it ends.</Trans></span>
                 )}
               </span>
               <button
@@ -120,9 +123,9 @@ export function Suggestions(props: {
                 className="btn btn-text btn-primary btn-sm"
                 disabled={props.busy || !warranty.input}
                 onClick={() => warranty.input && props.onAddWarranty(warranty.input)}
-                aria-label={`Add warranty: ${warranty.display}`}
+                aria-label={t`Add warranty: ${ph({ display: warranty.display })}`}
               >
-                Add
+                <Trans>Add</Trans>
               </button>
             </li>
           )}
@@ -134,15 +137,15 @@ export function Suggestions(props: {
             disabled={props.busy}
             onClick={() => props.onDismiss(sources.map((s) => s.id))}
           >
-            Dismiss
+            <Trans>Dismiss</Trans>
           </button>
           {rows.length > 1 && (
             <button type="button" className="btn btn-primary btn-sm" disabled={props.busy} onClick={() => props.onApply(all)}>
-              Apply all
+              <Trans>Apply all</Trans>
             </button>
           )}
         </div>
-        <p className="text-base-content/70 text-xs">Read by AI from your photos and documents — check before applying.</p>
+        <p className="text-base-content/70 text-xs"><Trans>Read by AI from your photos and documents — check before applying.</Trans></p>
       </div>
     </section>
   );

@@ -5,6 +5,8 @@
  */
 import type { ItemLink } from "@ferret/shared";
 import { amazonCartUrl, amazonProductOf } from "@ferret/shared/utils";
+import { t, ph } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 /** "dewalt.com" from "https://www.dewalt.com/product/…". */
 export const siteOf = (url: string) => {
@@ -33,7 +35,7 @@ export function ItemLinks({ links }: { links: ItemLink[] }) {
   const product = amazonProductOf(links);
   const cart = product && amazonCartUrl(product.site, [{ asin: product.asin, quantity: 1 }]);
   return (
-    <ul className="mt-2 flex flex-wrap gap-2" aria-label="Links">
+    <ul className="mt-2 flex flex-wrap gap-2" aria-label={t`Links`}>
       {links.map((l) => (
         <li key={l.url}>
           <a href={l.url} target="_blank" rel="noopener noreferrer" className="btn btn-soft btn-secondary btn-sm max-w-full" title={l.url}>
@@ -44,9 +46,9 @@ export function ItemLinks({ links }: { links: ItemLink[] }) {
       ))}
       {cart && (
         <li>
-          <a href={cart} target="_blank" rel="noopener noreferrer" className="btn btn-soft btn-secondary btn-sm" title="Puts one in your Amazon cart (Amazon asks you to sign in if you aren't)">
+          <a href={cart} target="_blank" rel="noopener noreferrer" className="btn btn-soft btn-secondary btn-sm" title={t`Puts one in your Amazon cart (Amazon asks you to sign in if you aren't)`}>
             <span className="icon-[tabler--shopping-cart-plus] size-4 shrink-0" />
-            Add to Amazon cart
+            <Trans>Add to Amazon cart</Trans>
           </a>
         </li>
       )}
@@ -61,15 +63,15 @@ export function LinksInput({ value, onChange }: { value: LinkDraft[]; onChange: 
   const set = (i: number, change: Partial<LinkDraft>) => onChange(value.map((l, j) => (j === i ? { ...l, ...change } : l)));
   return (
     <fieldset className="space-y-2">
-      <legend className="label-text">Links</legend>
+      <legend className="label-text"><Trans>Links</Trans></legend>
       {value.map((l, i) => {
         const bad = l.url.trim() !== "" && !asWebAddress(l.url);
         return (
           <div key={i} className="flex flex-wrap items-start gap-2 sm:flex-nowrap">
             <input
               className="input sm:w-40"
-              placeholder="Label (optional)"
-              aria-label={`Link ${i + 1} label`}
+              placeholder={t`Label (optional)`}
+              aria-label={t`Link ${ph({ number: i + 1 })} label`}
               maxLength={80}
               value={l.label}
               onChange={(e) => set(i, { label: e.target.value })}
@@ -78,7 +80,7 @@ export function LinksInput({ value, onChange }: { value: LinkDraft[]; onChange: 
               <input
                 className={`input ${bad ? "is-invalid" : ""}`}
                 placeholder="dewalt.com/support"
-                aria-label={`Link ${i + 1} address`}
+                aria-label={t`Link ${ph({ number: i + 1 })} address`}
                 inputMode="url"
                 autoCapitalize="off"
                 autoCorrect="off"
@@ -87,12 +89,12 @@ export function LinksInput({ value, onChange }: { value: LinkDraft[]; onChange: 
                 value={l.url}
                 onChange={(e) => set(i, { url: e.target.value })}
               />
-              {bad && <p className="mt-1 text-xs text-error">That doesn't look like a web address.</p>}
+              {bad && <p className="mt-1 text-xs text-error"><Trans>That doesn't look like a web address.</Trans></p>}
             </div>
             <button
               type="button"
               className="btn btn-text btn-square btn-sm btn-error mt-1"
-              aria-label={`Remove link ${i + 1}`}
+              aria-label={t`Remove link ${ph({ number: i + 1 })}`}
               onClick={() => onChange(value.filter((_, j) => j !== i))}
             >
               <span className="icon-[tabler--x] size-4" />
@@ -103,7 +105,7 @@ export function LinksInput({ value, onChange }: { value: LinkDraft[]; onChange: 
       {value.length < 10 && (
         <button type="button" className="btn btn-soft btn-secondary btn-sm" onClick={() => onChange([...value, { url: "", label: "" }])}>
           <span className="icon-[tabler--link-plus] size-4" />
-          Add a link
+          <Trans>Add a link</Trans>
         </button>
       )}
     </fieldset>

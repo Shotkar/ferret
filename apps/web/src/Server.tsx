@@ -14,6 +14,9 @@ import { SETTINGS_HREF } from "./lib/route";
 import { DialogActions, Modal } from "./Modal";
 import { HelpLink } from "./HelpLink";
 import { navigateTo } from "./lib/navigate";
+import { t, ph, plural, msg } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
+import type { MessageDescriptor } from "@lingui/core";
 
 export function Server() {
   // The demo has no backups of its own: it's planted afresh every night.
@@ -45,15 +48,15 @@ function AddressNotice() {
   const here = window.location.origin;
   return (
     <div className="alert alert-soft alert-warning flex-col items-start gap-2" role="status">
-      <p className="font-medium">Set Ferret's address (PUBLIC_URL)</p>
+      <p className="font-medium"><Trans>Set Ferret's address (PUBLIC_URL)</Trans></p>
       <p className="text-sm">
-        It isn't set, so signing in works from the local address Ferret is opened at (an IP address or a name like
+        <Trans>It isn't set, so signing in works from the local address Ferret is opened at (an IP address or a name like
         umbrel.local, not a domain name) — but links it sends (invitations, password
-        resets, share links, calendar feeds) point to <code className="break-all">{address.data.publicUrl}</code>, and passkeys and
+        resets, share links, calendar feeds) point to <code className="break-all">{ph({ publicUrl: address.data.publicUrl })}</code>, and passkeys and
         single sign-on won't work. Set <code>PUBLIC_URL</code> in Ferret's settings — probably to <code className="break-all">{here}</code>{" "}
-        — and restart it.
+        — and restart it.</Trans>
       </p>
-      <HelpLink page="hosting/configuration.html" label="Settings" />
+      <HelpLink page="hosting/configuration.html" label={t`Settings`} />
     </div>
   );
 }
@@ -72,7 +75,7 @@ function ServiceErrors() {
   const rows = errors.data?.data ?? [];
   const ago = (iso: string) => {
     const m = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
-    return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 48 * 60 ? `${Math.round(m / 60)} h ago` : new Date(iso).toLocaleDateString();
+    return m < 1 ? t`just now` : m < 60 ? t`${m} min ago` : m < 48 * 60 ? t`${ph({ hours: Math.round(m / 60) })} h ago` : new Date(iso).toLocaleDateString();
   };
   return (
     <section className="card" aria-labelledby="service-errors-title">
@@ -80,23 +83,23 @@ function ServiceErrors() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="service-errors-title" className="card-title flex items-center gap-2">
             <span className="icon-[tabler--plug-connected-x] size-5 text-primary" />
-            Service errors
+            <Trans>Service errors</Trans>
           </h2>
           {rows.length > 0 && (
             <button type="button" className="btn btn-text btn-sm" disabled={clear.isPending} onClick={() => clear.mutate(undefined)}>
-              Clear all
+              <Trans>Clear all</Trans>
             </button>
           )}
         </div>
         <p className="text-sm text-base-content/70">
-          When a call to a service Ferret uses fails — the AI models, the vector store, the document reader, Apprise, push, the
+          <Trans>When a call to a service Ferret uses fails — the AI models, the vector store, the document reader, Apprise, push, the
           barcode and recall databases, maps — it's listed here, and you're told (push, your other apps, email) when one starts
-          failing, at most every 6 hours each. Ferret carries on without them where it can.
+          failing, at most every 6 hours each. Ferret carries on without them where it can.</Trans>
         </p>
         {!rows.length ? (
           <p className="flex items-center gap-2 text-sm text-success">
             <span className="icon-[tabler--circle-check] size-5" />
-            No errors.
+            <Trans>No errors.</Trans>
           </p>
         ) : (
           <ul className="divide-y divide-base-content/10">
@@ -108,12 +111,12 @@ function ServiceErrors() {
                   </p>
                   <p className="break-words font-mono text-xs">{e.message}</p>
                   <p className="text-xs text-base-content/70">
-                    {e.count} {e.count === 1 ? "time" : "times"} · last {ago(e.lastAt)}
-                    {e.count > 1 ? ` · first ${ago(e.firstAt)}` : ""}
+                    {plural(e.count, { one: "# time", other: "# times" })} <Trans>· last {ph({ when: ago(e.lastAt) })}</Trans>
+                    {e.count > 1 ? t` · first ${ph({ when: ago(e.firstAt) })}` : ""}
                   </p>
                   <CopyDetails text={e.triage} />
                 </div>
-                <button type="button" className="btn btn-text btn-sm btn-square" aria-label={`Clear this ${e.serviceName} error`} onClick={() => clear.mutate(e.id)}>
+                <button type="button" className="btn btn-text btn-sm btn-square" aria-label={t`Clear this ${ph({ serviceName: e.serviceName })} error`} onClick={() => clear.mutate(e.id)}>
                   <span className="icon-[tabler--x] size-4" />
                 </button>
               </li>
@@ -136,7 +139,7 @@ function CopyDetails({ text }: { text: string }) {
   return (
     <button type="button" className="btn btn-text btn-xs tap mt-1 -ms-2" onClick={copy}>
       <span className={`${copied ? "icon-[tabler--copy-check] text-success" : "icon-[tabler--copy]"} size-4`} />
-      {copied ? "Copied" : "Copy details"}
+      {copied ? t`Copied` : t`Copy details`}
     </button>
   );
 }
@@ -154,33 +157,33 @@ function BarcodeLookups() {
   const when = (iso: string) => {
     const d = new Date(iso);
     const days = Math.round((new Date(d).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86_400_000);
-    return days === 0 ? `at ${time(iso)}` : days === 1 ? `tomorrow at ${time(iso)}` : `${d.toLocaleDateString(undefined, { weekday: "long" })} at ${time(iso)}`;
+    return days === 0 ? t`at ${ph({ time: time(iso) })}` : days === 1 ? t`tomorrow at ${ph({ time: time(iso) })}` : t`${ph({ day: d.toLocaleDateString(undefined, { weekday: "long" }) })} at ${ph({ time: time(iso) })}`;
   };
   return (
     <section className="card" aria-labelledby="barcode-lookups-title">
       <div className="card-body gap-3">
         <h2 id="barcode-lookups-title" className="card-title flex items-center gap-2">
           <span className="icon-[tabler--barcode] size-5 text-primary" />
-          Online barcode lookups
+          <Trans>Online barcode lookups</Trans>
         </h2>
         <p className="text-sm text-base-content/70">
-          Barcodes nobody here has saved yet are asked of the online product database, each once for the whole server. It allows so many a
-          day; when they're used up, scans still match the barcode books and the rest are asked later.
+          <Trans>Barcodes nobody here has saved yet are asked of the online product database, each once for the whole server. It allows so many a
+          day; when they're used up, scans still match the barcode books and the rest are asked later.</Trans>
         </p>
         {q ? (
           <>
             <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-              <span className="font-medium">
-                {q.remaining.toLocaleString()} of {q.limit.toLocaleString()} left
+              <Trans><span className="font-medium">
+                {ph({ left: q.remaining.toLocaleString() })} of {ph({ limit: q.limit.toLocaleString() })} left
               </span>
               <span className="text-sm text-base-content/70">
-                fills up again {when(q.resetsAt)} · as of {time(q.checkedAt)}
-              </span>
+                fills up again {ph({ when: when(q.resetsAt) })} · as of {ph({ time: time(q.checkedAt) })}
+              </span></Trans>
             </div>
-            <progress className={`progress ${tone}`} value={Math.round(share * 100)} max={100} aria-label={`${q.remaining} of ${q.limit} barcode lookups left`} />
+            <progress className={`progress ${tone}`} value={Math.round(share * 100)} max={100} aria-label={t`${ph({ remaining: q.remaining })} of ${ph({ limit: q.limit })} barcode lookups left`} />
           </>
         ) : (
-          <p className="text-sm text-base-content/70">Nothing asked yet — the allowance shows after the first lookup.</p>
+          <p className="text-sm text-base-content/70"><Trans>Nothing asked yet — the allowance shows after the first lookup.</Trans></p>
         )}
       </div>
     </section>
@@ -205,22 +208,22 @@ function RecallChecks() {
       <div className="card-body gap-3">
         <h2 id="recalls-title" className="card-title flex items-center gap-2">
           <span className="icon-[tabler--alert-triangle] size-5 text-primary" />
-          Recall checks
-          <HelpLink page="guide/recalls.html" label="Recall checks" />
+          <Trans>Recall checks</Trans>
+          <HelpLink page="guide/recalls.html" label={t`Recall checks`} />
         </h2>
         <p className="text-sm text-base-content/70">
-          Checks everyone's things against the US Consumer Product Safety Commission's recalls, daily, and says when one matches — on the
+          <Trans>Checks everyone's things against the US Consumer Product Safety Commission's recalls, daily, and says when one matches — on the
           thing's page and in the bell. To do that, the brands people own are sent to the CPSC (saferproducts.gov), each at most once a week;
-          nothing else is.
+          nothing else is.</Trans>
         </p>
         <label className="flex cursor-pointer items-center gap-3">
           <input type="checkbox" className="switch switch-primary" checked={s.enabled} disabled={toggle.isPending || !s.available} onChange={(e) => toggle.mutate(e.target.checked)} />
-          <span>{s.enabled ? "On" : "Off"}</span>
+          <span>{s.enabled ? t`On` : t`Off`}</span>
         </label>
         {s.enabled && (
           <p className="text-sm text-base-content/70">
-            {s.brands} {s.brands === 1 ? "brand" : "brands"} checked, {s.recalls} {s.recalls === 1 ? "recall" : "recalls"} kept
-            {s.lastCheckedAt ? ` · last asked ${new Date(s.lastCheckedAt).toLocaleString()}` : " · checking now"}.
+            {plural(s.brands, { one: "# brand checked", other: "# brands checked" })}, {plural(s.recalls, { one: "# recall kept", other: "# recalls kept" })}
+            {s.lastCheckedAt ? t` · last asked ${ph({ when: new Date(s.lastCheckedAt).toLocaleString() })}` : t` · checking now`}.
           </p>
         )}
         {toggle.isError && <div className="alert alert-soft alert-error">{toggle.error.message}</div>}
@@ -257,21 +260,21 @@ function Backups() {
           <div className="space-y-1">
             <h2 id="backups-title" className="card-title flex items-center gap-2">
               <span className="icon-[tabler--database] size-5 text-primary" />
-              Backups
-              <HelpLink page="hosting/backups.html" label="Backups" />
+              <Trans>Backups</Trans>
+              <HelpLink page="hosting/backups.html" label={t`Backups`} />
             </h2>
             <p className="text-sm text-base-content/70">
               {s?.enabled
-                ? `Every night from ${s.hour}:00, the database and every household's files are copied to ${s.where}, then opened again to check they'd restore. The newest ${s.keep} are kept.`
+                ? t`Every night from ${ph({ hour: s.hour })}:00, the database and every household's files are copied to ${ph({ where: s.where ?? "" })}, then opened again to check they'd restore. The newest ${ph({ keep: s.keep })} are kept.`
                 : s?.elsewhere
-                  ? "The database and every household's files, copied each night off this server."
-                  : "The database and every household's files, copied each night to a folder off this machine and checked."}
+                  ? t`The database and every household's files, copied each night off this server.`
+                  : t`The database and every household's files, copied each night to a folder off this machine and checked.`}
             </p>
           </div>
           {s?.enabled && (
             <button type="button" className="btn btn-primary" onClick={() => now.mutate()} disabled={now.isPending || running}>
               {(now.isPending || running) && <span className="loading loading-spinner loading-sm" />}
-              {running ? "Backing up…" : "Back up now"}
+              {running ? t`Backing up…` : t`Back up now`}
             </button>
           )}
         </div>
@@ -285,22 +288,22 @@ function Backups() {
           <div className={`alert alert-soft flex-col items-start gap-1 ${s.elsewhere.ok === false || !s.elsewhere.at ? "alert-warning" : "alert-success"}`}>
             <p className="font-medium">
               {s.elsewhere.at
-                ? `${s.elsewhere.ok ? "Last backup" : "Last backup failed"}: ${new Date(s.elsewhere.at).toLocaleString()}`
-                : "No backup has reported yet."}
+                ? s.elsewhere.ok ? t`Last backup: ${ph({ when: new Date(s.elsewhere.at).toLocaleString() })}` : t`Last backup failed: ${ph({ when: new Date(s.elsewhere.at).toLocaleString() })}`
+                : t`No backup has reported yet.`}
             </p>
             <p className="text-sm">
-              They're made outside this server: {s.elsewhere.where}.{s.elsewhere.detail ? ` ${s.elsewhere.detail}` : ""}
+              <Trans>They're made outside this server: {ph({ where: s.elsewhere.where })}</Trans>.{s.elsewhere.detail ? ` ${s.elsewhere.detail}` : ""}
             </p>
           </div>
         )}
 
         {s && !s.enabled && !s.elsewhere && (
           <div className="alert alert-soft alert-warning flex-col items-start gap-2">
-            <p className="font-medium">Backups are off.</p>
+            <p className="font-medium"><Trans>Backups are off.</Trans></p>
             <p className="text-sm">
-              Set <code>BACKUP_DIR</code> in Ferret's <code>.env</code> to a folder on another machine — e.g. an NFS share on the NAS,
+              <Trans>Set <code>BACKUP_DIR</code> in Ferret's <code>.env</code> to a folder on another machine — e.g. an NFS share on the NAS,
               mounted into the container — and restart Ferret. Keep <code>FILES_KEY</code> in your password manager: a backup can't be
-              opened without it.
+              opened without it.</Trans>
             </p>
           </div>
         )}
@@ -320,25 +323,26 @@ function Backups() {
 
 function LastRun({ last, lastOk, asked }: { last: BackupRun | null; lastOk: BackupRun | null; asked: boolean }) {
   if (!last) {
-    return <p className="text-sm text-base-content/70">{asked ? "Starting…" : "No backup yet — the first runs tonight, or now if you ask."}</p>;
+    return <p className="text-sm text-base-content/70">{asked ? t`Starting…` : t`No backup yet — the first runs tonight, or now if you ask.`}</p>;
   }
   return (
     <div className="space-y-3">
       {last.status === "failed" && (
         <div className="alert alert-soft alert-error flex-col items-start gap-1" role="alert">
-          <p className="font-medium">The last backup failed ({formatTime(last.startedAt)})</p>
+          <p className="font-medium"><Trans>The last backup failed ({ph({ formatTime: formatTime(last.startedAt) })}</Trans>)</p>
           <p className="text-sm break-words">{last.error}</p>
-          <p className="text-sm">{lastOk ? `The last one that worked: ${formatTime(lastOk.startedAt)}.` : "None has worked yet."}</p>
+          <p className="text-sm">{lastOk ? t`The last one that worked: ${ph({ formatTime: formatTime(lastOk.startedAt) })}.` : t`None has worked yet.`}</p>
         </div>
       )}
       {lastOk && (
         <div className="flex items-start gap-3">
           <span className="icon-[tabler--circle-check] mt-0.5 size-5 shrink-0 text-success" />
           <div className="min-w-0 space-y-0.5">
-            <p className="font-medium">Last backup {formatTime(lastOk.startedAt)}</p>
+            <p className="font-medium"><Trans>Last backup {ph({ when: formatTime(lastOk.startedAt) })}</Trans></p>
             <p className="text-sm text-base-content/70">
-              {lastOk.files} {lastOk.files === 1 ? "file" : "files"} ({formatBytes(lastOk.filesBytes ?? 0)}
-              {lastOk.filesCopied ? `, ${lastOk.filesCopied} new` : ""}) and the database ({formatBytes(lastOk.dbBytes ?? 0)})
+              {lastOk.filesCopied
+                ? t`${ph({ files: plural(lastOk.files ?? 0, { one: "# file", other: "# files" }) })} (${ph({ size: formatBytes(lastOk.filesBytes ?? 0) })}, ${ph({ copied: lastOk.filesCopied })} new) and the database (${ph({ dbSize: formatBytes(lastOk.dbBytes ?? 0) })})`
+                : t`${ph({ files: plural(lastOk.files ?? 0, { one: "# file", other: "# files" }) })} (${ph({ size: formatBytes(lastOk.filesBytes ?? 0) })}) and the database (${ph({ dbSize: formatBytes(lastOk.dbBytes ?? 0) })})`}
             </p>
             {lastOk.checked && <p className="text-sm text-base-content/70">{lastOk.checked}</p>}
           </div>
@@ -351,10 +355,10 @@ function LastRun({ last, lastOk, asked }: { last: BackupRun | null; lastOk: Back
 function Snapshots({ data, loading, error }: { data?: BackupSnapshot[]; loading: boolean; error?: string }) {
   return (
     <div className="space-y-2">
-      <h3 className="font-medium">Copies kept</h3>
+      <h3 className="font-medium"><Trans>Copies kept</Trans></h3>
       {loading && <span className="loading loading-spinner text-primary" />}
       {error && <div className="alert alert-soft alert-error">{error}</div>}
-      {data && data.length === 0 && <p className="text-sm text-base-content/70">None yet.</p>}
+      {data && data.length === 0 && <p className="text-sm text-base-content/70"><Trans>None yet.</Trans></p>}
       {data && data.length > 0 && (
         <ul className="divide-y divide-base-content/10">
           {data.map((snap) => (
@@ -373,7 +377,7 @@ function SnapshotRow({ snap }: { snap: BackupSnapshot }) {
       <div className="min-w-0 flex-1">
         <p className="font-medium">{formatTime(snap.createdAt)}</p>
         <p className="text-sm text-base-content/70">
-          {snap.items} {snap.items === 1 ? "item" : "items"}, {snap.files} {snap.files === 1 ? "file" : "files"} ({formatBytes(snap.filesBytes)})
+          {plural(snap.items, { one: "# item", other: "# items" })}, {plural(snap.files, { one: "# file", other: "# files" })} ({formatBytes(snap.filesBytes)})
           · <code className="text-xs">{snap.name}</code>
         </p>
         {check.data && (
@@ -386,7 +390,7 @@ function SnapshotRow({ snap }: { snap: BackupSnapshot }) {
       </div>
       <button type="button" className="btn btn-soft btn-sm" onClick={() => check.mutate()} disabled={check.isPending}>
         {check.isPending && <span className="loading loading-spinner loading-xs" />}
-        Check
+        <Trans>Check</Trans>
       </button>
     </li>
   );
@@ -394,11 +398,11 @@ function SnapshotRow({ snap }: { snap: BackupSnapshot }) {
 
 /** Restoring replaces every household's data, so it's done on the server itself, with Ferret stopped. */
 /** What each secret is for, and what losing it costs — Settings → Server's Keys, and the help's table. */
-const SECRET_ROLES: Record<ServerSecrets["secrets"][number]["name"], { what: string; lost: string }> = {
-  FILES_KEY: { what: "Seals every photo, document and pairing code, and the backups.", lost: "Lost for good without a copy: nothing uploaded can be opened." },
-  AUTH_SECRET: { what: "Signs sign-ins, and seals two-step sign-in.", lost: "Can be replaced: everyone signs in again, and two-step sign-in is set up again." },
-  VAPID_PUBLIC_KEY: { what: "Push notifications: the key browsers subscribe with.", lost: "Remade by Ferret: each device turns push on again." },
-  VAPID_PRIVATE_KEY: { what: "Push notifications: signs what Ferret sends.", lost: "Remade by Ferret: each device turns push on again." },
+const SECRET_ROLES: Record<ServerSecrets["secrets"][number]["name"], { what: MessageDescriptor; lost: MessageDescriptor }> = {
+  FILES_KEY: { what: msg`Seals every photo, document and pairing code, and the backups.`, lost: msg`Lost for good without a copy: nothing uploaded can be opened.` },
+  AUTH_SECRET: { what: msg`Signs sign-ins, and seals two-step sign-in.`, lost: msg`Can be replaced: everyone signs in again, and two-step sign-in is set up again.` },
+  VAPID_PUBLIC_KEY: { what: msg`Push notifications: the key browsers subscribe with.`, lost: msg`Remade by Ferret: each device turns push on again.` },
+  VAPID_PRIVATE_KEY: { what: msg`Push notifications: signs what Ferret sends.`, lost: msg`Remade by Ferret: each device turns push on again.` },
 };
 
 /**
@@ -424,12 +428,19 @@ function FilesKey({
   const filesKeyByFerret = list.some((x) => x.name === "FILES_KEY" && x.source === "ferret");
   return (
     <div className="space-y-3">
-      <h3 className="font-medium">Keys</h3>
+      <h3 className="font-medium"><Trans>Keys</Trans></h3>
       <p className="text-sm text-base-content/70">
-        The secrets Ferret needs. Any set in Ferret's settings are used; the rest Ferret made itself and keeps in{" "}
-        {secrets.data?.file ? <code className="break-all">{secrets.data.file}</code> : "its data folder"} — never in its backups.{" "}
+        {secrets.data?.file ? (
+          <Trans>
+            The secrets Ferret needs. Any set in Ferret's settings are used; the rest Ferret made itself and keeps in{" "}
+            <code className="break-all">{ph({ file: secrets.data.file })}</code> — never in its backups.
+          </Trans>
+        ) : (
+          <Trans>The secrets Ferret needs. Any set in Ferret's settings are used; the rest Ferret made itself and keeps in its data folder — never in its backups.</Trans>
+        )}{" "}
+        <Trans>
         <code>FILES_KEY</code>'s fingerprint is <code className="font-mono">{keyId}</code> (<code>cli.js key fingerprint</code> prints a
-        key's, to check a saved copy).
+        key's, to check a saved copy).</Trans>
       </p>
       {secrets.isError && <div className="alert alert-soft alert-error">{secrets.error.message}</div>}
       {list.length > 0 && (
@@ -438,53 +449,53 @@ function FilesKey({
             <li key={x.name} className="flex flex-wrap items-start justify-between gap-2 p-3">
               <div className="min-w-0 space-y-0.5">
                 <p className="font-mono text-sm">{x.name}</p>
-                <p className="text-sm text-base-content/70">{SECRET_ROLES[x.name].what}</p>
-                <p className="text-sm text-base-content/70">If lost: {SECRET_ROLES[x.name].lost}</p>
+                <p className="text-sm text-base-content/70">{t(SECRET_ROLES[x.name].what)}</p>
+                <p className="text-sm text-base-content/70"><Trans>If lost: {ph({ lost: t(SECRET_ROLES[x.name].lost) })}</Trans></p>
               </div>
               <span className={`badge badge-soft ${x.source === "none" ? "" : x.source === "ferret" ? "badge-info" : "badge-success"}`}>
-                {x.source === "settings" ? "From the settings" : x.source === "ferret" ? "Made by Ferret" : "Not set"}
+                {x.source === "settings" ? t`From the settings` : x.source === "ferret" ? t`Made by Ferret` : t`Not set`}
               </span>
             </li>
           ))}
         </ul>
       )}
       {secrets.data?.pushPublicKey && (
-        <CopyField label="Push public key (public — for tools that send to Ferret's subscribers)" value={secrets.data.pushPublicKey} icon="icon-[tabler--bell]" />
+        <CopyField label={t`Push public key (public — for tools that send to Ferret's subscribers)`} value={secrets.data.pushPublicKey} icon="icon-[tabler--bell]" />
       )}
       {filesKeyByFerret && !keyFile?.current && (
         <div className="alert alert-soft alert-warning text-sm">
-          FILES_KEY is only in this server's data folder. If that folder is lost, so is every photo and document — the backups too.
-          Make a key file and keep it, and its passphrase, somewhere else.
+          <Trans>FILES_KEY is only in this server's data folder. If that folder is lost, so is every photo and document — the backups too.
+          Make a key file and keep it, and its passphrase, somewhere else.</Trans>
         </div>
       )}
       {keyFile?.current && (
         <p className="flex items-start gap-2 text-sm">
           <span className="icon-[tabler--circle-check] mt-0.5 size-4 shrink-0 text-success" />
           <span>
-            Key file made {formatTime(keyFile.at)}, in <code className="break-all">{keyFile.where}</code>.
+            <Trans>Key file made {ph({ formatTime: formatTime(keyFile.at) })}, in</Trans> <code className="break-all">{keyFile.where}</code>.
           </span>
         </p>
       )}
       {keyFile && !keyFile.current && (
         <div className="alert alert-soft alert-warning text-sm">
-          The newest key file ({formatTime(keyFile.at)}) holds another FILES_KEY ({keyFile.keyId}), not the one in use. Make a new one.
+          <Trans>The newest key file ({ph({ formatTime: formatTime(keyFile.at) })}) holds another FILES_KEY ({ph({ keyId: keyFile.keyId })}), not the one in use. Make a new one.</Trans>
         </div>
       )}
-      {!keyFile && commandLine && !filesKeyByFerret && <p className="text-sm text-base-content/70">No key file made yet.</p>}
+      {!keyFile && commandLine && !filesKeyByFerret && <p className="text-sm text-base-content/70"><Trans>No key file made yet.</Trans></p>}
       {commandLine && (
         <details className="rounded-box border border-base-content/15 p-3" open={filesKeyByFerret && !keyFile?.current}>
-          <summary className="tap cursor-pointer font-medium">Make a key file</summary>
+          <summary className="tap cursor-pointer font-medium"><Trans>Make a key file</Trans></summary>
           <div className="mt-3 space-y-3 text-sm text-base-content/80">
             <p>
-              A key file holds these secrets sealed with a passphrase you choose, so it can be kept beside the backups. If they're ever
+              <Trans>A key file holds these secrets sealed with a passphrase you choose, so it can be kept beside the backups. If they're ever
               lost, <code>cli.js key recover</code> opens the file with the passphrase and gives them back. On the server, in Ferret's
-              folder (or the container's console):
+              folder (or the container's console):</Trans>
             </p>
-            <CopyField label="Key file command" value={keyExportCommand(folder)} icon="icon-[tabler--terminal-2]" />
+            <CopyField label={t`Key file command`} value={keyExportCommand(folder)} icon="icon-[tabler--terminal-2]" />
             <p>
-              Use a long passphrase — a few unrelated words — and keep it in your password manager: anyone with the file can try
-              passphrases. Then copy the file off this server.
-              {keptByFerret ? " Make a new one if Ferret ever makes new keys (it says so in its log)." : ""}
+              <Trans>Use a long passphrase — a few unrelated words — and keep it in your password manager: anyone with the file can try
+              passphrases. Then copy the file off this server.</Trans>
+              {keptByFerret ? t` Make a new one if Ferret ever makes new keys (it says so in its log).` : ""}
             </p>
           </div>
         </details>
@@ -498,23 +509,23 @@ const keyExportCommand = (folder: string | null) => `docker compose exec -it fer
 function Restoring() {
   return (
     <details className="rounded-box border border-base-content/15 p-3">
-      <summary className="tap cursor-pointer font-medium">How to restore</summary>
+      <summary className="tap cursor-pointer font-medium"><Trans>How to restore</Trans></summary>
       <div className="mt-3 space-y-3 text-sm text-base-content/80">
         <p>
-          On the server, in Ferret's folder (where <code>compose.yaml</code> is), with the same <code>.env</code> — its{" "}
-          <code>FILES_KEY</code> opens the backup (lost it? <code>cli.js key recover</code> gets it back from a key file):
+          <Trans>On the server, in Ferret's folder (where <code>compose.yaml</code> is), with the same <code>.env</code> — its{" "}
+          <code>FILES_KEY</code> opens the backup (lost it? <code>cli.js key recover</code> gets it back from a key file):</Trans>
         </p>
         <ol className="list-decimal space-y-3 ps-5">
           <li>
-            Rebuild a data folder from the newest copy (or name one from the list above at the end):
-            <CopyField label="Restore command" value={restoreCommand} icon="icon-[tabler--terminal-2]" />
+            <Trans>Rebuild a data folder from the newest copy (or name one from the list above at the end):</Trans>
+            <CopyField label={t`Restore command`} value={restoreCommand} icon="icon-[tabler--terminal-2]" />
           </li>
           <li>
-            Stop Ferret (<code>docker compose stop ferret</code>), move its data folder aside (the one mounted at <code>/data</code>,{" "}
-            <code>FERRET_DATA</code>), put <code>restored</code> in its place, and start it again (<code>docker compose up -d ferret</code>).
+            <Trans>Stop Ferret (<code>docker compose stop ferret</code>), move its data folder aside (the one mounted at <code>/data</code>,{" "}
+            <code>FERRET_DATA</code>), put <code>restored</code> in its place, and start it again (<code>docker compose up -d ferret</code></Trans>).
           </li>
         </ol>
-        <p>Search indexes rebuild themselves on start.</p>
+        <p><Trans>Search indexes rebuild themselves on start.</Trans></p>
       </div>
     </details>
   );
@@ -548,32 +559,32 @@ function Certificates() {
         <div className="space-y-1">
           <h2 id="certificates-title" className="card-title flex items-center gap-2">
             <span className="icon-[tabler--certificate] size-5 text-primary" />
-            Certificates
-            <HelpLink page="hosting/certificates.html" label="Certificates" />
+            <Trans>Certificates</Trans>
+            <HelpLink page="hosting/certificates.html" label={t`Certificates`} />
           </h2>
           <p className="text-sm text-base-content/70">
-            For Ferret's own connections to your other services — Home Assistant, the AI models, Apprise, your sign-in provider. Downloads from the internet
-            only ever trust the usual authorities.
+            <Trans>For Ferret's own connections to your other services — Home Assistant, the AI models, Apprise, your sign-in provider. Downloads from the internet
+            only ever trust the usual authorities.</Trans>
           </p>
         </div>
 
         <div className="space-y-2">
-          <h3 className="font-medium">Trusted</h3>
-          <p className="text-sm text-base-content/70">Your own certificate authority, or a service's self-signed certificate.</p>
-          <CertificateList list={d.trusted} empty="Only the usual authorities." onRemove={setRemoving} />
+          <h3 className="font-medium"><Trans>Trusted</Trans></h3>
+          <p className="text-sm text-base-content/70"><Trans>Your own certificate authority, or a service's self-signed certificate.</Trans></p>
+          <CertificateList list={d.trusted} empty={t`Only the usual authorities.`} onRemove={setRemoving} />
           <button type="button" className="btn btn-soft btn-primary btn-sm" onClick={() => setAdding("trusted")}>
             <span className="icon-[tabler--plus] size-4" />
-            Trust a certificate…
+            <Trans>Trust a certificate…</Trans>
           </button>
         </div>
 
         <div className="space-y-2">
-          <h3 className="font-medium">Client certificates</h3>
-          <p className="text-sm text-base-content/70">For services that ask who's connecting (mutual TLS). Each is shown only to the hosts you name.</p>
-          <CertificateList list={d.clients} empty="None." onRemove={setRemoving} />
+          <h3 className="font-medium"><Trans>Client certificates</Trans></h3>
+          <p className="text-sm text-base-content/70"><Trans>For services that ask who's connecting (mutual TLS). Each is shown only to the hosts you name.</Trans></p>
+          <CertificateList list={d.clients} empty={t`None.`} onRemove={setRemoving} />
           <button type="button" className="btn btn-soft btn-primary btn-sm" onClick={() => setAdding("client")}>
             <span className="icon-[tabler--plus] size-4" />
-            Add a client certificate…
+            <Trans>Add a client certificate…</Trans>
           </button>
         </div>
       </div>
@@ -585,22 +596,22 @@ function Certificates() {
           <div className="flex flex-col gap-5">
             <div className="space-y-1 text-center">
               <h3 id="remove-certificate-title" className="text-xl font-semibold">
-                Remove “{removing.name}”?
+                <Trans>Remove “{ph({ name: removing.name })}</Trans>”?
               </h3>
               <p className="text-base-content/80">
                 {removing.hosts
-                  ? `Ferret stops presenting it to ${removing.hosts.join(", ")}.`
-                  : "Ferret stops trusting it: services whose certificate it vouches for won't connect."}
+                  ? t`Ferret stops presenting it to ${ph({ join: removing.hosts.join(", ") })}.`
+                  : t`Ferret stops trusting it: services whose certificate it vouches for won't connect.`}
               </p>
             </div>
             {remove.isError && <div className="alert alert-soft alert-error">{remove.error.message}</div>}
             <div className="flex flex-wrap justify-end gap-3">
               <button type="button" className="btn btn-secondary btn-soft" onClick={() => setRemoving(null)}>
-                Cancel
+                <Trans>Cancel</Trans>
               </button>
               <button type="button" className="btn btn-error" onClick={() => remove.mutate(removing.id)} disabled={remove.isPending}>
                 {remove.isPending && <span className="loading loading-spinner loading-sm" />}
-                Remove
+                <Trans>Remove</Trans>
               </button>
             </div>
           </div>
@@ -623,21 +634,21 @@ function CertificateList({ list, empty, onRemove }: { list: ServerCertificate[];
               <div className="font-medium break-words">{c.name}</div>
               <div className="text-sm break-words text-base-content/70">
                 {c.subject}
-                {c.issuer !== c.subject && ` · from ${c.issuer}`}
+                {c.issuer !== c.subject && t` · from ${ph({ issuer: c.issuer })}`}
               </div>
-              {c.hosts && <div className="text-sm break-words text-base-content/70">For {c.hosts.join(", ")}</div>}
+              {c.hosts && <div className="text-sm break-words text-base-content/70"><Trans>For {ph({ join: c.hosts.join(", ") })}</Trans></div>}
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 {ends <= Date.now() ? (
-                  <span className="badge badge-soft badge-error">Expired {formatDate(c.notAfter)}</span>
+                  <span className="badge badge-soft badge-error"><Trans>Expired {ph({ formatDate: formatDate(c.notAfter) })}</Trans></span>
                 ) : ends < soon ? (
-                  <span className="badge badge-soft badge-warning">Expires {formatDate(c.notAfter)}</span>
+                  <span className="badge badge-soft badge-warning"><Trans>Expires {ph({ formatDate: formatDate(c.notAfter) })}</Trans></span>
                 ) : (
-                  <span className="text-base-content/70">Until {formatDate(c.notAfter)}</span>
+                  <span className="text-base-content/70"><Trans>Until {ph({ formatDate: formatDate(c.notAfter) })}</Trans></span>
                 )}
               </div>
             </div>
             <button type="button" className="btn btn-text btn-sm" onClick={() => onRemove(c)}>
-              Remove…
+              <Trans>Remove…</Trans>
             </button>
           </li>
         );
@@ -669,37 +680,37 @@ function TrustDialog({ onClose }: { onClose: () => void }) {
     add.mutate();
   }
   return (
-    <Modal id="trust-certificate" title="Trust a certificate" onClose={onClose}>
+    <Modal id="trust-certificate" title={t`Trust a certificate`} onClose={onClose}>
       <form className="flex flex-col gap-4" onSubmit={onSubmit}>
         <p className="text-sm text-base-content/70">
-          A certificate authority's certificate, or a service's own self-signed one, in PEM form (<code>-----BEGIN CERTIFICATE-----</code>). Never its private key.
+          <Trans>A certificate authority's certificate, or a service's own self-signed one, in PEM form (<code>-----BEGIN CERTIFICATE-----</code>). Never its private key.</Trans>
         </p>
         <div>
           <label className="label-text" htmlFor="trust-name">
-            Name
+            <Trans>Name</Trans>
           </label>
-          <input id="trust-name" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Home CA" maxLength={80} />
+          <input id="trust-name" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder={t`e.g. Home CA`} maxLength={80} />
         </div>
         <div>
           <label className="label-text" htmlFor="trust-file">
-            File (.pem, .crt)
+            <Trans>File (.pem, .crt)</Trans>
           </label>
           <input id="trust-file" type="file" className="input" accept=".pem,.crt,.cer,application/x-pem-file,application/x-x509-ca-cert" onChange={(e) => void pick(e.target.files?.[0])} />
         </div>
         <div>
           <label className="label-text" htmlFor="trust-pem">
-            Or paste it
+            <Trans>Or paste it</Trans>
           </label>
           <textarea id="trust-pem" className="textarea font-mono text-xs" rows={6} value={pem} onChange={(e) => setPem(e.target.value)} required spellCheck={false} />
         </div>
         {add.isError && <div className="alert alert-soft alert-error">{add.error.message}</div>}
         <DialogActions>
           <button type="button" className="btn btn-secondary btn-soft" onClick={onClose}>
-            Cancel
+            <Trans>Cancel</Trans>
           </button>
           <button type="submit" className="btn btn-primary" disabled={add.isPending || !pem.trim()}>
             {add.isPending && <span className="loading loading-spinner loading-sm" />}
-            Trust it
+            <Trans>Trust it</Trans>
           </button>
         </DialogActions>
       </form>
@@ -715,7 +726,7 @@ function ClientCertificateDialog({ onClose }: { onClose: () => void }) {
   const [hosts, setHosts] = useState("");
   const add = useMutation({
     mutationFn: async () => {
-      if (!file) throw new Error("Choose the certificate's file");
+      if (!file) throw new Error(t`Choose the certificate's file`);
       const bytes = new Uint8Array(await file.arrayBuffer());
       let binary = "";
       for (const b of bytes) binary += String.fromCharCode(b);
@@ -732,20 +743,20 @@ function ClientCertificateDialog({ onClose }: { onClose: () => void }) {
     add.mutate();
   }
   return (
-    <Modal id="client-certificate" title="Add a client certificate" onClose={onClose}>
+    <Modal id="client-certificate" title={t`Add a client certificate`} onClose={onClose}>
       <form className="flex flex-col gap-4" onSubmit={onSubmit}>
         <p className="text-sm text-base-content/70">
-          A PKCS#12 file (.p12 or .pfx) holding the certificate and its key. It's kept sealed on the server and never shown again.
+          <Trans>A PKCS#12 file (.p12 or .pfx) holding the certificate and its key. It's kept sealed on the server and never shown again.</Trans>
         </p>
         <div>
           <label className="label-text" htmlFor="client-name">
-            Name
+            <Trans>Name</Trans>
           </label>
-          <input id="client-name" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Ferret for Home Assistant" maxLength={80} />
+          <input id="client-name" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder={t`e.g. Ferret for Home Assistant`} maxLength={80} />
         </div>
         <div>
           <label className="label-text" htmlFor="client-file">
-            File (.p12, .pfx)
+            <Trans>File (.p12, .pfx)</Trans>
           </label>
           <input
             id="client-file"
@@ -762,13 +773,13 @@ function ClientCertificateDialog({ onClose }: { onClose: () => void }) {
         </div>
         <div>
           <label className="label-text" htmlFor="client-password">
-            Its password
+            <Trans>Its password</Trans>
           </label>
           <input id="client-password" type="password" className="input" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} />
         </div>
         <div>
           <label className="label-text" htmlFor="client-hosts">
-            Show it to
+            <Trans>Show it to</Trans>
           </label>
           <textarea
             id="client-hosts"
@@ -776,21 +787,21 @@ function ClientCertificateDialog({ onClose }: { onClose: () => void }) {
             rows={2}
             value={hosts}
             onChange={(e) => setHosts(e.target.value)}
-            placeholder="ha.example.lan, *.example.lan"
+            placeholder={t`ha.example.lan, *.example.lan`}
             required
             spellCheck={false}
             autoCapitalize="none"
           />
-          <p className="mt-1 text-sm text-base-content/70">Host names or addresses, separated by commas. <code>*.example.lan</code> covers everything under it.</p>
+          <p className="mt-1 text-sm text-base-content/70"><Trans>Host names or addresses, separated by commas. <code>*.example.lan</code> covers everything under it.</Trans></p>
         </div>
         {add.isError && <div className="alert alert-soft alert-error">{add.error.message}</div>}
         <DialogActions>
           <button type="button" className="btn btn-secondary btn-soft" onClick={onClose}>
-            Cancel
+            <Trans>Cancel</Trans>
           </button>
           <button type="submit" className="btn btn-primary" disabled={add.isPending}>
             {add.isPending && <span className="loading loading-spinner loading-sm" />}
-            Add it
+            <Trans>Add it</Trans>
           </button>
         </DialogActions>
       </form>
@@ -824,30 +835,30 @@ function ServerAdmin() {
         <div className="space-y-1">
           <h2 id="server-admin-title" className="card-title flex items-center gap-2">
             <span className="icon-[tabler--user-shield] size-5 text-primary" />
-            Server admin
-            <HelpLink page="hosting/server-admin.html" label="Server admin" />
+            <Trans>Server admin</Trans>
+            <HelpLink page="hosting/server-admin.html" label={t`Server admin`} />
           </h2>
           <p className="text-sm text-base-content/70">
-            You{admin.data ? ` (${admin.data.email})` : ""} look after this server: its backups, and their alerts in the bell. It's one
-            person at a time — you can hand it to someone else with an account here.
+            <Trans>You</Trans>{admin.data ? ` (${admin.data.email})` : ""} <Trans>look after this server: its backups, and their alerts in the bell. It's one
+            person at a time — you can hand it to someone else with an account here.</Trans>
           </p>
         </div>
         <form className="flex flex-wrap items-end gap-2" onSubmit={onSubmit}>
           <div className="min-w-0 grow">
             <label className="label-text" htmlFor="new-admin">
-              Hand over to
+              <Trans>Hand over to</Trans>
             </label>
             <div className="input">
               <span className="icon-[tabler--mail] my-auto me-3 size-5 shrink-0 text-base-content/80" />
-              <input id="new-admin" type="email" className="grow" placeholder="their account's email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <input id="new-admin" type="email" className="grow" placeholder={t`their account's email`} value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
           </div>
           <button type="submit" className="btn btn-soft btn-primary">
-            Hand over…
+            <Trans>Hand over…</Trans>
           </button>
         </form>
         <p className="text-sm text-base-content/70">
-          It also works from the server: <code>docker compose exec ferret node dist/cli.js admin their@email</code>
+          <Trans>It also works from the server: <code>docker compose exec ferret node dist/cli.js admin their@email</code></Trans>
         </p>
       </div>
 
@@ -856,18 +867,18 @@ function ServerAdmin() {
           <div className="flex flex-col gap-5">
             <div className="space-y-1 text-center">
               <h3 id="hand-over-title" className="text-xl font-semibold">
-                Make {email.trim()} the server admin?
+                <Trans>Make {ph({ trim: email.trim() })} the server admin?</Trans>
               </h3>
-              <p className="text-base-content/80">You'll stop seeing this tab and backup alerts. Only they (or the command on the server) can give it back.</p>
+              <p className="text-base-content/80"><Trans>You'll stop seeing this tab and backup alerts. Only they (or the command on the server) can give it back.</Trans></p>
             </div>
             {handOver.isError && <div className="alert alert-soft alert-error">{handOver.error.message}</div>}
             <div className="flex flex-wrap justify-end gap-3">
               <button type="button" className="btn btn-secondary btn-soft" onClick={() => setConfirming(false)}>
-                Cancel
+                <Trans>Cancel</Trans>
               </button>
               <button type="button" className="btn btn-primary" onClick={() => handOver.mutate()} disabled={handOver.isPending}>
                 {handOver.isPending && <span className="loading loading-spinner loading-sm" />}
-                Hand over
+                <Trans>Hand over</Trans>
               </button>
             </div>
           </div>

@@ -14,12 +14,15 @@ import { api } from "./lib/api";
 import { authClient } from "./lib/auth";
 import { Modal } from "./Modal";
 import { navigateTo } from "./lib/navigate";
+import { t, ph, msg } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
+import type { MessageDescriptor } from "@lingui/core";
 
-const ROLES: Record<HouseholdRole, { label: string; help: string }> = {
-  owner: { label: "Owner", help: "Everything, including removing the household" },
-  admin: { label: "Admin", help: "Adds and changes things, invites and manages people" },
-  member: { label: "Member", help: "Adds and changes things" },
-  viewer: { label: "Viewer", help: "Can look and ask, but not change anything" },
+const ROLES: Record<HouseholdRole, { label: MessageDescriptor; help: MessageDescriptor }> = {
+  owner: { label: msg`Owner`, help: msg`Everything, including removing the household` },
+  admin: { label: msg`Admin`, help: msg`Adds and changes things, invites and manages people` },
+  member: { label: msg`Member`, help: msg`Adds and changes things` },
+  viewer: { label: msg`Viewer`, help: msg`Can look and ask, but not change anything` },
 };
 const INVITABLE: HouseholdRole[] = ["member", "viewer", "admin"];
 
@@ -28,10 +31,12 @@ const RESEND_AFTER_MS = 5 * 60 * 1000;
 
 export const inviteLink = (id: string) => `${window.location.origin}/#/invite/${encodeURIComponent(id)}`;
 
+const roleLabel = (role: string) => (role in ROLES ? t(ROLES[role as HouseholdRole].label) : role);
+
 /** Better Auth client calls return { data, error } rather than throwing. */
 async function run<T>(call: Promise<{ data: T | null; error: { message?: string; statusText?: string } | null }>) {
   const { data, error } = await call;
-  if (error) throw new Error(error.message || error.statusText || "Something went wrong");
+  if (error) throw new Error(error.message || error.statusText || t`Something went wrong`);
   return data as T;
 }
 
@@ -78,17 +83,17 @@ export function Household({ householdName }: { householdName: string }) {
               <span className="icon-[tabler--users] size-5 text-primary" />
               {householdName}
             </h2>
-            <p className="text-sm text-base-content/70">Everyone here shares the same inventory.</p>
+            <p className="text-sm text-base-content/70"><Trans>Everyone here shares the same inventory.</Trans></p>
           </div>
           {canManage && (
             <div className="flex flex-wrap gap-2">
               <button type="button" className="btn btn-secondary btn-soft" onClick={() => setRenaming(true)}>
                 <span className="icon-[tabler--pencil] size-5" />
-                Rename
+                <Trans>Rename</Trans>
               </button>
               <button type="button" className="btn btn-primary" onClick={() => setInviting(true)}>
                 <span className="icon-[tabler--user-plus] size-5" />
-                Invite
+                <Trans>Invite</Trans>
               </button>
             </div>
           )}
@@ -123,7 +128,7 @@ export function Household({ householdName }: { householdName: string }) {
 
         {canManage && pending.length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-sm font-medium text-base-content/70">Waiting to join</h3>
+            <h3 className="text-sm font-medium text-base-content/70"><Trans>Waiting to join</Trans></h3>
             <ul className="space-y-2 *:flex *:flex-wrap *:items-center *:gap-3 *:rounded-box *:border *:border-dashed *:border-base-content/20 *:p-2">
               {pending.map((i) => (
                 <li key={i.id}>
@@ -135,7 +140,7 @@ export function Household({ householdName }: { householdName: string }) {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-base-content">{i.email}</p>
                     <p className="text-sm text-base-content/70">
-                      {ROLES[i.role as HouseholdRole]?.label ?? i.role} · link works until {formatDate(i.expiresAt)}
+                      <Trans>{ph({ role: roleLabel(i.role) })} · link works until {ph({ date: formatDate(i.expiresAt) })}</Trans>
                     </p>
                     <EmailStatus emails={emails.data} id={i.id} />
                   </div>
@@ -158,12 +163,12 @@ export function Household({ householdName }: { householdName: string }) {
                         }
                       >
                         <span className="icon-[tabler--send] size-4" />
-                        Send again
+                        <Trans>Send again</Trans>
                       </button>
                     )}
                     <button type="button" className="btn btn-soft btn-primary btn-sm" onClick={() => setInvited({ id: i.id, email: i.email })}>
                       <span className="icon-[tabler--link] size-4" />
-                      Link
+                      <Trans>Link</Trans>
                     </button>
                     <button
                       type="button"
@@ -171,7 +176,7 @@ export function Household({ householdName }: { householdName: string }) {
                       disabled={busy}
                       onClick={() => act(() => run(authClient.organization.cancelInvitation({ invitationId: i.id })))}
                     >
-                      Cancel
+                      <Trans>Cancel</Trans>
                     </button>
                   </div>
                 </li>
@@ -223,18 +228,18 @@ function MemberRow(props: {
       <div className="min-w-0 flex-1">
         <h3 className="flex flex-wrap items-center gap-2 font-medium text-base-content">
           <span className="truncate">{props.name}</span>
-          {props.isMe && <span className="badge badge-soft badge-primary badge-sm">You</span>}
+          {props.isMe && <span className="badge badge-soft badge-primary badge-sm"><Trans>You</Trans></span>}
         </h3>
         <p className="truncate text-sm text-base-content/70">{props.email}</p>
       </div>
       {confirming ? (
         <div className="flex items-center gap-2 max-sm:w-full max-sm:justify-end">
-          <span className="text-sm text-base-content/80">{props.isMe ? "Leave?" : `Remove ${props.name}?`}</span>
+          <span className="text-sm text-base-content/80">{props.isMe ? t`Leave?` : t`Remove ${ph({ name: props.name })}?`}</span>
           <button type="button" className="btn btn-error btn-sm" disabled={props.busy} onClick={props.isMe ? props.onLeave : props.onRemove}>
-            {props.isMe ? "Leave" : "Remove"}
+            {props.isMe ? t`Leave` : t`Remove`}
           </button>
           <button type="button" className="btn btn-text btn-sm" onClick={() => setConfirming(false)}>
-            Keep
+            <Trans>Keep</Trans>
           </button>
         </div>
       ) : (
@@ -242,27 +247,27 @@ function MemberRow(props: {
           {props.canManage ? (
             <select
               className="select select-sm w-32"
-              aria-label={`Role for ${props.name}`}
+              aria-label={t`Role for ${ph({ name: props.name })}`}
               value={props.role}
               disabled={props.busy}
               onChange={(e) => props.onRole(e.target.value as HouseholdRole)}
             >
               {INVITABLE.map((r) => (
                 <option key={r} value={r}>
-                  {ROLES[r].label}
+                  {t(ROLES[r].label)}
                 </option>
               ))}
             </select>
           ) : (
-            <span className="badge badge-soft badge-secondary" title={ROLES[props.role]?.help}>
-              {ROLES[props.role]?.label ?? props.role}
+            <span className="badge badge-soft badge-secondary" title={ROLES[props.role as HouseholdRole] ? t(ROLES[props.role as HouseholdRole].help) : undefined}>
+              {roleLabel(props.role)}
             </span>
           )}
           {(props.canManage || (props.isMe && props.role !== "owner")) && (
             <button
               type="button"
               className="btn btn-text btn-sm btn-circle"
-              aria-label={props.isMe ? "Leave this household" : `Remove ${props.name}`}
+              aria-label={props.isMe ? t`Leave this household` : t`Remove ${ph({ name: props.name })}`}
               onClick={() => setConfirming(true)}
             >
               <span className={`${props.isMe ? "icon-[tabler--logout]" : "icon-[tabler--user-minus]"} size-4`} />
@@ -277,13 +282,13 @@ function MemberRow(props: {
 /** Whether a pending invitation's email went out — or, without email here, that it never does. */
 function EmailStatus({ emails, id }: { emails?: InvitationEmails; id: string }) {
   if (!emails) return null;
-  if (!emails.email) return <p className="text-sm text-base-content/70">Not emailed — send them the link yourself</p>;
+  if (!emails.email) return <p className="text-sm text-base-content/70"><Trans>Not emailed — send them the link yourself</Trans></p>;
   const row = emails.data.find((e) => e.id === id);
   if (row?.error) return <p className="text-sm text-error">{row.error}</p>;
-  if (row?.sentAt) return <p className="text-sm text-base-content/70">Sent by email {formatDate(row.sentAt)}</p>;
-  if (row) return <p className="text-sm text-base-content/70">Sending by email…</p>;
+  if (row?.sentAt) return <p className="text-sm text-base-content/70"><Trans>Sent by email {ph({ formatDate: formatDate(row.sentAt) })}</Trans></p>;
+  if (row) return <p className="text-sm text-base-content/70"><Trans>Sending by email…</Trans></p>;
   // Made before Ferret emailed invitations.
-  return <p className="text-sm text-base-content/70">Not emailed yet</p>;
+  return <p className="text-sm text-base-content/70"><Trans>Not emailed yet</Trans></p>;
 }
 
 /** Send again: not while it's on its way, nor a few minutes after it went (the server would skip it). */
@@ -319,13 +324,13 @@ function RenameModal(props: { householdId: string; householdName: string; onClos
       <form className="flex flex-col gap-6" onSubmit={onSubmit}>
         <div className="space-y-1 text-center">
           <h3 id="rename-household-title" className="text-2xl font-semibold text-base-content">
-            Rename household
+            <Trans>Rename household</Trans>
           </h3>
-          <p className="text-base-content/80">Everyone in it sees the new name. Nothing else changes.</p>
+          <p className="text-base-content/80"><Trans>Everyone in it sees the new name. Nothing else changes.</Trans></p>
         </div>
         <div>
           <label className="label-text" htmlFor="rename-household-name">
-            Household name
+            <Trans>Household name</Trans>
           </label>
           <input
             id="rename-household-name"
@@ -335,18 +340,18 @@ function RenameModal(props: { householdId: string; householdName: string; onClos
             maxLength={NAME_MAX}
             required
             pattern=".*\S.*"
-            title="A name with at least one letter or number"
+            title={t`A name with at least one letter or number`}
             autoFocus
           />
         </div>
         {error && <div className="alert alert-soft alert-error">{error}</div>}
         <div className="flex flex-wrap items-center justify-end gap-4">
           <button type="button" className="btn btn-secondary btn-soft" onClick={props.onClose}>
-            Cancel
+            <Trans>Cancel</Trans>
           </button>
           <button type="submit" className="btn btn-primary" disabled={busy}>
             {busy && <span className="loading loading-spinner loading-sm" />}
-            Save
+            <Trans>Save</Trans>
           </button>
         </div>
       </form>
@@ -382,29 +387,29 @@ function InviteModal(props: { householdName: string; emailOn: boolean; onClose: 
       <form className="flex flex-col gap-6" onSubmit={onSubmit}>
         <div className="space-y-1 text-center">
           <h3 id="invite-title" className="text-2xl font-semibold text-base-content">
-            Invite to {props.householdName}
+            <Trans>Invite to {ph({ householdName: props.householdName })}</Trans>
           </h3>
-          <p className="text-base-content/80">{props.emailOn ? "Ferret emails them a link to join" : "You'll get a link to send them"}</p>
+          <p className="text-base-content/80">{props.emailOn ? t`Ferret emails them a link to join` : t`You'll get a link to send them`}</p>
         </div>
         <div className="space-y-4">
           <div>
             <label className="label-text" htmlFor="invite-email">
-              Their email
+              <Trans>Their email</Trans>
             </label>
             <div className="input">
               <span className="icon-[tabler--mail] my-auto me-3 size-5 shrink-0 text-base-content/80" />
               <input id="invite-email" name="email" type="email" className="grow" placeholder="sam@example.com" required autoFocus />
             </div>
-            <p className="helper-text">They sign up (or in) with this address to join.</p>
+            <p className="helper-text"><Trans>They sign up (or in) with this address to join.</Trans></p>
           </div>
           <fieldset className="space-y-2">
-            <legend className="label-text">They can…</legend>
+            <legend className="label-text"><Trans>They can…</Trans></legend>
             {INVITABLE.map((r, i) => (
               <label key={r} className="flex items-start gap-3">
                 <input type="radio" name="role" value={r} className="radio radio-primary mt-0.5" defaultChecked={i === 0} />
                 <span>
-                  <span className="label-text block text-base">{ROLES[r].label}</span>
-                  <span className="text-sm text-base-content/70">{ROLES[r].help}</span>
+                  <span className="label-text block text-base">{t(ROLES[r].label)}</span>
+                  <span className="text-sm text-base-content/70">{t(ROLES[r].help)}</span>
                 </span>
               </label>
             ))}
@@ -413,11 +418,11 @@ function InviteModal(props: { householdName: string; emailOn: boolean; onClose: 
         {error && <div className="alert alert-soft alert-error">{error}</div>}
         <div className="flex flex-wrap items-center justify-end gap-4">
           <button type="button" className="btn btn-secondary btn-soft" onClick={props.onClose}>
-            Cancel
+            <Trans>Cancel</Trans>
           </button>
           <button type="submit" className="btn btn-primary" disabled={busy}>
             {busy && <span className="loading loading-spinner loading-sm" />}
-            {props.emailOn ? "Send invitation" : "Create invitation"}
+            {props.emailOn ? t`Send invitation` : t`Create invitation`}
           </button>
         </div>
       </form>
@@ -438,36 +443,43 @@ function InviteLinkModal(props: { invitation: { id: string; email: string; justN
             </div>
           </div>
           <h3 id="invite-link-title" className="text-2xl font-semibold text-base-content">
-            {props.emailOn ? (props.invitation.justNow ? "Invitation on its way to " : "Invitation for ") : "Send this to "}
-            <span className="break-all">{props.invitation.email}</span>
+            {props.emailOn ? (
+              props.invitation.justNow ? (
+                <Trans>Invitation on its way to <span className="break-all">{ph({ email: props.invitation.email })}</span></Trans>
+              ) : (
+                <Trans>Invitation for <span className="break-all">{ph({ email: props.invitation.email })}</span></Trans>
+              )
+            ) : (
+              <Trans>Send this to <span className="break-all">{ph({ email: props.invitation.email })}</span></Trans>
+            )}
           </h3>
           {props.emailOn ? (
             <p className="text-base-content/80">
-              {props.invitation.justNow ? "Ferret is emailing them this link. " : ""}It works for two weeks, and only for that email address — copy or
-              share it to send it another way too.
+              {props.invitation.justNow ? `${t`Ferret is emailing them this link.`} ` : ""}<Trans>It works for two weeks, and only for that email address — copy or
+              share it to send it another way too.</Trans>
             </p>
           ) : (
             <p className="text-base-content/80">
-              Ferret doesn't send this — copy the link and send it yourself. It works for two weeks, and only for that email address.
+              <Trans>Ferret doesn't send this — copy the link and send it yourself. It works for two weeks, and only for that email address.</Trans>
             </p>
           )}
         </div>
-        <CopyField label="Invitation link" value={link} icon="icon-[tabler--link]" />
+        <CopyField label={t`Invitation link`} value={link} icon="icon-[tabler--link]" />
         <div className="flex flex-wrap justify-end gap-3">
           {canShare && (
             <button
               type="button"
               className="btn btn-soft btn-primary"
               onClick={() =>
-                navigator.share({ title: `Join ${props.householdName} on Ferret`, text: `Join ${props.householdName} on Ferret:`, url: link }).catch(() => {})
+                navigator.share({ title: t`Join ${ph({ household: props.householdName })} on Ferret`, text: t`Join ${ph({ household: props.householdName })} on Ferret:`, url: link }).catch(() => {})
               }
             >
               <span className="icon-[tabler--share] size-5" />
-              Share
+              <Trans>Share</Trans>
             </button>
           )}
           <button type="button" className="btn btn-primary" onClick={props.onClose}>
-            Done
+            <Trans>Done</Trans>
           </button>
         </div>
       </div>

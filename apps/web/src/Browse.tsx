@@ -11,6 +11,8 @@ import { placeHref, PLACES_HREF, propertyHref, missingHref } from "./lib/route";
 import { money } from "./lib/money";
 import { PROPERTY_TYPES } from "./Places";
 import { useAppearance } from "./lib/appearance";
+import { t, ph, plural } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 type Property = PlacesTree["properties"][number];
 
@@ -34,7 +36,7 @@ const fullAddress = (p: Property) => {
 /** Apple Maps (the app on an iPhone, the website elsewhere) at an address. */
 const appleMapsUrl = (addr: string) => `https://maps.apple.com/?address=${encodeURIComponent(addr)}`;
 
-const things = (n: number) => `${n.toLocaleString()} ${n === 1 ? "thing" : "things"}`;
+const things = (n: number) => plural(n, { one: "# thing", other: "# things" });
 
 /** The dashboard's "Places": one card per property, then anything not in a place yet. */
 export function PropertyCards({ tree, canEdit }: { tree: PlacesTree; canEdit: boolean }) {
@@ -43,12 +45,12 @@ export function PropertyCards({ tree, canEdit }: { tree: PlacesTree; canEdit: bo
       <section className="card">
         <div className="card-body items-center gap-3 text-center">
           <span className="icon-[tabler--home-plus] size-10 text-primary" />
-          <h2 className="text-lg font-semibold">Where do you keep things?</h2>
-          <p className="max-w-sm text-sm text-base-content/70">Add your home and its rooms, then browse your things room by room.</p>
+          <h2 className="text-lg font-semibold"><Trans>Where do you keep things?</Trans></h2>
+          <p className="max-w-sm text-sm text-base-content/70"><Trans>Add your home and its rooms, then browse your things room by room.</Trans></p>
           {canEdit && (
             <a href={PLACES_HREF} className="btn btn-primary">
               <span className="icon-[tabler--plus] size-5" />
-              Add your home
+              <Trans>Add your home</Trans>
             </a>
           )}
         </div>
@@ -60,11 +62,11 @@ export function PropertyCards({ tree, canEdit }: { tree: PlacesTree; canEdit: bo
       <div className="flex flex-wrap items-center justify-between gap-x-2">
         <h2 id="places-title" className="flex items-center gap-2 font-semibold text-base-content">
           <span className="icon-[tabler--map-pin] size-5 text-primary" />
-          Places
+          <Trans>Places</Trans>
         </h2>
         {canEdit && (
           <a href={PLACES_HREF} className="tap link link-primary link-hover text-sm">
-            Edit places
+            <Trans>Edit places</Trans>
           </a>
         )}
       </div>
@@ -75,7 +77,7 @@ export function PropertyCards({ tree, canEdit }: { tree: PlacesTree; canEdit: bo
       </div>
       {tree.unplacedItems > 0 && (
         <a href={missingHref("place")} className="tap link link-hover text-sm text-base-content/70">
-          {things(tree.unplacedItems)} not in a place yet →
+          <Trans>{ph({ things: things(tree.unplacedItems) })} not in a place yet →</Trans>
         </a>
       )}
     </section>
@@ -98,7 +100,7 @@ function PropertyCard({ property: p }: { property: Property }) {
         <div className="min-w-0 flex-1">
           <h3 className="truncate font-semibold text-base-content">{p.name}</h3>
           <p className="text-sm text-base-content/70">
-            {p.locations.length} {p.locations.length === 1 ? "room" : "rooms"} · {things(sum.items)}
+            {plural(p.locations.length, { one: "# room", other: "# rooms" })} · {things(sum.items)}
           </p>
         </div>
         <div className="text-end">
@@ -127,7 +129,7 @@ export function PlaceTiles({ nodes, title }: { nodes: LocationNode[]; title: str
                 {sum.valueCents > 0 && <p className="text-sm font-medium text-base-content">{money(sum.valueCents)}</p>}
                 {n.children.length > 0 && (
                   <p className="text-xs text-base-content/70">
-                    {n.children.length} {n.children.length === 1 ? "place" : "places"} inside
+                    {plural(n.children.length, { one: "# place inside", other: "# places inside" })}
                   </p>
                 )}
               </div>
@@ -152,10 +154,10 @@ export function PropertyHeader({ property: p, canEdit, maps }: { property: Prope
   return (
     <section className="card overflow-hidden">
       {addr && maps && !mapFailed && (
-        <a href={appleMapsUrl(addr)} target="_blank" rel="noreferrer" aria-label={`${p.name} in Apple Maps`} className="block bg-base-200">
+        <a href={appleMapsUrl(addr)} target="_blank" rel="noreferrer" aria-label={t`${ph({ name: p.name })} in Apple Maps`} className="block bg-base-200">
           <img
             src={`/api/v1/properties/${p.id}/map${dark ? "?scheme=dark" : ""}`}
-            alt={`Map of ${addr}`}
+            alt={t`Map of ${addr}`}
             width={600}
             height={260}
             className="aspect-[60/26] w-full object-cover"
@@ -172,12 +174,12 @@ export function PropertyHeader({ property: p, canEdit, maps }: { property: Prope
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-semibold text-base-content">{p.name}</h1>
           <p className="text-sm text-base-content/70">
-            {PROPERTY_TYPES[p.type].label} · {things(sum.items)}, {money(sum.valueCents)} in contents
+            <Trans>{ph({ kind: t(PROPERTY_TYPES[p.type].label) })} · {ph({ things: things(sum.items) })}, {ph({ amount: money(sum.valueCents) })} in contents</Trans>
           </p>
           {address(p) && <p className="truncate text-sm text-base-content/70">{address(p)}</p>}
           {(p.details.yearBuilt || p.details.valueCents) && (
             <p className="text-sm text-base-content/70">
-              {[p.details.yearBuilt && `Built ${p.details.yearBuilt}`, p.details.valueCents != null && `Valued at ${money(p.details.valueCents)}`]
+              {[p.details.yearBuilt && t`Built ${ph({ year: p.details.yearBuilt })}`, p.details.valueCents != null && t`Valued at ${ph({ amount: money(p.details.valueCents) })}`]
                 .filter(Boolean)
                 .join(" · ")}
             </p>
@@ -185,12 +187,12 @@ export function PropertyHeader({ property: p, canEdit, maps }: { property: Prope
           {addr && (
             <a href={appleMapsUrl(addr)} target="_blank" rel="noreferrer" className="btn btn-soft btn-primary btn-sm mt-2">
               <span className="icon-[tabler--map-2] size-4" />
-              Open in Maps
+              <Trans>Open in Maps</Trans>
             </a>
           )}
         </div>
         {canEdit && (
-          <a href={PLACES_HREF} className="btn btn-text btn-sm btn-circle" aria-label={`Edit ${p.name}'s rooms`}>
+          <a href={PLACES_HREF} className="btn btn-text btn-sm btn-circle" aria-label={t`Edit ${ph({ name: p.name })}'s rooms`}>
             <span className="icon-[tabler--pencil] size-4" />
           </a>
         )}
@@ -216,7 +218,7 @@ export function Breadcrumbs({ tree, locationId, beside }: { tree: PlacesTree | u
   const here = trail.pop()!;
   return (
     <div className="flex flex-col gap-1">
-      <nav className="breadcrumbs py-0 text-sm" aria-label="Where this is">
+      <nav className="breadcrumbs py-0 text-sm" aria-label={t`Where this is`}>
         <ul>
           <li>
             <a href={propertyHref(found.property.id)} className="tap text-base-content/70">

@@ -8,6 +8,8 @@ import { useEffect, useState } from "react";
 import { type DemoPart, type DemoReport, api } from "./lib/api";
 import { authClient, signOut } from "./lib/auth";
 import { countUsage, startCounting } from "./lib/demo-counts";
+import { t, ph } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 const useDemo = () => useQuery({ queryKey: ["auth-options"], queryFn: api.authOptions, staleTime: Infinity }).data?.demo;
 
@@ -24,7 +26,7 @@ export function DemoCounts() {
 function RunYourOwn({ className = "" }: { className?: string }) {
   return (
     <a href="/docs/hosting/install.html" className={`link link-primary tap ${className}`} onClick={() => countUsage("self_host.click")}>
-      Run your own Ferret
+      <Trans>Run your own Ferret</Trans>
     </a>
   );
 }
@@ -36,7 +38,7 @@ export function DemoSignIn({ demo, busy, onSignIn }: { demo: DemoOptions; busy: 
   if (demo.paused) {
     return (
       <div className="alert alert-soft alert-info text-sm" role="status">
-        The demo is resting for now — please come back later.
+        <Trans>The demo is resting for now — please come back later.</Trans>
       </div>
     );
   }
@@ -45,25 +47,25 @@ export function DemoSignIn({ demo, busy, onSignIn }: { demo: DemoOptions; busy: 
       <div className="card-body gap-3 p-4">
         <div>
           <h2 id="demo-title" className="font-semibold text-base-content">
-            Try the demo
+            <Trans>Try the demo</Trans>
           </h2>
           <p className="text-sm text-base-content/70">
-            A made-up house, shared by everyone trying Ferret — change anything you like; it starts afresh every night.
+            <Trans>A made-up house, shared by everyone trying Ferret — change anything you like; it starts afresh every night.</Trans>
           </p>
         </div>
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-          <dt className="text-base-content/70">Email</dt>
+          <dt className="text-base-content/70"><Trans>Email</Trans></dt>
           <dd className="font-mono break-all select-all">{demo.email}</dd>
-          <dt className="text-base-content/70">Password</dt>
+          <dt className="text-base-content/70"><Trans>Password</Trans></dt>
           <dd className="font-mono select-all">{demo.password}</dd>
         </dl>
         <button type="button" className="btn btn-primary" disabled={busy} onClick={onSignIn}>
           {busy ? <span className="loading loading-spinner loading-sm" /> : <span className="icon-[tabler--door-enter] size-5" />}
-          Sign in to the demo
+          <Trans>Sign in to the demo</Trans>
         </button>
         <p className="text-xs text-base-content/70">
-          Or create your own account below: it and its households are deleted after {demo.visitorDays} days. Or{" "}
-          <RunYourOwn /> at home.
+          <Trans>Or create your own account below: it and its households are deleted after {ph({ visitorDays: demo.visitorDays })} days. Or{" "}
+          <RunYourOwn /> at home.</Trans>
         </p>
       </div>
     </section>
@@ -82,25 +84,25 @@ export function DemoNote() {
       <div className="min-w-0 flex-1 basis-60">
         {shared ? (
           <>
-            <p className="font-medium">You're in the shared demo.</p>
+            <p className="font-medium"><Trans>You're in the shared demo.</Trans></p>
             <p>
-              Everyone trying Ferret sees this house, and it starts afresh every night. Account settings are locked here —
-              make your own account to try those too.
+              <Trans>Everyone trying Ferret sees this house, and it starts afresh every night. Account settings are locked here —
+              make your own account to try those too.</Trans>
             </p>
           </>
         ) : (
           <p>
-            This is the Ferret demo: your account and its households are deleted {demo.visitorDays} days after you made
-            them.
+            <Trans>This is the Ferret demo: your account and its households are deleted {ph({ visitorDays: demo.visitorDays })} days after you made
+            them.</Trans>
           </p>
         )}
         <p className="mt-1">
-          Like it? <RunYourOwn /> — on a computer at home, so your things never leave it.
+          <Trans>Like it? <RunYourOwn /> — on a computer at home, so your things never leave it.</Trans>
         </p>
       </div>
       {shared && (
         <button type="button" className="btn btn-soft btn-info btn-sm btn-wrap" onClick={() => signOut()}>
-          Sign out to make your own
+          <Trans>Sign out to make your own</Trans>
         </button>
       )}
     </div>
@@ -153,37 +155,36 @@ export function DemoUsage() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="demo-usage-title" className="card-title flex items-center gap-2">
             <span className="icon-[tabler--flask] size-5 text-primary" aria-hidden />
-            Demo
+            <Trans>Demo</Trans>
           </h2>
-          <select className="select select-sm w-auto" value={days} onChange={(e) => setDays(Number(e.target.value))} aria-label="Period">
-            <option value={7}>Last 7 days</option>
-            <option value={30}>Last 30 days</option>
-            <option value={90}>Last 90 days</option>
+          <select className="select select-sm w-auto" value={days} onChange={(e) => setDays(Number(e.target.value))} aria-label={t`Period`}>
+            <option value={7}>{t`Last 7 days`}</option>
+            <option value={30}>{t`Last 30 days`}</option>
+            <option value={90}>{t`Last 90 days`}</option>
           </select>
         </div>
         <p className="text-sm text-base-content/70">
-          Counts of what visitors do — never who they are or what they add. Visitors&rsquo; accounts go after{" "}
-          {r?.visitorDays ?? demo.visitorDays} days.
+          <Trans>Counts of what visitors do — never who they are or what they add. Visitors&rsquo; accounts go after {ph({ days: r?.visitorDays ?? demo.visitorDays })} days.</Trans>
         </p>
         {report.isError && <div className="alert alert-soft alert-error text-sm">{report.error.message}</div>}
         {r && (
           <>
             <dl className="grid grid-cols-[repeat(auto-fit,minmax(6rem,1fr))] gap-3">
-              <Stat label="Visitors’ accounts now" value={r.visitorAccounts} />
-              <Stat label="Their households" value={r.visitorHouseholds} />
-              <Stat label="AI calls today" value={`${r.ai.today} of ${r.ai.perDay}`} />
+              <Stat label={t`Visitors’ accounts now`} value={r.visitorAccounts} />
+              <Stat label={t`Their households`} value={r.visitorHouseholds} />
+              <Stat label={t`AI calls today`} value={`${r.ai.today} of ${r.ai.perDay}`} />
             </dl>
-            {r.paused && <div className="alert alert-soft alert-warning text-sm">The demo is paused (DEMO_PAUSED).</div>}
+            {r.paused && <div className="alert alert-soft alert-warning text-sm"><Trans>The demo is paused (DEMO_PAUSED).</Trans></div>}
             {r.counts === null ? (
               <div className="alert alert-soft alert-info text-sm">
                 {r.countsError
-                  ? `Couldn’t read the counts: ${r.countsError}`
-                  : "The counts are being kept, but can’t be read back from here."}
+                  ? t`Couldn’t read the counts: ${ph({ countsError: r.countsError })}`
+                  : t`The counts are being kept, but can’t be read back from here.`}
               </div>
             ) : (
               <>
                 <div>
-                  <h3 className="mb-2 font-medium">From a visit to coming back</h3>
+                  <h3 className="mb-2 font-medium"><Trans>From a visit to coming back</Trans></h3>
                   <ul className="space-y-2">
                     {funnel.map(([label, n]) => (
                       <li key={label} className="grid grid-cols-[minmax(0,10rem)_1fr_auto] items-center gap-3 text-sm">
@@ -196,7 +197,7 @@ export function DemoUsage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <h3 className="mb-2 font-medium">What they tried</h3>
+                    <h3 className="mb-2 font-medium"><Trans>What they tried</Trans></h3>
                     <ul className="divide-y divide-base-300 text-sm">
                       {FEATURES.map(([event, label]) => (
                         <li key={event} className="flex justify-between gap-3 py-1.5">
@@ -207,7 +208,7 @@ export function DemoUsage() {
                     </ul>
                   </div>
                   <div>
-                    <h3 className="mb-2 font-medium">Where visits came from</h3>
+                    <h3 className="mb-2 font-medium"><Trans>Where visits came from</Trans></h3>
                     {refs.size ? (
                       <ul className="divide-y divide-base-300 text-sm">
                         {[...refs].sort((a, b) => b[1] - a[1]).map(([ref, n]) => (
@@ -218,22 +219,22 @@ export function DemoUsage() {
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-sm text-base-content/70">No visits yet. Links with ?ref= show here.</p>
+                      <p className="text-sm text-base-content/70"><Trans>No visits yet. Links with ?ref= show here.</Trans></p>
                     )}
                   </div>
                 </div>
                 {byDay.size > 0 && (
                   <div className="overflow-x-auto">
                     <table className="table table-sm">
-                      <caption className="sr-only">By day (UTC)</caption>
+                      <caption className="sr-only"><Trans>By day (UTC)</Trans></caption>
                       <thead>
                         <tr>
-                          <th>Day (UTC)</th>
-                          <th className="text-end">Visits</th>
-                          <th className="text-end">Tried</th>
-                          <th className="text-end">Accounts</th>
-                          <th className="text-end">Things</th>
-                          <th className="text-end">Searches</th>
+                          <th><Trans>Day (UTC)</Trans></th>
+                          <th className="text-end"><Trans>Visits</Trans></th>
+                          <th className="text-end"><Trans>Tried</Trans></th>
+                          <th className="text-end"><Trans>Accounts</Trans></th>
+                          <th className="text-end"><Trans>Things</Trans></th>
+                          <th className="text-end"><Trans>Searches</Trans></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -302,9 +303,9 @@ export function DemoSwitches() {
       <div className="card-body gap-3">
         <h2 id="demo-switches-title" className="card-title flex items-center gap-2">
           <span className="icon-[tabler--toggle-right] size-5 text-primary" aria-hidden />
-          Parts of the demo
+          <Trans>Parts of the demo</Trans>
         </h2>
-        <p className="text-sm text-base-content/70">Switch one off to stop its cost or its misuse without closing the demo. Changes reach every visitor within seconds.</p>
+        <p className="text-sm text-base-content/70"><Trans>Switch one off to stop its cost or its misuse without closing the demo. Changes reach every visitor within seconds.</Trans></p>
         <ul className="divide-y divide-base-300">
           {PARTS.map(([part, label, what]) => (
             <li key={part} className="py-2">
@@ -340,11 +341,11 @@ export function HostingUsageCard() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="hosting-usage-title" className="card-title flex items-center gap-2">
             <span className="icon-[tabler--cloud] size-5 text-primary" aria-hidden />
-            {u?.title ?? "Hosting this month"}
+            {u?.title ?? t`Hosting this month`}
           </h2>
           <button type="button" className="btn btn-text btn-sm" disabled={usage.isFetching} onClick={() => void usage.refetch()}>
             {usage.isFetching ? <span className="loading loading-spinner loading-xs" /> : <span className="icon-[tabler--refresh] size-4" aria-hidden />}
-            Refresh
+            <Trans>Refresh</Trans>
           </button>
         </div>
         {u?.note && <p className="text-sm text-base-content/70">{u.note}</p>}
@@ -360,7 +361,7 @@ export function HostingUsageCard() {
                     <div className="flex flex-wrap justify-between gap-x-3">
                       <span>{label}</span>
                       <span className="tabular-nums text-base-content/70">
-                        {show(used)} of {show(included)} · {used / included < 0.001 && used > 0 ? "<0.1" : ((used / included) * 100).toFixed(1)}%
+                        <Trans>{ph({ used: show(used) })} of {ph({ included: show(included) })}</Trans> · {used / included < 0.001 && used > 0 ? "<0.1" : ((used / included) * 100).toFixed(1)}%
                       </span>
                     </div>
                     <progress className={`progress ${used / included > 0.8 ? "progress-warning" : "progress-primary"}`} value={Math.min(used, included)} max={included} aria-hidden />

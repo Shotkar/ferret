@@ -31,14 +31,17 @@ import { CurrencyCard } from "./Currency";
 import { AiFillCard } from "./AiFill";
 import { NotInPlan, PlanUsage, usePlanFeature } from "./PlanUsage";
 import { useRole } from "./lib/auth";
+import { t, ph, msg } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
+import type { MessageDescriptor } from "@lingui/core";
 
-const TABS: { section: SettingsSection; label: string; icon: string }[] = [
-  { section: "household", label: "Household", icon: "icon-[tabler--users]" },
-  { section: "plan", label: "Usage", icon: "icon-[tabler--gauge]" },
-  { section: "notifications", label: "Notifications", icon: "icon-[tabler--bell]" },
-  { section: "security", label: "Security", icon: "icon-[tabler--shield-lock]" },
-  { section: "api", label: "Claude & API", icon: "icon-[tabler--key]" },
-  { section: "server", label: "Server", icon: "icon-[tabler--server]" },
+const TABS: { section: SettingsSection; label: MessageDescriptor; icon: string }[] = [
+  { section: "household", label: msg`Household`, icon: "icon-[tabler--users]" },
+  { section: "plan", label: msg`Usage`, icon: "icon-[tabler--gauge]" },
+  { section: "notifications", label: msg`Notifications`, icon: "icon-[tabler--bell]" },
+  { section: "security", label: msg`Security`, icon: "icon-[tabler--shield-lock]" },
+  { section: "api", label: msg`Claude & API`, icon: "icon-[tabler--key]" },
+  { section: "server", label: msg`Server`, icon: "icon-[tabler--server]" },
 ];
 
 export function Settings(props: { section: SettingsSection; householdName: string; householdId: string }) {
@@ -46,31 +49,31 @@ export function Settings(props: { section: SettingsSection; householdName: strin
   const me = useQuery({ queryKey: ["me"], queryFn: api.me });
   const serverAdmin = me.data?.serverAdmin ?? false;
   const role = useRole(householdId);
-  const tabs = TABS.filter((t) => t.section !== "server" || serverAdmin);
+  const tabs = TABS.filter((tab) => tab.section !== "server" || serverAdmin);
   return (
     <div className="min-h-dvh bg-base-200">
       <header className="sticky top-0 z-10 border-b border-base-300 bg-base-100/85 backdrop-blur-md">
         <nav className="navbar px-4">
           <div className="navbar-start items-center gap-2">
-            <a href="#/" className="btn btn-text btn-sm btn-square" aria-label="Back to your stuff">
+            <a href="#/" className="btn btn-text btn-sm btn-square" aria-label={t`Back to your stuff`}>
               <span className="icon-[tabler--arrow-left] size-5" />
             </a>
-            <h1 className="text-lg font-semibold">Settings</h1>
+            <h1 className="text-lg font-semibold"><Trans>Settings</Trans></h1>
           </div>
           <div className="navbar-end items-center">
             <span className="badge badge-soft badge-primary">{householdName}</span>
           </div>
         </nav>
-        <nav className="tabs tabs-bordered mx-auto max-w-4xl overflow-x-auto px-4 max-sm:px-1" aria-label="Settings sections">
-          {tabs.map((t) => (
+        <nav className="tabs tabs-bordered mx-auto max-w-4xl overflow-x-auto px-4 max-sm:px-1" aria-label={t`Settings sections`}>
+          {tabs.map((tab) => (
             <a
-              key={t.section}
-              href={settingsHref(t.section)}
-              className={`tab shrink-0 gap-2 max-sm:grow max-sm:px-2 max-sm:text-sm ${t.section === section ? "tab-active" : ""}`}
-              aria-current={t.section === section ? "page" : undefined}
+              key={tab.section}
+              href={settingsHref(tab.section)}
+              className={`tab shrink-0 gap-2 max-sm:grow max-sm:px-2 max-sm:text-sm ${tab.section === section ? "tab-active" : ""}`}
+              aria-current={tab.section === section ? "page" : undefined}
             >
-              <span className={`${t.icon} size-5 max-sm:hidden`} />
-              {t.label}
+              <span className={`${tab.icon} size-5 max-sm:hidden`} />
+              {t(tab.label)}
             </a>
           ))}
         </nav>
@@ -98,7 +101,7 @@ export function Settings(props: { section: SettingsSection; householdName: strin
         )}
         {section === "security" && <Security />}
         {section === "server" &&
-          (serverAdmin ? <Server /> : me.isSuccess && <div className="alert alert-soft alert-info">Only the server admin sees this.</div>)}
+          (serverAdmin ? <Server /> : me.isSuccess && <div className="alert alert-soft alert-info"><Trans>Only the server admin sees this.</Trans></div>)}
         {section === "api" && (
           <>
             <ApiKeys householdName={householdName} householdId={householdId} />
@@ -128,23 +131,23 @@ function ApiKeys({ householdName, householdId }: { householdName: string; househ
             <div className="space-y-1">
               <h2 id="api-keys-title" className="card-title flex items-center gap-2">
                 <span className="icon-[tabler--key] size-5 text-primary" />
-                API keys
-                <HelpLink page="guide/claude.html" label="Claude and the API" />
+                <Trans>API keys</Trans>
+                <HelpLink page="guide/claude.html" label={t`Claude and the API`} />
               </h2>
               <p className="text-sm text-base-content/70">
-                Let Claude (or your own scripts) look things up and keep {householdName}'s inventory up to date. A key only
-                works for this household, and you can revoke it any time.
+                <Trans>Let Claude (or your own scripts) look things up and keep {householdName}'s inventory up to date. A key only
+                works for this household, and you can revoke it any time.</Trans>
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <a href={API_HREF} className="btn btn-soft btn-primary">
                 <span className="icon-[tabler--book] size-5" />
-                API reference
+                <Trans>API reference</Trans>
               </a>
               {feature.on && (
                 <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
                   <span className="icon-[tabler--plus] size-5" />
-                  New key
+                  <Trans>New key</Trans>
                 </button>
               )}
             </div>
@@ -157,7 +160,7 @@ function ApiKeys({ householdName, householdId }: { householdName: string; househ
           {revoke.isError && <div className="alert alert-soft alert-error">{revoke.error.message}</div>}
           {feature.on && keys.data && keys.data.data.length === 0 && (
             <div className="rounded-box border border-dashed border-base-content/20 p-6 text-center text-sm text-base-content/70">
-              No keys yet. Make one to connect Claude.
+              <Trans>No keys yet. Make one to connect Claude.</Trans>
             </div>
           )}
           {keys.data && keys.data.data.length > 0 && (
@@ -197,31 +200,31 @@ function KeyRow({ apiKey, onRevoke, busy }: { apiKey: ApiKeySummary; onRevoke: (
       </div>
       <div className="min-w-0 flex-1">
         <h3 className="flex flex-wrap items-center gap-2 font-medium text-base-content">
-          <span className="truncate">{apiKey.name ?? "Unnamed key"}</span>
-          {apiKey.readOnly && <span className="badge badge-soft badge-info badge-sm">Read-only</span>}
-          {expired && <span className="badge badge-soft badge-error badge-sm">Expired</span>}
+          <span className="truncate">{apiKey.name ?? t`Unnamed key`}</span>
+          {apiKey.readOnly && <span className="badge badge-soft badge-info badge-sm"><Trans>Read-only</Trans></span>}
+          {expired && <span className="badge badge-soft badge-error badge-sm"><Trans>Expired</Trans></span>}
         </h3>
         <p className="flex flex-wrap gap-x-2 text-sm text-base-content/70">
           <code>{apiKey.start}…</code>
-          <span>made {formatDate(apiKey.createdAt)}</span>
-          <span>{apiKey.lastUsedAt ? `last used ${formatDate(apiKey.lastUsedAt)}` : "never used"}</span>
-          {apiKey.expiresAt && !expired && <span>expires {formatDate(apiKey.expiresAt)}</span>}
+          <span><Trans>made {ph({ date: formatDate(apiKey.createdAt) })}</Trans></span>
+          <span>{apiKey.lastUsedAt ? t`last used ${ph({ date: formatDate(apiKey.lastUsedAt) })}` : t`never used`}</span>
+          {apiKey.expiresAt && !expired && <span><Trans>expires {ph({ date: formatDate(apiKey.expiresAt) })}</Trans></span>}
         </p>
       </div>
       {confirming ? (
         <div className="flex shrink-0 gap-1 max-sm:w-full max-sm:justify-end">
           <button type="button" className="btn btn-error btn-sm" onClick={onRevoke} disabled={busy}>
-            Revoke
+            <Trans>Revoke</Trans>
           </button>
           <button type="button" className="btn btn-text btn-sm" onClick={() => setConfirming(false)}>
-            Keep
+            <Trans>Keep</Trans>
           </button>
         </div>
       ) : (
         <button
           type="button"
           className="btn btn-text btn-sm btn-square btn-error shrink-0"
-          aria-label={`Revoke ${apiKey.name ?? "key"}`}
+          aria-label={apiKey.name ? t`Revoke ${ph({ name: apiKey.name })}` : t`Revoke key`}
           onClick={() => setConfirming(true)}
         >
           <span className="icon-[tabler--trash] size-5" />
@@ -238,16 +241,16 @@ function ConnectClaude() {
       <div className="card-body gap-3">
         <h2 id="connect-title" className="card-title flex items-center gap-2">
           <span className="icon-[tabler--plug-connected] size-5 text-primary" />
-          Connect Claude
+          <Trans>Connect Claude</Trans>
         </h2>
         <p className="text-sm text-base-content/70">
-          Ferret speaks MCP at the address below. Send the key as <code>Authorization: Bearer …</code>.
+          <Trans>Ferret speaks MCP at the address below. Send the key as <code>Authorization: Bearer …</code></Trans>.
         </p>
-        <CopyField label="MCP server URL" value={mcpUrl()} icon="icon-[tabler--world]" />
+        <CopyField label={t`MCP server URL`} value={mcpUrl()} icon="icon-[tabler--world]" />
         <p className="text-sm text-base-content/70">
-          In Claude Code, run this once (with your key in place of <code>ferret_…</code>):
+          <Trans>In Claude Code, run this once (with your key in place of <code>ferret_…</code></Trans>):
         </p>
-        <CopyField label="Claude Code command" value={claudeCommand("ferret_…")} icon="icon-[tabler--terminal-2]" />
+        <CopyField label={t`Claude Code command`} value={claudeCommand("ferret_…")} icon="icon-[tabler--terminal-2]" />
       </div>
     </section>
   );
@@ -258,10 +261,10 @@ const claudeCommand = (key: string) =>
   `claude mcp add --transport http ferret ${mcpUrl()} --header "Authorization: Bearer ${key}"`;
 
 const EXPIRY_OPTIONS = [
-  { label: "Never", days: null },
-  { label: "30 days", days: 30 },
-  { label: "90 days", days: 90 },
-  { label: "1 year", days: 365 },
+  { label: msg`Never`, days: null },
+  { label: msg`30 days`, days: 30 },
+  { label: msg`90 days`, days: 90 },
+  { label: msg`1 year`, days: 365 },
 ] as const;
 
 function CreateKeyModal({ onClose, onCreated }: { onClose: () => void; onCreated: (key: NewApiKey) => void }) {
@@ -281,29 +284,29 @@ function CreateKeyModal({ onClose, onCreated }: { onClose: () => void; onCreated
       <form className="flex flex-col gap-6" onSubmit={onSubmit}>
         <div className="space-y-1 text-center">
           <h3 id="new-api-key-title" className="text-2xl font-semibold text-base-content">
-            New API key
+            <Trans>New API key</Trans>
           </h3>
-          <p className="text-base-content/80">For Claude, or a script of your own</p>
+          <p className="text-base-content/80"><Trans>For Claude, or a script of your own</Trans></p>
         </div>
 
         <div className="space-y-4">
           <div>
             <label className="label-text" htmlFor="key-name">
-              Name
+              <Trans>Name</Trans>
             </label>
             <div className="input">
               <span className="icon-[tabler--tag] my-auto me-3 size-5 shrink-0 text-base-content/80" />
-              <input id="key-name" name="name" className="grow" placeholder="e.g. Claude Code on my Mac" maxLength={60} required autoFocus />
+              <input id="key-name" name="name" className="grow" placeholder={t`e.g. Claude Code on my Mac`} maxLength={60} required autoFocus />
             </div>
           </div>
           <div>
             <label className="label-text" htmlFor="key-expires">
-              Expires
+              <Trans>Expires</Trans>
             </label>
             <select id="key-expires" name="expires" className="select" defaultValue="">
               {EXPIRY_OPTIONS.map((o) => (
-                <option key={o.label} value={o.days ?? ""}>
-                  {o.label}
+                <option key={o.days ?? "never"} value={o.days ?? ""}>
+                  {t(o.label)}
                 </option>
               ))}
             </select>
@@ -311,8 +314,8 @@ function CreateKeyModal({ onClose, onCreated }: { onClose: () => void; onCreated
           <label className="flex min-h-11 items-start gap-3">
             <input type="checkbox" name="readOnly" className="switch switch-primary mt-0.5" />
             <span>
-              <span className="label-text block text-base">Read-only</span>
-              <span className="text-sm text-base-content/70">Can search and ask, but not add, change or remove anything.</span>
+              <Trans><span className="label-text block text-base">Read-only</span>
+              <span className="text-sm text-base-content/70">Can search and ask, but not add, change or remove anything.</span></Trans>
             </span>
           </label>
         </div>
@@ -321,11 +324,11 @@ function CreateKeyModal({ onClose, onCreated }: { onClose: () => void; onCreated
 
         <div className="flex flex-wrap items-center justify-end gap-4">
           <button type="button" className="btn btn-secondary btn-soft" onClick={onClose}>
-            Cancel
+            <Trans>Cancel</Trans>
           </button>
           <button type="submit" className="btn btn-primary" disabled={create.isPending}>
             {create.isPending && <span className="loading loading-spinner loading-sm" />}
-            Create key
+            <Trans>Create key</Trans>
           </button>
         </div>
       </form>
@@ -344,19 +347,19 @@ function RevealKeyModal({ apiKey, onClose }: { apiKey: NewApiKey; onClose: () =>
             </div>
           </div>
           <h3 id="api-key-created-title" className="text-2xl font-semibold text-base-content">
-            {apiKey.name} is ready
+            <Trans>{ph({ name: apiKey.name ?? "" })} is ready</Trans>
           </h3>
-          <p className="text-base-content/80">Copy it now. Ferret only keeps a fingerprint, so it can't show it to you again.</p>
+          <p className="text-base-content/80"><Trans>Copy it now. Ferret only keeps a fingerprint, so it can't show it to you again.</Trans></p>
         </div>
-        <CopyField label="API key" value={apiKey.key} icon="icon-[tabler--key]" />
+        <CopyField label={t`API key`} value={apiKey.key} icon="icon-[tabler--key]" />
         <div className="space-y-2">
-          <p className="text-sm text-base-content/70">Connect Claude Code with it:</p>
-          <CopyField label="Claude Code command" value={claudeCommand(apiKey.key)} icon="icon-[tabler--terminal-2]" />
+          <p className="text-sm text-base-content/70"><Trans>Connect Claude Code with it:</Trans></p>
+          <CopyField label={t`Claude Code command`} value={claudeCommand(apiKey.key)} icon="icon-[tabler--terminal-2]" />
         </div>
         <hr className="-mx-6 border-base-content/20 sm:-mx-10" />
         <div className="flex justify-end">
           <button type="button" className="btn btn-primary" onClick={onClose}>
-            Done
+            <Trans>Done</Trans>
           </button>
         </div>
       </div>

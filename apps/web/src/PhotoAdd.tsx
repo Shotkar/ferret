@@ -9,6 +9,7 @@ import { useRef, useState } from "react";
 import { api } from "./lib/api";
 import { itemHref } from "./lib/route";
 import { navigateTo } from "./lib/navigate";
+import { t, ph } from "@lingui/core/macro";
 
 export function AddFromPhotos(props: {
   householdId: string;
@@ -68,7 +69,7 @@ export function AddFromPhotos(props: {
         onClick={() => input.current?.click()}
       >
         {progress ? <span className="loading loading-spinner loading-sm" /> : <span className="icon-[tabler--camera-plus] size-5" />}
-        {progress ? `Adding ${progress.done + 1} of ${progress.total}…` : "Add from photos"}
+        {progress ? t`Adding ${ph({ number: progress.done + 1 })} of ${ph({ total: progress.total })}…` : t`Add from photos`}
       </button>
       {/* No `capture`: iPhone then offers the camera or the library, and several photos at once. */}
       <input

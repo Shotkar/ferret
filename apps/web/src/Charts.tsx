@@ -6,6 +6,8 @@
  */
 import { useState } from "react";
 import { moneyWhole as money } from "./lib/money";
+import { t, ph } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 const monthName = (month: string, withYear = true) =>
   new Date(`${month}-01T00:00:00`).toLocaleDateString(undefined, withYear ? { month: "short", year: "numeric" } : { month: "short" });
 
@@ -47,7 +49,7 @@ export function WorthOverTime({ byMonth }: { byMonth: { month: string; valueCent
         <p className="text-sm text-base-content/70">
           <span className="font-medium text-base-content">{monthName(points[shown]!.month)}</span>: {money(points[shown]!.valueCents)}
         </p>
-        {points.length > 12 && now > yearAgo && <p className="text-sm text-success">+{money(now - yearAgo)} in a year</p>}
+        {points.length > 12 && now > yearAgo && <p className="text-sm text-success">+<Trans>{ph({ amount: money(now - yearAgo) })} in a year</Trans></p>}
       </div>
       <div
         className="relative"
@@ -72,10 +74,10 @@ export function WorthOverTime({ byMonth }: { byMonth: { month: string; valueCent
       <div className="flex justify-between text-xs text-base-content/70" aria-hidden>
         <span>{monthName(points[0]!.month)}</span>
         <span>{monthName(points[Math.floor(points.length / 2)]!.month)}</span>
-        <span>Now</span>
+        <Trans><span>Now</span></Trans>
       </div>
       <table className="sr-only">
-        <caption>Worth at the end of each month</caption>
+        <caption><Trans>Worth at the end of each month</Trans></caption>
         <tbody>
           {points.map((p) => (
             <tr key={p.month}>
@@ -103,7 +105,8 @@ export function CategoryDonut({ groups, href }: { groups: { name: string; valueC
   const valued = groups.filter((g) => g.valueCents > 0);
   const top = valued.slice(0, 6);
   const rest = valued.slice(6).reduce((n, g) => n + g.valueCents, 0);
-  const slices = [...top.map((g, i) => ({ ...g, colour: SLICE_COLOURS[i]! })), ...(rest ? [{ name: "Everything else", valueCents: rest, items: 0, colour: "text-base-content/30" }] : [])];
+  const OTHERS = t`Everything else`;
+  const slices = [...top.map((g, i) => ({ ...g, colour: SLICE_COLOURS[i]! })), ...(rest ? [{ name: OTHERS, valueCents: rest, items: 0, colour: "text-base-content/30" }] : [])];
   const total = slices.reduce((n, s) => n + s.valueCents, 0) || 1;
   const [hover, setHover] = useState<string | null>(null);
   const R = 15.9155; // circumference 100, so dash lengths are percentages
@@ -135,13 +138,13 @@ export function CategoryDonut({ groups, href }: { groups: { name: string; valueC
           })}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className="text-xs text-base-content/70">{hover ?? "Total"}</span>
+          <span className="text-xs text-base-content/70">{hover ?? t`Total`}</span>
           <span className="font-semibold text-base-content">{money(hover ? slices.find((s) => s.name === hover)!.valueCents : total)}</span>
         </div>
       </div>
       <ul className="flex w-full min-w-0 flex-col gap-2">
         {slices.map((s) => {
-          const link = s.name !== "Everything else" ? href?.(s.name) : undefined;
+          const link = s.name !== OTHERS ? href?.(s.name) : undefined;
           const body = (
             <>
               <span className={`size-3 shrink-0 rounded-full bg-current ${s.colour}`} aria-hidden />

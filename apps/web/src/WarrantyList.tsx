@@ -11,6 +11,8 @@ import { api } from "./lib/api";
 import { itemHref } from "./lib/route";
 import { BarSearch } from "./Nav";
 import { daysLeft } from "./Overview";
+import { t } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 type Row = Warranty & { itemName: string };
 
@@ -30,11 +32,11 @@ export function WarrantyList({ householdId }: { householdId: string }) {
     <div className="min-h-dvh bg-base-200">
       <nav className="navbar sticky top-0 z-10 border-b border-base-300 bg-base-100/85 backdrop-blur-md px-4">
         <div className="navbar-start w-full min-w-0 items-center gap-2">
-          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label="Back">
+          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label={t`Back`}>
             <span className="icon-[tabler--arrow-left] size-5" />
           </a>
-          <h1 className="truncate text-lg font-semibold">Warranties</h1>
-          <HelpLink page="guide/warranties.html" label="Warranties" />
+          <h1 className="truncate text-lg font-semibold"><Trans>Warranties</Trans></h1>
+          <HelpLink page="guide/warranties.html" label={t`Warranties`} />
         </div>
         <BarSearch />
       </nav>
@@ -45,33 +47,33 @@ export function WarrantyList({ householdId }: { householdId: string }) {
           <div className="card">
             <div className="card-body items-center gap-3 text-center">
               <span className="icon-[tabler--shield-check] size-10 text-primary" />
-              <h2 className="text-lg font-semibold">No warranties yet</h2>
+              <h2 className="text-lg font-semibold"><Trans>No warranties yet</Trans></h2>
               <p className="max-w-sm text-sm text-base-content/70">
-                Add one from a thing's page, under Warranties. Upload a receipt or warranty card and Ferret suggests the dates for you.
+                <Trans>Add one from a thing's page, under Warranties. Upload a receipt or warranty card and Ferret suggests the dates for you.</Trans>
               </p>
             </div>
           </div>
         )}
 
         {all.length > 0 && ending.length + covered.length === 0 && (
-          <p className="px-1 text-sm text-base-content/70">Nothing's under warranty right now. Add one from a thing's page, under Warranties.</p>
+          <p className="px-1 text-sm text-base-content/70"><Trans>Nothing's under warranty right now. Add one from a thing's page, under Warranties.</Trans></p>
         )}
         {open.length > 0 && (
-          <Group title="Claims in progress" count={open.length} badge="badge-info">
+          <Group title={t`Claims in progress`} count={open.length} badge="badge-info">
             {open.map((c) => (
               <ClaimRow key={c.id} claim={c} />
             ))}
           </Group>
         )}
         {ending.length > 0 && (
-          <Group title="Ending in the next 60 days" count={ending.length} badge="badge-warning">
+          <Group title={t`Ending in the next 60 days`} count={ending.length} badge="badge-warning">
             {ending.map((w) => (
               <WarrantyRow key={w.id} w={w} />
             ))}
           </Group>
         )}
         {covered.length > 0 && (
-          <Group title="Covered" count={covered.length} badge="badge-success">
+          <Group title={t`Covered`} count={covered.length} badge="badge-success">
             {covered.map((w) => (
               <WarrantyRow key={w.id} w={w} />
             ))}
@@ -81,7 +83,7 @@ export function WarrantyList({ householdId }: { householdId: string }) {
           <details className="card group" open={ending.length + covered.length === 0}>
             <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 p-4 font-semibold text-base-content sm:px-6 [&::-webkit-details-marker]:hidden">
               <span className="icon-[tabler--chevron-right] size-4 transition-transform group-open:rotate-90" aria-hidden />
-              Ended
+              <Trans>Ended</Trans>
               <span className="badge badge-soft badge-sm badge-neutral">{ended.length}</span>
             </summary>
             <ul className="divide-y divide-base-content/10 px-4 pb-2 sm:px-6">
@@ -118,9 +120,9 @@ function WarrantyRow({ w }: { w: Row }) {
       <a href={itemHref(w.itemId)} className="-mx-2 flex min-h-11 items-center gap-3 rounded-field px-2 py-3 hover:bg-base-200">
         <span className="min-w-0 flex-1">
           <span className="block truncate font-medium text-base-content">{w.itemName}</span>
-          <span className="block truncate text-sm text-base-content/70">{[w.provider, w.coverage].filter(Boolean).join(" · ") || "Warranty"}</span>
+          <span className="block truncate text-sm text-base-content/70">{[w.provider, w.coverage].filter(Boolean).join(" · ") || t`Warranty`}</span>
           <span className="block text-xs text-base-content/70">
-            {ended ? "Ended" : "Ends"} {formatDate(w.endsOn)}
+            {ended ? t`Ended` : t`Ends`} {formatDate(w.endsOn)}
           </span>
         </span>
         {w.status === "expiring" && <span className="badge badge-soft badge-warning">{daysLeft(w.endsOn)}</span>}
@@ -141,7 +143,7 @@ function ClaimRow({ claim: c }: { claim: WarrantyClaim }) {
             {[c.warrantyProvider, c.reference && `#${c.reference}`, `filed ${formatDate(c.filedOn)}`].filter(Boolean).join(" · ")}
           </span>
         </span>
-        <span className={`badge badge-soft ${CLAIM_STATUS[c.status].badge}`}>{CLAIM_STATUS[c.status].label}</span>
+        <span className={`badge badge-soft ${CLAIM_STATUS[c.status].badge}`}>{t(CLAIM_STATUS[c.status].label)}</span>
       </a>
     </li>
   );

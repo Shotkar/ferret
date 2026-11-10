@@ -9,6 +9,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "./lib/api";
 import { money } from "./lib/money";
+import { t, ph } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 export function ProductSuggestions({ item, householdId }: { item: ItemListing; householdId: string }) {
   const qc = useQueryClient();
@@ -39,7 +41,7 @@ export function ProductSuggestions({ item, householdId }: { item: ItemListing; h
     return (
       <p className="flex items-center gap-2 text-sm text-base-content/70">
         <span className="loading loading-spinner loading-xs text-primary" />
-        Looking up barcode {item.barcode}…
+        <Trans>Looking up barcode {ph({ barcode: item.barcode ?? "" })}…</Trans>
       </p>
     );
   }
@@ -48,21 +50,21 @@ export function ProductSuggestions({ item, householdId }: { item: ItemListing; h
 
   const same = (a: unknown, b: unknown) => String(a ?? "").trim().toLowerCase() === String(b ?? "").trim().toLowerCase();
   const rows: { label: string; display: string; patch: ItemPatch }[] = [
-    !same(item.name, p.title) && { label: "Name", display: p.title, patch: { name: p.title } },
-    p.brand && !same(item.brand, p.brand) && { label: "Brand", display: p.brand, patch: { brand: p.brand } },
-    p.model && !same(item.model, p.model) && { label: "Model", display: p.model, patch: { model: p.model } },
-    p.typicalPriceCents && item.valueCents == null && { label: "Worth", display: `${money(p.typicalPriceCents)} (typical price)`, patch: { valueCents: p.typicalPriceCents } },
-    p.description && !item.description && { label: "About", display: p.description, patch: { description: p.description } },
+    !same(item.name, p.title) && { label: t`Name`, display: p.title, patch: { name: p.title } },
+    p.brand && !same(item.brand, p.brand) && { label: t`Brand`, display: p.brand, patch: { brand: p.brand } },
+    p.model && !same(item.model, p.model) && { label: t`Model`, display: p.model, patch: { model: p.model } },
+    p.typicalPriceCents && item.valueCents == null && { label: t`Worth`, display: t`${ph({ price: money(p.typicalPriceCents) })} (typical price)`, patch: { valueCents: p.typicalPriceCents } },
+    p.description && !item.description && { label: t`About`, display: p.description, patch: { description: p.description } },
   ].filter(Boolean) as { label: string; display: string; patch: ItemPatch }[];
   if (!rows.length && !p.images.length) return null;
   const busy = apply.isPending || photo.isPending || dismiss.isPending;
 
   return (
-    <section className="card border border-primary/20" aria-label="From the barcode">
+    <section className="card border border-primary/20" aria-label={t`From the barcode`}>
       <div className="card-body gap-3 p-4">
         <h2 className="flex items-center gap-2 font-semibold text-base-content">
           <span className="icon-[tabler--barcode] size-5 text-primary" />
-          From the barcode
+          <Trans>From the barcode</Trans>
         </h2>
         {rows.length > 0 && (
           <ul className="flex flex-col divide-y divide-base-content/10">
@@ -71,7 +73,7 @@ export function ProductSuggestions({ item, householdId }: { item: ItemListing; h
                 <span className="w-16 shrink-0 text-sm text-base-content/70">{r.label}</span>
                 <span className="line-clamp-2 min-w-0 flex-1 font-medium text-base-content">{r.display}</span>
                 <button type="button" className="btn btn-text btn-primary btn-sm" disabled={busy} onClick={() => apply.mutate(r.patch)}>
-                  Apply
+                  <Trans>Apply</Trans>
                 </button>
               </li>
             ))}
@@ -79,7 +81,7 @@ export function ProductSuggestions({ item, householdId }: { item: ItemListing; h
         )}
         {p.images.length > 0 && (
           <div>
-            <p className="mb-2 text-sm text-base-content/70">Product photos — tap one to add it</p>
+            <p className="mb-2 text-sm text-base-content/70"><Trans>Product photos — tap one to add it</Trans></p>
             <div className="flex gap-2 overflow-x-auto pb-1">
               {p.images.slice(0, 6).map((src, i) => (
                 <button
@@ -88,7 +90,7 @@ export function ProductSuggestions({ item, householdId }: { item: ItemListing; h
                   className="relative size-20 shrink-0 overflow-hidden rounded-field border border-base-content/10 bg-white"
                   disabled={busy}
                   onClick={() => photo.mutate(i)}
-                  aria-label={`Use product photo ${i + 1}`}
+                  aria-label={t`Use product photo ${ph({ number: i + 1 })}`}
                 >
                   <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" className="size-full object-contain" />
                   {usingPhoto === i && <span className="loading loading-spinner loading-sm absolute inset-0 m-auto text-primary" />}
@@ -99,9 +101,9 @@ export function ProductSuggestions({ item, householdId }: { item: ItemListing; h
         )}
         {(apply.isError || photo.isError) && <p className="text-sm text-error">{apply.error?.message ?? photo.error?.message}</p>}
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs text-base-content/70">From {p.source} — check before applying.</p>
+          <p className="text-xs text-base-content/70"><Trans>From {ph({ source: p.source })} — check before applying.</Trans></p>
           <button type="button" className="btn btn-text btn-sm" disabled={busy} onClick={() => dismiss.mutate()}>
-            Dismiss
+            <Trans>Dismiss</Trans>
           </button>
         </div>
       </div>

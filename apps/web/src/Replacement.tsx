@@ -10,6 +10,8 @@ import { api } from "./lib/api";
 import { useCanEdit } from "./lib/auth";
 import { useFeatures } from "./lib/features";
 import { money } from "./lib/money";
+import { t, ph } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 export function ReplacementCard({ item, householdId }: { item: ItemListing; householdId: string }) {
   const qc = useQueryClient();
@@ -42,7 +44,7 @@ export function ReplacementCard({ item, householdId }: { item: ItemListing; hous
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <button type="button" className="btn btn-text btn-sm" disabled={ask.isPending} onClick={() => ask.mutate()}>
           <span className="icon-[tabler--sparkles] size-4 text-primary" />
-          Estimate replacement cost
+          <Trans>Estimate replacement cost</Trans>
         </button>
         {ask.isError && <span className="text-error">{ask.error.message}</span>}
       </div>
@@ -54,41 +56,41 @@ export function ReplacementCard({ item, householdId }: { item: ItemListing; hous
       <div className="card-body gap-2 p-4">
         <h2 id="replacement-title" className="flex items-center gap-2 font-semibold">
           <span className="icon-[tabler--receipt-2] size-5 text-primary" />
-          Replacement cost
+          <Trans>Replacement cost</Trans>
         </h2>
         {item.replacementCents != null && (
           <p>
-            <span className="font-medium">{money(item.replacementCents, true)}</span> <span className="text-sm text-base-content/70">to replace it new</span>
+            <span className="font-medium">{money(item.replacementCents, true)}</span> <Trans><span className="text-sm text-base-content/70">to replace it new</span></Trans>
           </p>
         )}
         {waiting && (
           <p className="flex items-center gap-2 text-sm text-base-content/70">
-            <span className="loading loading-spinner loading-xs" /> Estimating…
+            <span className="loading loading-spinner loading-xs" /> <Trans>Estimating…</Trans>
           </p>
         )}
         {!waiting && estimate && (
           <div className="rounded-box bg-base-200 p-3 text-sm">
             {estimate.cents > 0 && (
               <p>
-                <span className="badge badge-soft badge-primary badge-sm me-1">AI estimate</span>
-                about <span className="font-medium">{money(estimate.cents)}</span>
+                <Trans><span className="badge badge-soft badge-primary badge-sm me-1">AI estimate</span>
+                about</Trans> <span className="font-medium">{money(estimate.cents)}</span>
               </p>
             )}
             {estimate.reasoning && <p className="mt-1 text-base-content/70">{estimate.reasoning}</p>}
-            <p className="mt-1 text-xs text-base-content/70">An estimate — check a current price before relying on it.</p>
+            <p className="mt-1 text-xs text-base-content/70"><Trans>An estimate — check a current price before relying on it.</Trans></p>
           </div>
         )}
         {canEdit && (
           <div className="flex flex-wrap gap-2">
             {fresh && (
               <button type="button" className="btn btn-primary btn-sm" disabled={apply.isPending} onClick={() => apply.mutate(estimate.cents)}>
-                Use {money(estimate.cents)}
+                <Trans>Use {ph({ amount: money(estimate.cents) })}</Trans>
               </button>
             )}
             {offer && !waiting && (
               <button type="button" className="btn btn-text btn-sm" disabled={ask.isPending} onClick={() => ask.mutate()}>
                 <span className="icon-[tabler--sparkles] size-4" />
-                {estimate ? "Estimate again" : "Estimate"}
+                {estimate ? t`Estimate again` : t`Estimate`}
               </button>
             )}
           </div>

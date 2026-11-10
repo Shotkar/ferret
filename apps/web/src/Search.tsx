@@ -11,6 +11,8 @@
 import { useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { navigateTo } from "./lib/navigate";
+import { t } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 const RECENT_MAX = 6;
 const recentKey = (householdId: string) => `ferret.recentSearches.${householdId}`;
@@ -51,8 +53,8 @@ export function searchFromAnywhere() {
 export function useSearchHotkeys(onHomeScreen: boolean) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      const t = e.target as HTMLElement | null;
-      const typing = t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName));
+      const value = e.target as HTMLElement | null;
+      const typing = value && (value.isContentEditable || /^(input|textarea|select)$/i.test(value.tagName));
       const commandK = (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "k";
       const slash = e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey && !typing;
       if (!commandK && !slash) return;
@@ -227,18 +229,18 @@ export function SearchBox(props: {
             onKeyDown={onKeyDown}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
-            aria-label="Search your stuff"
+            aria-label={t`Search your stuff`}
             enterKeyHint="search"
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}
           />
-          {props.busy && <span className="loading loading-spinner loading-sm shrink-0 text-base-content/70" aria-label="Searching" />}
+          {props.busy && <span className="loading loading-spinner loading-sm shrink-0 text-base-content/70" aria-label={t`Searching`} />}
           {props.value ? (
             <button
               type="button"
               className="btn btn-text btn-sm btn-circle shrink-0"
-              aria-label="Clear the search"
+              aria-label={t`Clear the search`}
               onClick={() => {
                 props.onChange("");
                 input.current?.focus();
@@ -248,7 +250,7 @@ export function SearchBox(props: {
             </button>
           ) : (
             !focused && (
-              <span className="flex shrink-0 items-center gap-1 text-base-content/70 pointer-coarse:hidden" title={`${COMMAND_K} or / to search`}>
+              <span className="flex shrink-0 items-center gap-1 text-base-content/70 pointer-coarse:hidden" title={t`${COMMAND_K} or / to search`}>
                 <kbd className="kbd border-base-content/15 bg-base-200 font-sans text-sm text-base-content/70">{COMMAND_K}</kbd>
               </span>
             )
@@ -260,7 +262,7 @@ export function SearchBox(props: {
         // Pressing in here mustn't take the focus from the box (that would close it before the click lands).
         <div className="absolute inset-x-0 top-full z-20 mt-1 rounded-box border border-base-content/10 bg-base-100 p-3 shadow-lg" onMouseDown={(e) => e.preventDefault()}>
           <div className="mb-2 flex items-center justify-between gap-2">
-            <span className="text-sm text-base-content/70">Recent searches</span>
+            <Trans><span className="text-sm text-base-content/70">Recent searches</span></Trans>
             <button
               type="button"
               className="btn btn-text btn-xs"
@@ -269,7 +271,7 @@ export function SearchBox(props: {
                 writeRecent(props.householdId, []);
               }}
             >
-              Clear
+              <Trans>Clear</Trans>
             </button>
           </div>
           <div className="flex flex-wrap gap-2">

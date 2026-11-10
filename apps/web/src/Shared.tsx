@@ -8,6 +8,8 @@ import { api } from "./lib/api";
 import { Logo } from "./AuthLayout";
 import { ReportDocument } from "./Report";
 import { showAmountsIn } from "./lib/money";
+import { t, ph } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 const longDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 
@@ -30,7 +32,7 @@ export function Shared({ token }: { token: string }) {
             <div className="card-body items-center gap-3 text-center">
               <span className="icon-[tabler--link-off] size-10 text-base-content/70" />
               <h1 className="text-lg font-semibold">{view.error.message}</h1>
-              <p className="max-w-sm text-sm text-base-content/70">Shared links work for a while, then stop. Ask whoever sent it for a new one.</p>
+              <p className="max-w-sm text-sm text-base-content/70"><Trans>Shared links work for a while, then stop. Ask whoever sent it for a new one.</Trans></p>
             </div>
           </div>
         )}
@@ -39,17 +41,24 @@ export function Shared({ token }: { token: string }) {
             <section className="card print:hidden">
               <div className="card-body gap-3 p-4 sm:p-6">
                 <p className="text-sm text-base-content/80">
-                  <span className="font-medium">{v.sharedBy ?? "Someone"}</span> shared this from {v.household}'s home inventory
-                  {v.label ? ` — ${v.label}` : ""}. It's read-only, and the link works until {longDate(v.expiresAt)}.
+                  {v.label ? (
+                    <Trans>
+                      <span className="font-medium">{ph({ by: v.sharedBy ?? t`Someone` })}</span> shared this from {ph({ household: v.household })}'s home inventory — {ph({ label: v.label })}. It's read-only, and the link works until {ph({ until: longDate(v.expiresAt) })}.
+                    </Trans>
+                  ) : (
+                    <Trans>
+                      <span className="font-medium">{ph({ by: v.sharedBy ?? t`Someone` })}</span> shared this from {ph({ household: v.household })}'s home inventory. It's read-only, and the link works until {ph({ until: longDate(v.expiresAt) })}.
+                    </Trans>
+                  )}
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <button type="button" className="btn btn-wrap btn-primary" onClick={() => window.print()}>
                     <span className="icon-[tabler--printer] size-5" />
-                    Print or save as PDF
+                    <Trans>Print or save as PDF</Trans>
                   </button>
                   <a className="btn btn-wrap btn-soft btn-primary" href={api.sharedCsvUrl(token)} download>
                     <span className="icon-[tabler--file-spreadsheet] size-5" />
-                    Download spreadsheet (CSV)
+                    <Trans>Download spreadsheet (CSV)</Trans>
                   </a>
                 </div>
               </div>

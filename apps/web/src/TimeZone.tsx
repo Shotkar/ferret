@@ -5,6 +5,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { api } from "./lib/api";
+import { t, ph } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 /** This device's zone (e.g. America/Denver). */
 export const deviceTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -18,7 +20,7 @@ function useZonesByRegion() {
     const all: string[] = (Intl as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf?.("timeZone") ?? [deviceTimeZone(), "UTC"];
     const groups = new Map<string, string[]>();
     for (const z of all.includes("UTC") ? all : [...all, "UTC"]) {
-      const region = z.includes("/") ? z.slice(0, z.indexOf("/")) : "Other";
+      const region = z.includes("/") ? z.slice(0, z.indexOf("/")) : t`Other`;
       groups.set(region, [...(groups.get(region) ?? []), z]);
     }
     return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
@@ -48,10 +50,10 @@ export function TimeZoneCard({ householdId, canManage }: { householdId: string; 
       <div className="card-body gap-3">
         <h2 id="time-zone-title" className="card-title flex items-center gap-2">
           <span className="icon-[tabler--world] size-5 text-primary" />
-          Time zone
+          <Trans>Time zone</Trans>
         </h2>
         <p className="text-sm text-base-content/70">
-          What "today" is for due dates, overdue and ending soon, and when reminders go out — wherever you are when you look.
+          <Trans>What "today" is for due dates, overdue and ending soon, and when reminders go out — wherever you are when you look.</Trans>
         </p>
         {settings.isError && <div className="alert alert-soft alert-error text-sm">{settings.error.message}</div>}
         {settings.data && (
@@ -59,7 +61,7 @@ export function TimeZoneCard({ householdId, canManage }: { householdId: string; 
             {canManage ? (
               <div>
                 <label className="label-text" htmlFor="household-time-zone">
-                  Where this household is
+                  <Trans>Where this household is</Trans>
                 </label>
                 <select
                   id="household-time-zone"
@@ -68,7 +70,7 @@ export function TimeZoneCard({ householdId, canManage }: { householdId: string; 
                   disabled={save.isPending}
                   onChange={(e) => save.mutate(e.target.value || null)}
                 >
-                  <option value="">Not chosen (the server's: {settings.data.serverTimeZone})</option>
+                  <option value="">{t`Not chosen (the server's: ${ph({ serverTimeZone: settings.data.serverTimeZone })})`}</option>
                   {zones.map(([region, list]) => (
                     <optgroup key={region} label={region}>
                       {list.map((z) => (
@@ -83,15 +85,15 @@ export function TimeZoneCard({ householdId, canManage }: { householdId: string; 
             ) : (
               <p className="text-sm">
                 <strong>{(inEffect ?? "").replace(/_/g, " ")}</strong>
-                {!chosen && " (the server's — the household's owner can choose one)"}
+                {!chosen && t` (the server's — the household's owner can choose one)`}
               </p>
             )}
-            {inEffect && <p className="text-sm text-base-content/70">It's {timeIn(inEffect)} there now.</p>}
+            {inEffect && <p className="text-sm text-base-content/70"><Trans>It's {ph({ timeIn: timeIn(inEffect) })} there now.</Trans></p>}
             {canManage && !chosen && device !== settings.data.serverTimeZone && (
               <div className="alert alert-soft alert-info flex flex-wrap items-center gap-3 text-sm">
-                <span className="min-w-0 flex-1 basis-48">This device is in {device.replace(/_/g, " ")}.</span>
+                <Trans><span className="min-w-0 flex-1 basis-48">This device is in {ph({ replace: device.replace(/_/g, " ") })}.</span></Trans>
                 <button type="button" className="btn btn-sm btn-primary" disabled={save.isPending} onClick={() => save.mutate(device)}>
-                  Use {device.replace(/_/g, " ")}
+                  <Trans>Use {ph({ replace: device.replace(/_/g, " ") })}</Trans>
                 </button>
               </div>
             )}

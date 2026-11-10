@@ -4,15 +4,17 @@
  */
 import { DELETED_HREF, HOME_HREF, ITEMS_HREF } from "./lib/route";
 import { Mascot } from "./Mascot";
+import { Trans } from "@lingui/react/macro";
+import { t, msg } from "@lingui/core/macro";
 
 const WHAT = {
-  page: { title: "There's no page here", body: "The link may be mistyped, or from an older version of Ferret." },
+  page: { title: msg`There's no page here`, body: msg`The link may be mistyped, or from an older version of Ferret.` },
   item: {
-    title: "That thing isn't here",
-    body: "It may have been deleted — Recently deleted keeps things for 30 days — or it belongs to another household.",
+    title: msg`That thing isn't here`,
+    body: msg`It may have been deleted — Recently deleted keeps things for 30 days — or it belongs to another household.`,
   },
-  place: { title: "That place isn't here", body: "It may have been removed, or it belongs to another household." },
-  property: { title: "That property isn't here", body: "It may have been removed, or it belongs to another household." },
+  place: { title: msg`That place isn't here`, body: msg`It may have been removed, or it belongs to another household.` },
+  property: { title: msg`That property isn't here`, body: msg`It may have been removed, or it belongs to another household.` },
 } as const;
 
 export function NotFound({ what = "page", wrap = true }: { what?: keyof typeof WHAT; wrap?: boolean }) {
@@ -21,30 +23,30 @@ export function NotFound({ what = "page", wrap = true }: { what?: keyof typeof W
     <section className="card mx-auto w-full max-w-lg" aria-labelledby="not-found-title">
       <div className="card-body items-center gap-4 py-10 text-center">
         <Mascot pose="puzzled" className="size-36" />
-        <p className="text-sm font-semibold uppercase tracking-wider text-primary">Not found</p>
+        <p className="text-sm font-semibold uppercase tracking-wider text-primary"><Trans>Not found</Trans></p>
         <h1 id="not-found-title" className="text-2xl font-semibold text-base-content">
-          {text.title}
+          {t(text.title)}
         </h1>
-        <p className="max-w-sm text-base-content/70">{text.body}</p>
+        <p className="max-w-sm text-base-content/70">{t(text.body)}</p>
         <div className="flex flex-wrap justify-center gap-2">
           <a href={HOME_HREF} className="btn btn-primary">
             <span className="icon-[tabler--home] size-5" />
-            Home
+            <Trans>Home</Trans>
           </a>
           {what === "item" ? (
             <a href={DELETED_HREF} className="btn btn-soft btn-primary">
               <span className="icon-[tabler--trash] size-5" />
-              Recently deleted
+              <Trans>Recently deleted</Trans>
             </a>
           ) : (
             <a href={ITEMS_HREF} className="btn btn-soft btn-primary">
               <span className="icon-[tabler--layout-grid] size-5" />
-              Everything
+              <Trans>Everything</Trans>
             </a>
           )}
         </div>
         <p className="text-sm text-base-content/70">
-          Or search for it: press <kbd className="kbd kbd-sm">/</kbd> on the home screen.
+          <Trans>Or search for it: press <kbd className="kbd kbd-sm">/</kbd> on the home screen.</Trans>
         </p>
       </div>
     </section>

@@ -24,6 +24,9 @@ import {
 } from "./lib/offline";
 import { Scanner } from "./Scanner";
 import { navigateTo } from "./lib/navigate";
+import { t, ph, plural, msg } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
+import type { MessageDescriptor } from "@lingui/core";
 
 /** The captures waiting on this device for a household, kept up to date. */
 export function useCaptures(householdId: string) {
@@ -41,11 +44,11 @@ export function useCaptures(householdId: string) {
   return captures;
 }
 
-const SCAN_ACTIONS: { value: ScanAction; label: string; icon: string }[] = [
-  { value: "use", label: "Used one", icon: "icon-[tabler--minus]" },
-  { value: "restock", label: "Restock", icon: "icon-[tabler--plus]" },
-  { value: "add", label: "Add", icon: "icon-[tabler--square-plus]" },
-  { value: "lookup", label: "Find", icon: "icon-[tabler--search]" },
+const SCAN_ACTIONS: { value: ScanAction; label: MessageDescriptor; icon: string }[] = [
+  { value: "use", label: msg`Used one`, icon: "icon-[tabler--minus]" },
+  { value: "restock", label: msg`Restock`, icon: "icon-[tabler--plus]" },
+  { value: "add", label: msg`Add`, icon: "icon-[tabler--square-plus]" },
+  { value: "lookup", label: msg`Find`, icon: "icon-[tabler--search]" },
 ];
 
 /** A short beep (and a buzz where phones allow): the scan is saved. */
@@ -100,14 +103,14 @@ export function OfflineCapture({ home }: { home: OfflineHome }) {
         note: "",
       });
     }
-    if (list?.length) setSaved(`${list.length} ${list.length === 1 ? "photo" : "photos"} saved`);
+    if (list?.length) setSaved(plural(list.length, { one: "# photo saved", other: "# photos saved" }));
   }
 
   async function addRoomScan(list: FileList | null) {
     const blobs = Array.from(list ?? []).slice(0, 5);
     if (!blobs.length || !locationId) return;
     await addCapture({ id: crypto.randomUUID(), householdId: home.householdId, createdAt: Date.now(), kind: "roomscan", blobs, locationId });
-    setSaved("Room scan saved");
+    setSaved(t`Room scan saved`);
   }
 
   const photos = captures.filter((c) => c.kind === "photo");
@@ -120,50 +123,50 @@ export function OfflineCapture({ home }: { home: OfflineHome }) {
         <Logo className="text-lg text-primary" />
         <span className="badge badge-soft badge-warning gap-1">
           <span className="icon-[tabler--wifi-off] size-4" />
-          Offline
+          <Trans>Offline</Trans>
         </span>
         <button type="button" className="btn btn-soft btn-primary btn-sm ms-auto" onClick={() => window.location.reload()}>
           <span className="icon-[tabler--refresh] size-4" />
-          Try again
+          <Trans>Try again</Trans>
         </button>
       </nav>
       <main className="mx-auto flex max-w-xl flex-col gap-4 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <section className="card">
           <div className="card-body gap-4">
             <div>
-              <h1 className="text-xl font-semibold text-base-content">Can't reach Ferret</h1>
+              <h1 className="text-xl font-semibold text-base-content"><Trans>Can't reach Ferret</Trans></h1>
               <p className="text-sm text-base-content/70">
-                Keep going: photos and scans wait on this phone and go up to {home.householdName} by themselves when there's
-                signal again.
+                <Trans>Keep going: photos and scans wait on this phone and go up to {ph({ householdName: home.householdName })} by themselves when there's
+                signal again.</Trans>
               </p>
             </div>
             <PlacePicker
               householdId={home.householdId}
               id="offline-place"
               name="locationId"
-              label="Where you are (optional)"
-              noneLabel="Not in a room"
+              label={t`Where you are (optional)`}
+              noneLabel={t`Not in a room`}
               value={locationId}
               onChange={setLocationId}
             />
             <div className="grid grid-cols-1 gap-2 @container sm:grid-cols-3">
               <button type="button" className="btn btn-primary btn-wrap" onClick={() => camera.current?.click()}>
                 <span className="icon-[tabler--camera] size-5" />
-                Take a photo
+                <Trans>Take a photo</Trans>
               </button>
               <button type="button" className="btn btn-soft btn-primary btn-wrap" onClick={() => files.current?.click()}>
                 <span className="icon-[tabler--photo] size-5" />
-                From photos
+                <Trans>From photos</Trans>
               </button>
               <button type="button" className="btn btn-soft btn-primary btn-wrap" onClick={() => setScanning(true)}>
                 <span className="icon-[tabler--barcode] size-5" />
-                Scan
+                <Trans>Scan</Trans>
               </button>
             </div>
             {locationId && (
               <button type="button" className="btn btn-soft btn-primary btn-wrap" onClick={() => roomCamera.current?.click()}>
                 <span className="icon-[tabler--scan-eye] size-5" />
-                Scan this room (up to 5 photos)
+                <Trans>Scan this room (up to 5 photos)</Trans>
               </button>
             )}
             <input ref={roomCamera} type="file" accept="image/*" multiple className="hidden" onChange={(e) => void addRoomScan(e.target.files).then(() => (e.target.value = ""))} />
@@ -172,7 +175,7 @@ export function OfflineCapture({ home }: { home: OfflineHome }) {
             {saved && (
               <div className="alert alert-soft alert-success text-sm" role="status">
                 <span className="icon-[tabler--circle-check] size-5" />
-                {saved === "Room scan saved" ? "Room scan saved — Ferret looks at it once there's signal, and the bell says when it's ready." : `${saved} — each will be a "New item" to name.`}
+                {saved === "Room scan saved" ? t`Room scan saved — Ferret looks at it once there's signal, and the bell says when it's ready.` : t`${saved} — each will be a "New item" to name.`}
               </div>
             )}
           </div>
@@ -181,9 +184,9 @@ export function OfflineCapture({ home }: { home: OfflineHome }) {
         <section className="card" aria-labelledby="waiting-title">
           <div className="card-body gap-3">
             <h2 id="waiting-title" className="font-semibold text-base-content">
-              Waiting to upload {captures.length > 0 && <span className="badge badge-soft badge-primary badge-sm">{captures.length}</span>}
+              <Trans>Waiting to upload</Trans> {captures.length > 0 && <span className="badge badge-soft badge-primary badge-sm">{captures.length}</span>}
             </h2>
-            {captures.length === 0 && <p className="text-sm text-base-content/70">Nothing yet.</p>}
+            {captures.length === 0 && <p className="text-sm text-base-content/70"><Trans>Nothing yet.</Trans></p>}
             {photos.length > 0 && (
               <ul className="grid grid-cols-4 gap-2">
                 {photos.map((p) => (
@@ -192,8 +195,8 @@ export function OfflineCapture({ home }: { home: OfflineHome }) {
                     <button
                       type="button"
                       className="btn btn-circle btn-xs absolute end-1 top-1 border-0 bg-base-100/85"
-                      aria-label="Don't upload this photo"
-                      onClick={() => window.confirm("Don't upload this photo?") && void removeCapture(p.id)}
+                      aria-label={t`Don't upload this photo`}
+                      onClick={() => window.confirm(t`Don't upload this photo?`) && void removeCapture(p.id)}
                     >
                       <span className="icon-[tabler--x] size-3.5" />
                     </button>
@@ -208,10 +211,10 @@ export function OfflineCapture({ home }: { home: OfflineHome }) {
                     <li key={r.id} className="flex items-center gap-2 py-2">
                       <span className="icon-[tabler--scan-eye] size-4 text-base-content/70" />
                       <span className="min-w-0 flex-1 truncate">
-                        Room scan · {r.blobs.length} {r.blobs.length === 1 ? "photo" : "photos"}
+                        {plural(r.blobs.length, { one: "Room scan · # photo", other: "Room scan · # photos" })}
                       </span>
-                      <button type="button" className="btn btn-text btn-xs" onClick={() => window.confirm("Don't upload this room scan?") && void removeCapture(r.id)}>
-                        Remove
+                      <button type="button" className="btn btn-text btn-xs" onClick={() => window.confirm(t`Don't upload this room scan?`) && void removeCapture(r.id)}>
+                        <Trans>Remove</Trans>
                       </button>
                     </li>
                   ) : null,
@@ -225,7 +228,7 @@ export function OfflineCapture({ home }: { home: OfflineHome }) {
                     <li key={s.id} className="flex items-center gap-2 py-2">
                       <span className={`${SCAN_ACTIONS.find((a) => a.value === s.mode)!.icon} size-4 text-base-content/70`} />
                       <span className="min-w-0 flex-1 truncate font-mono">{s.code}</span>
-                      <span className="text-base-content/70">{SCAN_ACTIONS.find((a) => a.value === s.mode)!.label}</span>
+                      <span className="text-base-content/70">{t(SCAN_ACTIONS.find((a) => a.value === s.mode)!.label)}</span>
                     </li>
                   ) : null,
                 )}
@@ -244,7 +247,7 @@ export function OfflineCapture({ home }: { home: OfflineHome }) {
             return true; // keep scanning
           }}
           top={
-            <div className="join" role="group" aria-label="What a scan does">
+            <div className="join" role="group" aria-label={t`What a scan does`}>
               {SCAN_ACTIONS.map((a) => (
                 <button
                   key={a.value}
@@ -253,14 +256,14 @@ export function OfflineCapture({ home }: { home: OfflineHome }) {
                   aria-pressed={mode === a.value}
                   onClick={() => setMode(a.value)}
                 >
-                  {a.label}
+                  {t(a.label)}
                 </button>
               ))}
             </div>
           }
           panel={
             <p className="rounded-box bg-base-100/90 px-3 py-2 text-center text-sm">
-              Offline — {scans.length} {scans.length === 1 ? "scan" : "scans"} saved to send later
+              {plural(scans.length, { one: "Offline — # scan saved to send later", other: "Offline — # scans saved to send later" })}
             </p>
           }
         />
@@ -321,20 +324,20 @@ export function CapturesCard({ householdId }: { householdId: string }) {
       <div className="card-body gap-3">
         <h2 id="captures-title" className="flex items-center gap-2 font-semibold text-base-content">
           <span className="icon-[tabler--cloud-upload] size-5 text-primary" />
-          Captured offline
-          {waiting.length > 0 && navigator.onLine && <span className="loading loading-spinner loading-xs" aria-label="Uploading" />}
+          <Trans>Captured offline</Trans>
+          {waiting.length > 0 && navigator.onLine && <span className="loading loading-spinner loading-xs" aria-label={t`Uploading`} />}
         </h2>
         {waiting.length > 0 && (
           <p className="text-sm text-base-content/70">
-            {waiting.length} waiting to upload{navigator.onLine ? "" : " — when there's signal"}.
-            {failed.length > 0 && <span className="text-error"> {failed.length} couldn't go up: {failed[0]!.error}</span>}
+            <Trans>{ph({ count: waiting.length })} waiting to upload</Trans>{navigator.onLine ? "" : t` — when there's signal`}.
+            {failed.length > 0 && <span className="text-error"> <Trans>{ph({ count: failed.length })} couldn't go up: {ph({ error: failed[0]!.error ?? "" })}</Trans></span>}
           </p>
         )}
         {failed.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {failed.map((c) => (
-              <button key={c.id} type="button" className="btn btn-text btn-sm btn-error" onClick={() => window.confirm("Throw this one away?") && void removeCapture(c.id)}>
-                Discard {c.kind === "photo" ? "photo" : c.kind === "roomscan" ? "room scan" : c.code}
+              <button key={c.id} type="button" className="btn btn-text btn-sm btn-error" onClick={() => window.confirm(t`Throw this one away?`) && void removeCapture(c.id)}>
+                <Trans>Discard</Trans> {c.kind === "photo" ? "photo" : c.kind === "roomscan" ? t`room scan` : c.code}
               </button>
             ))}
           </div>
@@ -364,26 +367,26 @@ function NeedsAnswer({ capture, householdId }: { capture: Extract<Capture, { kin
       await work();
       for (const key of ["items", "overview", "shopping", "stock"]) void qc.invalidateQueries({ queryKey: [key, householdId] });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      setError(e instanceof Error ? e.message : t`Something went wrong`);
     } finally {
       setBusy(false);
     }
   }
-  const verb = capture.mode === "use" ? "Used one" : capture.mode === "restock" ? "Restock" : capture.mode === "add" ? "Add" : "Find";
+  const verb = t(SCAN_ACTIONS.find((a) => a.value === capture.mode)?.label ?? SCAN_ACTIONS[3]!.label);
   return (
     <li className="rounded-box bg-base-200 p-3 text-sm">
       <p className="mb-2">
         <span className="font-mono">{capture.code}</span> · {verb} ·{" "}
         {r.action === "choose"
-          ? "it's on several things — which?"
+          ? t`it's on several things — which?`
           : r.action === "ask"
-            ? `${r.item.name}: what did you do?`
+            ? t`${ph({ name: r.item.name })}: what did you do?`
             : r.action === "unknown"
-              ? "nothing in Ferret has this code."
+              ? t`nothing in Ferret has this code.`
               : r.action === "have"
-                ? "you have this already."
+                ? t`you have this already.`
                 : r.action === "pairing"
-                ? "a smart-home setup code — open the scanner online to save it on its item."
+                ? t`a smart-home setup code — open the scanner online to save it on its item.`
                 : ""}
       </p>
       <div className="flex flex-wrap gap-2">
@@ -396,20 +399,20 @@ function NeedsAnswer({ capture, householdId }: { capture: Extract<Capture, { kin
         {r.action === "ask" && (
           <>
             <button type="button" className="btn btn-soft btn-primary btn-sm" disabled={busy} onClick={() => void act(() => answerScan(capture, { itemId: r.item.id, mode: "use" }))}>
-              Used {r.step}
+              <Trans>Used {ph({ step: r.step })}</Trans>
             </button>
             <button type="button" className="btn btn-soft btn-primary btn-sm" disabled={busy} onClick={() => void act(() => answerScan(capture, { itemId: r.item.id, mode: "restock" }))}>
-              Added {r.step}
+              <Trans>Added {ph({ step: r.step })}</Trans>
             </button>
-            <a href={itemHref(r.item.id)} className="btn btn-text btn-sm">
+            <Trans><a href={itemHref(r.item.id)} className="btn btn-text btn-sm">
               Open it
-            </a>
+            </a></Trans>
           </>
         )}
         {r.action === "have" &&
           r.items.map((it) => (
             <button key={it.id} type="button" className="btn btn-soft btn-primary btn-sm btn-wrap" disabled={busy} onClick={() => void act(() => answerScan(capture, { itemId: it.id, mode: "restock" }))}>
-              Add {r.step} to {it.name} (now {it.quantity + r.step})
+              <Trans>Add {ph({ step: r.step })} to {ph({ name: it.name })} (now {ph({ after: it.quantity + r.step })}</Trans>)
             </button>
           ))}
         {(r.action === "unknown" || r.action === "have") && (
@@ -425,11 +428,11 @@ function NeedsAnswer({ capture, householdId }: { capture: Extract<Capture, { kin
               })
             }
           >
-            {r.action === "have" ? "Add as a separate item" : "Add it as a new thing"}
+            {r.action === "have" ? t`Add as a separate item` : t`Add it as a new thing`}
           </button>
         )}
         <button type="button" className="btn btn-text btn-sm" disabled={busy} onClick={() => void removeCapture(capture.id)}>
-          Dismiss
+          <Trans>Dismiss</Trans>
         </button>
       </div>
       {error && <p className="mt-2 text-error">{error}</p>}

@@ -16,13 +16,15 @@ import { itemHref, MAINTENANCE_HREF, PROVIDERS_HREF, providerHref } from "./lib/
 import { DialogActions, Modal } from "./Modal";
 import { money } from "./lib/money";
 import { navigateTo } from "./lib/navigate";
+import { t, ph, plural, msg } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 export const providersKey = (householdId: string) => ["providers", householdId];
 export function useProviders(householdId: string) {
   return useQuery({ queryKey: providersKey(householdId), queryFn: async () => (await api.providers()).data });
 }
 
-const TRADES = ["Plumber", "Electrician", "HVAC", "Appliance repair", "Handyman", "Roofer", "Landscaper", "Pest control", "Cleaner", "Locksmith", "Pool & spa", "Insurance agent"];
+const TRADES = [msg`Plumber`, msg`Electrician`, msg`HVAC`, msg`Appliance repair`, msg`Handyman`, msg`Roofer`, msg`Landscaper`, msg`Pest control`, msg`Cleaner`, msg`Locksmith`, msg`Pool & spa`, msg`Insurance agent`];
 
 const formatDate = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 /** "example.com" → a link that works. */
@@ -39,21 +41,21 @@ function ContactButtons({ p, size = "btn-sm" }: { p: Provider; size?: string }) 
         </a>
       )}
       {p.email && (
-        <a href={`mailto:${p.email}`} className={`btn btn-soft btn-primary ${size}`} aria-label={`Email ${p.name}`}>
+        <a href={`mailto:${p.email}`} className={`btn btn-soft btn-primary ${size}`} aria-label={t`Email ${ph({ name: p.name })}`}>
           <span className="icon-[tabler--mail] size-4" />
-          Email
+          <Trans>Email</Trans>
         </a>
       )}
       {p.website && (
-        <a href={websiteUrl(p.website)} target="_blank" rel="noreferrer" className={`btn btn-soft btn-primary ${size}`} aria-label={`${p.name}'s website`}>
+        <a href={websiteUrl(p.website)} target="_blank" rel="noreferrer" className={`btn btn-soft btn-primary ${size}`} aria-label={t`${ph({ name: p.name })}'s website`}>
           <span className="icon-[tabler--world] size-4" />
-          Website
+          <Trans>Website</Trans>
         </a>
       )}
       {p.address && (
         <a href={`https://maps.apple.com/?q=${encodeURIComponent(p.address)}`} target="_blank" rel="noreferrer" className={`btn btn-soft btn-primary ${size}`}>
           <span className="icon-[tabler--map-pin] size-4" />
-          Map
+          <Trans>Map</Trans>
         </a>
       )}
     </div>
@@ -65,7 +67,7 @@ function Shell({ title, back, action, children }: { title: string; back: string;
     <div className="min-h-dvh bg-base-200">
       <nav className="navbar sticky top-0 z-10 border-b border-base-300 bg-base-100/85 backdrop-blur-md px-4">
         <div className="navbar-start min-w-0 items-center gap-2">
-          <a href={back} className="btn btn-text btn-sm btn-square" aria-label="Back">
+          <a href={back} className="btn btn-text btn-sm btn-square" aria-label={t`Back`}>
             <span className="icon-[tabler--arrow-left] size-5" />
           </a>
           <h1 className="truncate text-lg font-semibold">{title}</h1>
@@ -85,13 +87,13 @@ export function Providers({ householdId }: { householdId: string }) {
   const [adding, setAdding] = useState(false);
   return (
     <Shell
-      title="Providers"
+      title={t`Providers`}
       back="#/"
       action={
         canEdit && (
           <button type="button" className="btn btn-primary btn-sm" onClick={() => setAdding(true)}>
             <span className="icon-[tabler--plus] size-4" />
-            Provider
+            <Trans>Provider</Trans>
           </button>
         )
       }
@@ -102,14 +104,14 @@ export function Providers({ householdId }: { householdId: string }) {
         <div className="card">
           <div className="card-body items-center gap-3 text-center">
             <span className="icon-[tabler--address-book] size-10 text-primary" />
-            <h2 className="text-lg font-semibold">Who works on your home?</h2>
+            <h2 className="text-lg font-semibold"><Trans>Who works on your home?</Trans></h2>
             <p className="max-w-sm text-sm text-base-content/70">
-              Keep your plumber, electrician and HVAC company here — one tap to call, and a record of every job and what it cost.
+              <Trans>Keep your plumber, electrician and HVAC company here — one tap to call, and a record of every job and what it cost.</Trans>
             </p>
             {canEdit && (
               <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>
                 <span className="icon-[tabler--plus] size-5" />
-                Add a provider
+                <Trans>Add a provider</Trans>
               </button>
             )}
           </div>
@@ -128,12 +130,14 @@ export function Providers({ householdId }: { householdId: string }) {
                 <div className="min-w-0 flex-1">
                   <h2 className="truncate font-semibold text-base-content">{p.name}</h2>
                   <p className="truncate text-sm text-base-content/70">
-                    {[p.trade, p.contactName].filter(Boolean).join(" · ") || "Service provider"}
+                    {[p.trade, p.contactName].filter(Boolean).join(" · ") || t`Service provider`}
                   </p>
                   <p className="text-xs text-base-content/70">
                     {p.visits
-                      ? `${p.visits} ${p.visits === 1 ? "job" : "jobs"} · last ${formatDate(p.lastVisit!)}${p.spentCents ? ` · ${money(p.spentCents)}` : ""}`
-                      : "No jobs recorded yet"}
+                      ? p.spentCents
+                        ? t`${ph({ jobs: plural(p.visits, { one: "# job", other: "# jobs" }) })} · last ${ph({ date: formatDate(p.lastVisit!) })} · ${ph({ spent: money(p.spentCents) })}`
+                        : t`${ph({ jobs: plural(p.visits, { one: "# job", other: "# jobs" }) })} · last ${ph({ date: formatDate(p.lastVisit!) })}`
+                      : t`No jobs recorded yet`}
                   </p>
                 </div>
                 <span className="icon-[tabler--chevron-right] size-5 text-base-content/40" />
@@ -173,7 +177,7 @@ export function ProviderPage({ id, householdId }: { id: string; householdId: str
         p && (
           <button type="button" className="btn btn-soft btn-primary btn-sm" onClick={() => setEditing(true)}>
             <span className="icon-[tabler--pencil] size-4" />
-            Edit
+            <Trans>Edit</Trans>
           </button>
         )
       }
@@ -191,7 +195,7 @@ export function ProviderPage({ id, householdId }: { id: string; householdId: str
               {p.address && <p className="text-sm text-base-content/70">{p.address}</p>}
               {p.notes && <p className="whitespace-pre-line text-sm text-base-content/80">{p.notes}</p>}
               <p className="text-sm text-base-content/70">
-                {p.visits ? `${p.visits} ${p.visits === 1 ? "job" : "jobs"}, ${money(p.spentCents)} in all` : "No jobs recorded yet"}
+                {p.visits ? t`${ph({ jobs: plural(p.visits, { one: "# job", other: "# jobs" }) })}, ${ph({ amount: money(p.spentCents) })} in all` : t`No jobs recorded yet`}
               </p>
             </div>
           </section>
@@ -199,30 +203,30 @@ export function ProviderPage({ id, householdId }: { id: string; householdId: str
           <section className="flex flex-col gap-2">
             <h2 className="flex items-center gap-2 font-semibold text-base-content">
               <span className="icon-[tabler--tool] size-5 text-primary" />
-              Usually does
+              <Trans>Usually does</Trans>
             </h2>
             {tasks.data?.data.length ? (
               <ul className="card divide-y divide-base-content/10 px-4">
-                {tasks.data.data.map((t) => (
-                  <li key={t.id} className="py-2">
+                {tasks.data.data.map((task) => (
+                  <li key={task.id} className="py-2">
                     <a href={MAINTENANCE_HREF} className="tap link link-hover text-base-content">
-                      {t.title}
+                      {task.title}
                     </a>
                     <span className="block text-sm text-base-content/70">
-                      {[t.itemName, t.dueOn && `next ${formatDate(t.dueOn)}`].filter(Boolean).join(" · ")}
+                      {[task.itemName, task.dueOn && `next ${formatDate(task.dueOn)}`].filter(Boolean).join(" · ")}
                     </span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-base-content/70">No maintenance tasks name them yet — choose them under "Who does it" on a task.</p>
+              <p className="text-sm text-base-content/70"><Trans>No maintenance tasks name them yet — choose them under "Who does it" on a task.</Trans></p>
             )}
           </section>
 
           <section className="flex flex-col gap-2">
             <h2 className="flex items-center gap-2 font-semibold text-base-content">
               <span className="icon-[tabler--history] size-5 text-primary" />
-              Jobs
+              <Trans>Jobs</Trans>
             </h2>
             {visits.data?.data.length ? (
               <ul className="card divide-y divide-base-content/10 px-4">
@@ -246,7 +250,7 @@ export function ProviderPage({ id, householdId }: { id: string; householdId: str
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-base-content/70">Mark a task done and choose them as who did it, and the job shows up here.</p>
+              <p className="text-sm text-base-content/70"><Trans>Mark a task done and choose them as who did it, and the job shows up here.</Trans></p>
             )}
           </section>
 
@@ -255,10 +259,10 @@ export function ProviderPage({ id, householdId }: { id: string; householdId: str
               type="button"
               className="btn btn-text btn-error btn-sm self-start"
               disabled={remove.isPending}
-              onClick={() => window.confirm(`Remove ${p.name}? Their past jobs stay on the tasks.`) && remove.mutate()}
+              onClick={() => window.confirm(t`Remove ${ph({ name: p.name })}? Their past jobs stay on the tasks.`) && remove.mutate()}
             >
               <span className="icon-[tabler--trash] size-4" />
-              Remove provider
+              <Trans>Remove provider</Trans>
             </button>
           )}
           {editing && <ProviderDialog householdId={householdId} provider={p} onClose={() => setEditing(false)} />}
@@ -304,47 +308,47 @@ export function ProviderDialog(props: { householdId: string; provider?: Provider
     </div>
   );
   return (
-    <Modal id="provider-dialog" title={p ? `Edit ${p.name}` : "New service provider"} onClose={props.onClose}>
+    <Modal id="provider-dialog" title={p ? t`Edit ${ph({ name: p.name })}` : t`New service provider`} onClose={props.onClose}>
       <form className="flex flex-col gap-6" onSubmit={onSubmit}>
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {input("name", "Name", { required: true, maxLength: 120, autoFocus: true, placeholder: "e.g. Cool Air Co", defaultValue: p?.name ?? props.initialName ?? "" })}
+            {input("name", t`Name`, { required: true, maxLength: 120, autoFocus: true, placeholder: t`e.g. Cool Air Co`, defaultValue: p?.name ?? props.initialName ?? "" })}
             <div>
               <label className="label-text" htmlFor="provider-trade">
-                Trade
+                <Trans>Trade</Trans>
               </label>
-              <input id="provider-trade" name="trade" className="input" list="provider-trades" defaultValue={p?.trade ?? ""} maxLength={60} placeholder="e.g. HVAC" />
+              <input id="provider-trade" name="trade" className="input" list="provider-trades" defaultValue={p?.trade ?? ""} maxLength={60} placeholder={t`e.g. HVAC`} />
               <datalist id="provider-trades">
-                {TRADES.map((t) => (
-                  <option key={t} value={t} />
+                {TRADES.map((trade) => (
+                  <option key={trade.id} value={t(trade)} />
                 ))}
               </datalist>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {input("phone", "Phone", { type: "tel", autoComplete: "tel", maxLength: 40 })}
-            {input("email", "Email", { type: "email", autoComplete: "email", maxLength: 200 })}
+            {input("phone", t`Phone`, { type: "tel", autoComplete: "tel", maxLength: 40 })}
+            {input("email", t`Email`, { type: "email", autoComplete: "email", maxLength: 200 })}
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {input("contactName", "Contact person", { maxLength: 120, placeholder: "Who you deal with" })}
-            {input("website", "Website", { inputMode: "url", maxLength: 300, placeholder: "coolair.example" })}
+            {input("contactName", t`Contact person`, { maxLength: 120, placeholder: t`Who you deal with` })}
+            {input("website", t`Website`, { inputMode: "url", maxLength: 300, placeholder: "coolair.example" })}
           </div>
-          {input("address", "Address", { autoComplete: "street-address", maxLength: 300 })}
+          {input("address", t`Address`, { autoComplete: "street-address", maxLength: 300 })}
           <div>
             <label className="label-text" htmlFor="provider-notes">
-              Notes
+              <Trans>Notes</Trans>
             </label>
-            <textarea id="provider-notes" name="notes" className="textarea" rows={3} defaultValue={p?.notes ?? ""} maxLength={5000} placeholder="Account number, hours, who to ask for…" />
+            <textarea id="provider-notes" name="notes" className="textarea" rows={3} defaultValue={p?.notes ?? ""} maxLength={5000} placeholder={t`Account number, hours, who to ask for…`} />
           </div>
         </div>
         {save.isError && <div className="alert alert-soft alert-error">{save.error.message}</div>}
         <DialogActions>
           <button type="button" className="btn btn-secondary btn-soft" onClick={props.onClose}>
-            Cancel
+            <Trans>Cancel</Trans>
           </button>
           <button type="submit" className="btn btn-primary" disabled={save.isPending}>
             {save.isPending && <span className="loading loading-spinner loading-sm" />}
-            {p ? "Save" : "Add provider"}
+            {p ? t`Save` : t`Add provider`}
           </button>
         </DialogActions>
       </form>
@@ -378,7 +382,7 @@ export function ProviderPicker(props: {
         noneLabel={props.noneLabel}
         value={all.find((c) => c.id === props.value) ?? null}
         onChange={(c) => (c?.id === ADD ? setAdding(query.trim()) : props.onChange(c?.id ?? null))}
-        choices={[...matches, { id: ADD, label: q ? `+ Add "${query.trim()}" as a provider` : "+ Add a provider" }]}
+        choices={[...matches, { id: ADD, label: q ? t`+ Add "${ph({ name: query.trim() })}" as a provider` : t`+ Add a provider` }]}
         onQuery={setQuery}
       />
       {adding !== null && (

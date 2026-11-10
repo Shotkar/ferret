@@ -15,6 +15,8 @@ import { categoryHref, tagHref } from "./lib/route";
 import { DialogActions, Modal } from "./Modal";
 import { FieldsEditor, keyedFields } from "./Fields";
 import { TemplatesSection } from "./Templates";
+import { t, ph, plural } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 /** Category icons, spelled out in full so Tailwind generates them (names from the starter set). */
 const ICONS: Record<string, string> = {
@@ -72,8 +74,8 @@ export function CategoryTiles({ nodes, title }: { nodes: CategoryNode[]; title: 
                 <span className="flex flex-col gap-0.5 p-3">
                   <span className="truncate font-medium text-base-content group-hover:text-primary">{c.name}</span>
                   <span className="text-sm text-base-content/70">
-                    {n} {n === 1 ? "thing" : "things"}
-                    {c.children.length > 0 && ` · ${c.children.length} inside`}
+                    {plural(n, { one: "# thing", other: "# things" })}
+                    {c.children.length > 0 && t` · ${ph({ count: c.children.length })} inside`}
                   </span>
                 </span>
               </a>
@@ -118,15 +120,15 @@ export function CategoryPicker(props: { householdId: string; value: string | nul
     <Combobox
       id="item-categoryId"
       name="categoryId"
-      label="Category"
-      placeholder="What kind of thing is it?"
-      noneLabel="No category"
+      label={t`Category`}
+      placeholder={t`What kind of thing is it?`}
+      noneLabel={t`No category`}
       value={all.find((c) => c.id === props.value) ?? null}
       onChange={(c) => props.onChange(c?.id ?? null)}
       choices={all.filter((c) => words.every((w) => c.detail!.toLowerCase().includes(w)))}
       onQuery={setQuery}
       disabled={!categories.data}
-      empty={all.length ? "No category matches that" : "No categories yet — add them under Categories & tags"}
+      empty={all.length ? t`No category matches that` : t`No categories yet — add them under Categories & tags`}
     />
   );
 }
@@ -135,28 +137,28 @@ export function CategoryPicker(props: { householdId: string; value: string | nul
 export function TagInput(props: { householdId: string; value: string[]; onChange: (tags: string[]) => void }) {
   const tags = useTags(props.householdId);
   const [text, setText] = useState("");
-  const has = (name: string) => props.value.some((t) => t.toLowerCase() === name.toLowerCase());
+  const has = (name: string) => props.value.some((value) => value.toLowerCase() === name.toLowerCase());
   const add = (name: string) => {
     const clean = name.trim().replace(/\s+/g, " ").slice(0, 40);
     if (clean && !has(clean)) props.onChange([...props.value, clean]);
     setText("");
   };
   const q = text.trim().toLowerCase();
-  const suggestions = (tags.data ?? []).filter((t) => !has(t.name) && (!q || t.name.toLowerCase().includes(q))).slice(0, 8);
+  const suggestions = (tags.data ?? []).filter((tag) => !has(tag.name) && (!q || tag.name.toLowerCase().includes(q))).slice(0, 8);
   return (
     <div>
       <label className="label-text" htmlFor="item-tags">
-        Tags
+        <Trans>Tags</Trans>
       </label>
       {/* Tapping the box (around the tags) types into it, like a single input. */}
       <div
         className="input flex h-auto min-h-11 flex-wrap items-center gap-1.5 py-1.5"
         onClick={(e) => e.target === e.currentTarget && document.getElementById("item-tags")?.focus()}
       >
-        {props.value.map((t) => (
-          <span key={t} className="badge badge-soft badge-primary gap-1">
-            {t}
-            <button type="button" className="tap inline-flex" aria-label={`Remove tag ${t}`} onClick={() => props.onChange(props.value.filter((x) => x !== t))}>
+        {props.value.map((value) => (
+          <span key={value} className="badge badge-soft badge-primary gap-1">
+            {value}
+            <button type="button" className="tap inline-flex" aria-label={t`Remove tag ${ph({ tag: value })}`} onClick={() => props.onChange(props.value.filter((x) => x !== value))}>
               <span className="icon-[tabler--x] size-3.5" />
             </button>
           </span>
@@ -164,7 +166,7 @@ export function TagInput(props: { householdId: string; value: string[]; onChange
         <input
           id="item-tags"
           className="min-w-24 grow"
-          placeholder={props.value.length ? "" : "e.g. camping, Christmas"}
+          placeholder={props.value.length ? "" : t`e.g. camping, Christmas`}
           value={text}
           list="item-tag-suggestions"
           autoComplete="off"
@@ -181,11 +183,11 @@ export function TagInput(props: { householdId: string; value: string[]; onChange
         />
       </div>
       {suggestions.length > 0 && (
-        <div className="mt-1.5 flex flex-wrap gap-1.5" aria-label="Existing tags">
-          {suggestions.map((t) => (
-            <button key={t.id} type="button" className="tap badge badge-outline badge-primary cursor-pointer gap-1" onClick={() => add(t.name)}>
+        <div className="mt-1.5 flex flex-wrap gap-1.5" aria-label={t`Existing tags`}>
+          {suggestions.map((type) => (
+            <button key={type.id} type="button" className="tap badge badge-outline badge-primary cursor-pointer gap-1" onClick={() => add(type.name)}>
               <span className="icon-[tabler--plus] size-3" />
-              {t.name}
+              {type.name}
             </button>
           ))}
         </div>
@@ -258,17 +260,17 @@ export function Categories({ householdId }: { householdId: string }) {
     <div className="min-h-dvh bg-base-200">
       <nav className="navbar sticky top-0 z-10 border-b border-base-300 bg-base-100/85 backdrop-blur-md px-4">
         <div className="navbar-start items-center gap-2">
-          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label="Back to your stuff">
+          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label={t`Back to your stuff`}>
             <span className="icon-[tabler--arrow-left] size-5" />
           </a>
-          <h1 className="text-lg font-semibold">Categories &amp; tags</h1>
+          <h1 className="text-lg font-semibold"><Trans>Categories &amp; tags</Trans></h1>
         </div>
         <BarSearch />
         <div className="navbar-end items-center">
           {canEdit && (
             <button type="button" className="btn btn-primary btn-sm" onClick={() => setEditing({})}>
               <span className="icon-[tabler--plus] size-4" />
-              Category
+              <Trans>Category</Trans>
             </button>
           )}
         </div>
@@ -279,17 +281,17 @@ export function Categories({ householdId }: { householdId: string }) {
           <div className="card-body gap-3 p-4 sm:p-6">
             <h2 id="categories-title" className="card-title flex items-center gap-2 text-base">
               <span className="icon-[tabler--category] size-5 text-primary" />
-              Categories
+              <Trans>Categories</Trans>
             </h2>
-            <p className="-mt-1 text-sm text-base-content/70">What each thing is. The insurance report adds value up by the top level.</p>
+            <p className="-mt-1 text-sm text-base-content/70"><Trans>What each thing is. The insurance report adds value up by the top level.</Trans></p>
             {categories.isPending && <span className="loading loading-spinner text-primary" />}
             {categories.data?.length === 0 && (
               <div className="rounded-box border border-dashed border-base-content/20 p-5 text-center">
-                <p className="text-sm text-base-content/70">No categories yet. Start with a set made for home insurance, and change it as you like.</p>
+                <p className="text-sm text-base-content/70"><Trans>No categories yet. Start with a set made for home insurance, and change it as you like.</Trans></p>
                 {canEdit && (
                   <button type="button" className="btn btn-primary btn-sm mt-3" disabled={starter.isPending} onClick={() => starter.mutate()}>
                     {starter.isPending && <span className="loading loading-spinner loading-xs" />}
-                    Add starter categories
+                    <Trans>Add starter categories</Trans>
                   </button>
                 )}
               </div>
@@ -303,7 +305,7 @@ export function Categories({ householdId }: { householdId: string }) {
                 canEdit={canEdit}
                 onAdd={(parentId) => setEditing({ parentId })}
                 onEdit={(category) => setEditing({ category })}
-                onRemove={(c) => window.confirm(`Remove ${c.name}? Its items and subcategories move up a level.`) && removeCategory.mutate(c.id)}
+                onRemove={(c) => window.confirm(t`Remove ${ph({ name: c.name })}? Its items and subcategories move up a level.`) && removeCategory.mutate(c.id)}
               />
             )}
           </div>
@@ -315,22 +317,22 @@ export function Categories({ householdId }: { householdId: string }) {
           <div className="card-body gap-3 p-4 sm:p-6">
             <h2 id="tags-title" className="card-title flex items-center gap-2 text-base">
               <span className="icon-[tabler--tags] size-5 text-primary" />
-              Tags
+              <Trans>Tags</Trans>
             </h2>
             <p className="-mt-1 text-sm text-base-content/70">
-              Add tags while editing an item. Tap one to see everything with it and what it's worth. (For coins, cards and the
-              like, with a want list, start a <a href="#/collections" className="link link-primary tap">collection</a>.)
+              <Trans>Add tags while editing an item. Tap one to see everything with it and what it's worth. (For coins, cards and the
+              like, with a want list, start a <a href="#/collections" className="link link-primary tap">collection</a></Trans>.)
             </p>
-            {tags.data?.length === 0 && <p className="text-sm text-base-content/70">No tags yet.</p>}
+            {tags.data?.length === 0 && <p className="text-sm text-base-content/70"><Trans>No tags yet.</Trans></p>}
             <ul className="flex flex-wrap gap-2">
-              {tags.data?.map((t) => (
-                <li key={t.id} className="flex items-center">
-                  <a href={tagHref(t.name)} className="tap badge badge-soft badge-primary badge-lg gap-1.5">
-                    {t.name}
-                    <span className="text-xs opacity-70">{t.items}</span>
+              {tags.data?.map((tag) => (
+                <li key={tag.id} className="flex items-center">
+                  <a href={tagHref(tag.name)} className="tap badge badge-soft badge-primary badge-lg gap-1.5">
+                    {tag.name}
+                    <span className="text-xs opacity-70">{tag.items}</span>
                   </a>
                   {canEdit && (
-                    <button type="button" className="btn btn-text btn-xs btn-circle" aria-label={`Rename or remove ${t.name}`} onClick={() => setTagEditing(t)}>
+                    <button type="button" className="btn btn-text btn-xs btn-circle" aria-label={t`Rename or remove ${ph({ name: tag.name })}`} onClick={() => setTagEditing(tag)}>
                       <span className="icon-[tabler--pencil] size-3.5" />
                     </button>
                   )}
@@ -368,19 +370,19 @@ function CategoryTree(props: {
               {n.itemCount > 0 && <span className="badge badge-soft badge-primary badge-sm">{n.itemCount}</span>}
               {n.fields.length > 0 && (
                 <span className="text-xs text-base-content/70" title={n.fields.map((f) => f.label).join(", ")}>
-                  +{n.fields.length} {n.fields.length === 1 ? "field" : "fields"}
+                  {plural(n.fields.length, { one: "+# field", other: "+# fields" })}
                 </span>
               )}
             </a>
             {props.canEdit && (
               <>
-                <button type="button" className="btn btn-text btn-sm btn-circle" aria-label={`Add a category inside ${n.name}`} onClick={() => props.onAdd(n.id)}>
+                <button type="button" className="btn btn-text btn-sm btn-circle" aria-label={t`Add a category inside ${ph({ name: n.name })}`} onClick={() => props.onAdd(n.id)}>
                   <span className="icon-[tabler--plus] size-4" />
                 </button>
-                <button type="button" className="btn btn-text btn-sm btn-circle" aria-label={`Edit ${n.name}`} onClick={() => props.onEdit(n)}>
+                <button type="button" className="btn btn-text btn-sm btn-circle" aria-label={t`Edit ${ph({ name: n.name })}`} onClick={() => props.onEdit(n)}>
                   <span className="icon-[tabler--pencil] size-4" />
                 </button>
-                <button type="button" className="btn btn-text btn-sm btn-circle" aria-label={`Remove ${n.name}`} onClick={() => props.onRemove(n)}>
+                <button type="button" className="btn btn-text btn-sm btn-circle" aria-label={t`Remove ${ph({ name: n.name })}`} onClick={() => props.onRemove(n)}>
                   <span className="icon-[tabler--trash] size-4" />
                 </button>
               </>
@@ -425,29 +427,29 @@ function CategoryDialog(props: {
     save.mutate({ name, parentId: parent, fields: keyedFields(fields) });
   }
   return (
-    <Modal id="category-dialog" title={category ? `Edit ${category.name}` : "New category"} onClose={onClose}>
+    <Modal id="category-dialog" title={category ? t`Edit ${ph({ name: category.name })}` : t`New category`} onClose={onClose}>
       <form className="flex flex-col gap-6" onSubmit={onSubmit}>
         <div className="space-y-4">
           <div>
             <label className="label-text" htmlFor="category-name">
-              Name
+              <Trans>Name</Trans>
             </label>
-            <input id="category-name" name="name" className="input" defaultValue={category?.name} placeholder="e.g. Power tools" maxLength={80} required autoFocus />
+            <input id="category-name" name="name" className="input" defaultValue={category?.name} placeholder={t`e.g. Power tools`} maxLength={80} required autoFocus />
           </div>
           <Combobox
             id="category-parent"
             name="parentId"
-            label="Inside"
-            placeholder="Top level"
-            noneLabel="Top level"
+            label={t`Inside`}
+            placeholder={t`Top level`}
+            noneLabel={t`Top level`}
             value={choices.find((c) => c.id === parent) ?? null}
             onChange={(c) => setParent(c?.id ?? null)}
             choices={choices.filter((c) => words.every((w) => c.detail.toLowerCase().includes(w)))}
             onQuery={setQuery}
           />
           <FieldsEditor
-            legend="Extra fields for its items"
-            hint="e.g. a TV's screen size, a painting's artist. Subcategories get these too."
+            legend={t`Extra fields for its items`}
+            hint={t`e.g. a TV's screen size, a painting's artist. Subcategories get these too.`}
             fields={fields}
             onChange={setFields}
             max={20}
@@ -456,11 +458,11 @@ function CategoryDialog(props: {
         {save.isError && <div className="alert alert-soft alert-error">{save.error.message}</div>}
         <DialogActions>
           <button type="button" className="btn btn-secondary btn-soft" onClick={onClose}>
-            Cancel
+            <Trans>Cancel</Trans>
           </button>
           <button type="submit" className="btn btn-primary" disabled={save.isPending}>
             {save.isPending && <span className="loading loading-spinner loading-sm" />}
-            {category ? "Save" : "Add category"}
+            {category ? t`Save` : t`Add category`}
           </button>
         </DialogActions>
       </form>
@@ -497,12 +499,12 @@ function TagDialog(props: { tag: TagSummary; onClose: () => void; onSaved: () =>
             {props.tag.name}
           </h3>
           <p className="text-base-content/80">
-            On {props.tag.items} {props.tag.items === 1 ? "item" : "items"}. Renaming it to another tag's name merges the two.
+            {plural(props.tag.items, { one: "On # item. Renaming it to another tag's name merges the two.", other: "On # items. Renaming it to another tag's name merges the two." })}
           </p>
         </div>
         <div>
           <label className="label-text" htmlFor="tag-name">
-            Name
+            <Trans>Name</Trans>
           </label>
           <input id="tag-name" name="name" className="input" defaultValue={props.tag.name} maxLength={40} required autoFocus />
         </div>
@@ -512,17 +514,17 @@ function TagDialog(props: { tag: TagSummary; onClose: () => void; onSaved: () =>
             type="button"
             className="btn btn-text btn-error"
             disabled={remove.isPending}
-            onClick={() => window.confirm(`Remove the tag ${props.tag.name}? The items stay.`) && remove.mutate()}
+            onClick={() => window.confirm(t`Remove the tag ${ph({ name: props.tag.name })}? The items stay.`) && remove.mutate()}
           >
             <span className="icon-[tabler--trash] size-5" />
-            Remove tag
+            <Trans>Remove tag</Trans>
           </button>
           <div className="ms-auto flex gap-3">
             <button type="button" className="btn btn-secondary btn-soft" onClick={props.onClose}>
-              Cancel
+              <Trans>Cancel</Trans>
             </button>
             <button type="submit" className="btn btn-primary" disabled={rename.isPending}>
-              Save
+              <Trans>Save</Trans>
             </button>
           </div>
         </div>

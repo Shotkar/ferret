@@ -16,6 +16,8 @@ import { money } from "./lib/money";
 import { PROPERTY_TYPES } from "./Places";
 import { HelpLink } from "./HelpLink";
 import { ShareButton } from "./Shares";
+import { t, ph, plural } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 type Group = { name: string; items: number; valueCents: number; unvalued: number };
 
@@ -32,8 +34,8 @@ function groupBy(rows: ExportRow[], key: (r: ExportRow) => string): Group[] {
   return [...groups.values()].sort((a, b) => b.valueCents - a.valueCents);
 }
 
-const property = (r: ExportRow) => r.place?.split(" › ")[0] ?? "Not placed";
-const room = (r: ExportRow) => r.place?.split(" › ").slice(0, 2).join(" › ") ?? "Not placed";
+const property = (r: ExportRow) => r.place?.split(" › ")[0] ?? t`Not placed`;
+const room = (r: ExportRow) => r.place?.split(" › ").slice(0, 2).join(" › ") ?? t`Not placed`;
 const longDate = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 const shortDate = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 
@@ -49,11 +51,11 @@ export function Report({ householdName, householdId }: { householdName: string; 
     <div className="min-h-dvh bg-base-200 print:bg-white">
       <nav className="navbar sticky top-0 z-10 border-b border-base-300 bg-base-100/85 backdrop-blur-md px-4 print:hidden">
         <div className="navbar-start items-center gap-2">
-          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label="Back to your stuff">
+          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label={t`Back to your stuff`}>
             <span className="icon-[tabler--arrow-left] size-5" />
           </a>
-          <h1 className="text-lg font-semibold">Insurance report</h1>
-          <HelpLink page="guide/insurance-report.html" label="Insurance report" />
+          <h1 className="text-lg font-semibold"><Trans>Insurance report</Trans></h1>
+          <HelpLink page="guide/insurance-report.html" label={t`Insurance report`} />
         </div>
         <BarSearch />
       </nav>
@@ -62,16 +64,16 @@ export function Report({ householdName, householdId }: { householdName: string; 
         <section className="card print:hidden">
           <div className="card-body gap-4 p-4 sm:p-6">
             <p className="text-sm text-base-content/70">
-              Everything you own, what it's worth and the proof — for your insurer, or to keep somewhere safe. Save it as a PDF from the print
-              menu (on iPhone: Share → Print, then Share again → Save to Files).
+              <Trans>Everything you own, what it's worth and the proof — for your insurer, or to keep somewhere safe. Save it as a PDF from the print
+              menu (on iPhone: Share → Print, then Share again → Save to Files).</Trans>
             </p>
             <div className="flex flex-wrap items-end gap-3">
               <div className="min-w-0 flex-1 basis-48">
                 <label className="label-text" htmlFor="report-property">
-                  Property
+                  <Trans>Property</Trans>
                 </label>
                 <select id="report-property" className="select" value={propertyId} onChange={(e) => setPropertyId(e.target.value)}>
-                  <option value="">All properties</option>
+                  <option value="">{t`All properties`}</option>
                   {places.data?.properties.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
@@ -81,22 +83,22 @@ export function Report({ householdName, householdId }: { householdName: string; 
               </div>
               <label className="flex h-11 items-center gap-2">
                 <input type="checkbox" className="switch switch-primary" checked={photos} onChange={(e) => setPhotos(e.target.checked)} />
-                <span className="label-text text-base">Photos</span>
+                <Trans><span className="label-text text-base">Photos</span></Trans>
               </label>
             </div>
             <div className="flex flex-wrap gap-3">
               <button type="button" className="btn btn-wrap btn-primary" disabled={!rows.data} onClick={() => window.print()}>
                 <span className="icon-[tabler--printer] size-5" />
-                Print or save as PDF
+                <Trans>Print or save as PDF</Trans>
               </button>
               <a className="btn btn-wrap btn-soft btn-primary" href={api.exportCsvUrl(propertyId || undefined)} download>
                 <span className="icon-[tabler--file-spreadsheet] size-5" />
-                Download spreadsheet (CSV)
+                <Trans>Download spreadsheet (CSV)</Trans>
               </a>
               <ShareButton
                 householdId={householdId}
                 target={{ kind: "report", propertyId: propertyId || null }}
-                what={propertyId ? `the report for ${properties[0]?.name ?? "this property"}` : "the insurance report"}
+                what={propertyId ? t`the report for ${ph({ property: properties[0]?.name ?? t`this property` })}` : t`the insurance report`}
                 className="btn btn-wrap btn-soft btn-primary"
               />
             </div>
@@ -180,7 +182,7 @@ export function ReportDocument({
   const withReceipts = items.filter((r) => r.documents > 0).length;
   const unvalued = items.filter((r) => r.totalValueCents == null).length;
   const byPlace = items.reduce<[string, ExportRow[]][]>((list, r) => {
-    const place = r.place ?? "Not in a place";
+    const place = r.place ?? t`Not in a place`;
     const last = list.at(-1);
     if (last && last[0] === place) last[1].push(r);
     else list.push([place, [r]]);
@@ -190,29 +192,29 @@ export function ReportDocument({
     <article className="rounded-box bg-white p-6 text-black shadow-sm print:rounded-none print:p-0 print:shadow-none sm:p-10">
               {/* Cover */}
               <header className="border-b border-gray-300 pb-5">
-                <p className="text-sm text-gray-600">🐾 Ferret · Home inventory</p>
+                <p className="text-sm text-gray-600"><Trans>🐾 Ferret · Home inventory</Trans></p>
                 <h1 className="mt-1 text-3xl font-bold">{title}</h1>
                 {subtitle && <p className="mt-1 text-lg">{subtitle}</p>}
                 <p className="mt-1 text-sm text-gray-600">
-                  Prepared {longDate(today())}
-                  {preparedBy ? ` by ${preparedBy}` : ""}
+                  <Trans>Prepared {ph({ longDate: longDate(today()) })}</Trans>
+                  {preparedBy ? t` by ${preparedBy}` : ""}
                 </p>
                 <dl className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
-                  <Figure label="Total value" value={money(total)} />
-                  <Figure label="Items" value={items.length.toLocaleString()} />
-                  <Figure label="With photos" value={`${withPhotos} of ${items.length}`} />
-                  <Figure label="With receipts" value={`${withReceipts} of ${items.length}`} />
+                  <Figure label={t`Total value`} value={money(total)} />
+                  <Figure label={t`Items`} value={items.length.toLocaleString()} />
+                  <Figure label={t`With photos`} value={`${withPhotos} of ${items.length}`} />
+                  <Figure label={t`With receipts`} value={`${withReceipts} of ${items.length}`} />
                 </dl>
                 {unvalued > 0 && (
                   <p className="mt-3 text-sm text-gray-600">
-                    {unvalued} {unvalued === 1 ? "item has" : "items have"} no value or price recorded and {unvalued === 1 ? "isn't" : "aren't"} in the total.
+                    {plural(unvalued, { one: "# item has no value or price recorded and isn't in the total.", other: "# items have no value or price recorded and aren't in the total." })}
                   </p>
                 )}
               </header>
   
               {properties.length > 0 && (
                 <section className="mt-6 break-inside-avoid">
-                  <h2 className="text-lg font-semibold">Properties</h2>
+                  <h2 className="text-lg font-semibold"><Trans>Properties</Trans></h2>
                   <div className="mt-2 grid gap-3 sm:grid-cols-2">
                     {properties.map((p) => {
                       const d = p.details;
@@ -220,12 +222,12 @@ export function ReportDocument({
                       return (
                         <div key={p.name} className="rounded-lg border border-gray-300 p-3 text-sm">
                           <p className="font-semibold">
-                            {p.name} <span className="font-normal text-gray-600">· {PROPERTY_TYPES[p.type].label}</span>
+                            {p.name} <span className="font-normal text-gray-600">· {t(PROPERTY_TYPES[p.type].label)}</span>
                           </p>
                           {address && <p>{address}</p>}
                           {(d.yearBuilt || d.valueCents != null) && (
                             <p className="text-gray-600">
-                              {[d.yearBuilt && `Built ${d.yearBuilt}`, d.valueCents != null && `Valued at ${money(d.valueCents)}`].filter(Boolean).join(" · ")}
+                              {[d.yearBuilt && t`Built ${ph({ year: d.yearBuilt })}`, d.valueCents != null && t`Valued at ${ph({ amount: money(d.valueCents) })}`].filter(Boolean).join(" · ")}
                             </p>
                           )}
                         </div>
@@ -236,30 +238,30 @@ export function ReportDocument({
               )}
   
               <div className="mt-6 grid gap-6 sm:grid-cols-2 print:grid-cols-2">
-                {byProperty && <Summary title="By property" groups={groupBy(items, property)} />}
-                <Summary title="By room" groups={groupBy(items, room)} />
-                <Summary title="By category" groups={groupBy(items, (r) => r.category?.split(" › ")[0] ?? "No category")} />
+                {byProperty && <Summary title={t`By property`} groups={groupBy(items, property)} />}
+                <Summary title={t`By room`} groups={groupBy(items, room)} />
+                <Summary title={t`By category`} groups={groupBy(items, (r) => r.category?.split(" › ")[0] ?? t`No category`)} />
               </div>
   
               {/* Every item, grouped by where it is */}
               <section className="mt-8">
-                <h2 className="text-lg font-semibold">Items</h2>
+                <h2 className="text-lg font-semibold"><Trans>Items</Trans></h2>
                 {byPlace.map(([place, list]) => (
                   <div key={place} className="mt-4">
                     <h3 className="break-after-avoid border-b border-gray-300 pb-1 text-sm font-semibold text-gray-700">
                       {place}
                       <span className="font-normal text-gray-500">
                         {" "}
-                        · {list.length} {list.length === 1 ? "item" : "items"} · {money(list.reduce((s, r) => s + (r.totalValueCents ?? 0), 0))}
+                        · {plural(list.length, { one: "# item", other: "# items" })} · {money(list.reduce((s, r) => s + (r.totalValueCents ?? 0), 0))}
                       </span>
                     </h3>
                     <table className="w-full text-left text-[9.5pt]">
                       <thead className="text-gray-500">
                         <tr>
-                          {photos && <th className="w-[0.75in] py-1 font-normal" aria-label="Photo" />}
-                          <th className="py-1 font-normal">Item</th>
-                          <th className="py-1 font-normal max-sm:hidden print:table-cell">Bought</th>
-                          <th className="py-1 text-end font-normal">Value</th>
+                          {photos && <th className="w-[0.75in] py-1 font-normal" aria-label={t`Photo`} />}
+                          <th className="py-1 font-normal"><Trans>Item</Trans></th>
+                          <th className="py-1 font-normal max-sm:hidden print:table-cell"><Trans>Bought</Trans></th>
+                          <th className="py-1 text-end font-normal"><Trans>Value</Trans></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -286,11 +288,11 @@ export function ReportDocument({
                               </p>
                               <p className="text-gray-500">
                                 {[
-                                  r.box && `In ${r.box}`,
+                                  r.box && t`In ${ph({ box: r.box })}`,
                                   r.category,
-                                  r.photos ? `${r.photos} ${r.photos === 1 ? "photo" : "photos"}` : null,
-                                  r.documents ? `${r.documents} ${r.documents === 1 ? "receipt/document" : "receipts/documents"}` : null,
-                                  r.warrantyEnds && `warranty until ${shortDate(r.warrantyEnds)}`,
+                                  r.photos ? plural(r.photos, { one: "# photo", other: "# photos" }) : null,
+                                  r.documents ? plural(r.documents, { one: "# receipt/document", other: "# receipts/documents" }) : null,
+                                  r.warrantyEnds && t`warranty until ${ph({ date: shortDate(r.warrantyEnds) })}`,
                                 ]
                                   .filter(Boolean)
                                   .join(" · ")}
@@ -307,8 +309,8 @@ export function ReportDocument({
                             </td>
                             <td className="whitespace-nowrap py-1.5 pe-2 text-gray-700 max-sm:hidden print:table-cell">
                               {r.purchaseDate && <p>{shortDate(r.purchaseDate)}</p>}
-                              {r.purchasePriceCents != null && <p>{money(r.purchasePriceCents)} each</p>}
-                              {r.replacementCents != null && <p>{money(r.replacementCents)} to replace</p>}
+                              {r.purchasePriceCents != null && <p><Trans>{ph({ price: money(r.purchasePriceCents) })} each</Trans></p>}
+                              {r.replacementCents != null && <p><Trans>{ph({ amount: money(r.replacementCents) })} to replace</Trans></p>}
                             </td>
                             <td className="whitespace-nowrap py-1.5 text-end font-semibold">
                               {r.totalValueCents != null ? money(r.totalValueCents) : <span className="font-normal text-gray-400">—</span>}
@@ -319,12 +321,12 @@ export function ReportDocument({
                     </table>
                   </div>
                 ))}
-                {items.length === 0 && <p className="mt-2 text-sm text-gray-600">No items yet.</p>}
+                {items.length === 0 && <p className="mt-2 text-sm text-gray-600"><Trans>No items yet.</Trans></p>}
               </section>
   
               <footer className="mt-8 border-t border-gray-300 pt-3 text-xs text-gray-500">
-                Values are the owner's records: the current value where given, otherwise the price paid, times the quantity.{" "}
-                {files ? "Photos, receipts and manuals open from each item's links." : "Photos, receipts and manuals are kept in Ferret and can be provided on request."}
+                <Trans>Values are the owner's records: the current value where given, otherwise the price paid, times the quantity.</Trans>{" "}
+                {files ? t`Photos, receipts and manuals open from each item's links.` : t`Photos, receipts and manuals are kept in Ferret and can be provided on request.`}
               </footer>
             </article>
   );

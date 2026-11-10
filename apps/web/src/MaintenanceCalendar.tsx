@@ -7,6 +7,8 @@ import type { MaintenanceTask } from "@ferret/shared";
 import { type TaskOccurrence, addDays, addMonths, taskOccurrences, today } from "@ferret/shared/utils";
 import { useMemo, useState } from "react";
 import { TaskRow } from "./Maintenance";
+import { t, ph, plural } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 /** `short`: not enough of the task's part left by then (its `part.shortOn` or later). */
 type Entry = { task: MaintenanceTask; kind: TaskOccurrence["kind"]; short: boolean };
@@ -95,13 +97,13 @@ export function MaintenanceCalendar(props: {
             <div className="flex items-center gap-1">
               {month !== thisMonth() && (
                 <button type="button" className="btn btn-text btn-sm" onClick={() => go(thisMonth())}>
-                  Today
+                  <Trans>Today</Trans>
                 </button>
               )}
-              <button type="button" className="btn btn-text btn-sm btn-square" aria-label="Previous month" onClick={() => go(addMonths(first, -1).slice(0, 7))}>
+              <button type="button" className="btn btn-text btn-sm btn-square" aria-label={t`Previous month`} onClick={() => go(addMonths(first, -1).slice(0, 7))}>
                 <span className="icon-[tabler--chevron-left] size-5" />
               </button>
-              <button type="button" className="btn btn-text btn-sm btn-square" aria-label="Next month" onClick={() => go(addMonths(first, 1).slice(0, 7))}>
+              <button type="button" className="btn btn-text btn-sm btn-square" aria-label={t`Next month`} onClick={() => go(addMonths(first, 1).slice(0, 7))}>
                 <span className="icon-[tabler--chevron-right] size-5" />
               </button>
             </div>
@@ -120,9 +122,8 @@ export function MaintenanceCalendar(props: {
               const list = byDay.get(d) ?? [];
               const outside = d < first || d > last;
               const isPicked = picked === d;
-              const label = `${fmt(d, { weekday: "long", month: "long", day: "numeric" })}${d === now ? ", today" : ""}: ${
-                list.length ? `${list.length} ${list.length === 1 ? "task" : "tasks"}` : "nothing due"
-              }`;
+              const day = d === now ? t`${ph({ date: fmt(d, { weekday: "long", month: "long", day: "numeric" }) })}, today` : fmt(d, { weekday: "long", month: "long", day: "numeric" });
+              const label = t`${ph({ day })}: ${ph({ tasks: list.length ? plural(list.length, { one: "# task", other: "# tasks" }) : t`nothing due` })}`;
               return (
                 <button
                   key={d}
@@ -158,7 +159,7 @@ export function MaintenanceCalendar(props: {
                         {e.task.title}
                       </span>
                     ))}
-                    {list.length > 3 && <span className="px-1 text-xs text-base-content/70">+{list.length - 3} more</span>}
+                    {list.length > 3 && <span className="px-1 text-xs text-base-content/70"><Trans>+{ph({ more: list.length - 3 })} more</Trans></span>}
                   </span>
                 </button>
               );
@@ -166,20 +167,20 @@ export function MaintenanceCalendar(props: {
           </div>
           <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-base-content/70">
             <span className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-error" aria-hidden /> Overdue
+              <span className="size-2 rounded-full bg-error" aria-hidden /> <Trans>Overdue</Trans>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-warning" aria-hidden /> Due soon
+              <span className="size-2 rounded-full bg-warning" aria-hidden /> <Trans>Due soon</Trans>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-primary" aria-hidden /> Later
+              <span className="size-2 rounded-full bg-primary" aria-hidden /> <Trans>Later</Trans>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full border border-base-content/50" aria-hidden /> Expected repeat
+              <span className="size-2 rounded-full border border-base-content/50" aria-hidden /> <Trans>Expected repeat</Trans>
             </span>
             {anyShort && (
               <span className="flex items-center gap-1.5">
-                <span className="icon-[tabler--shopping-cart] size-3.5" aria-hidden /> Not enough parts left by then
+                <span className="icon-[tabler--shopping-cart] size-3.5" aria-hidden /> <Trans>Not enough parts left by then</Trans>
               </span>
             )}
           </p>
@@ -190,23 +191,23 @@ export function MaintenanceCalendar(props: {
         <div className="card-body gap-2 p-4 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="month-list" className="font-semibold text-base-content">
-              {picked ? fmt(picked, { weekday: "long", month: "long", day: "numeric" }) : `All of ${fmt(first, { month: "long" })}`}
+              {picked ? fmt(picked, { weekday: "long", month: "long", day: "numeric" }) : t`All of ${ph({ fmt: fmt(first, { month: "long" }) })}`}
             </h2>
             {picked && (
               <button type="button" className="btn btn-text btn-sm" onClick={() => setPicked(null)}>
-                Show the whole month
+                <Trans>Show the whole month</Trans>
               </button>
             )}
           </div>
           {shown.length === 0 ? (
-            <p className="text-sm text-base-content/70">{picked ? "Nothing due that day." : inMonth ? "" : "Nothing due this month."}</p>
+            <p className="text-sm text-base-content/70">{picked ? t`Nothing due that day.` : inMonth ? "" : t`Nothing due this month.`}</p>
           ) : (
             shown.map((d) => (
               <div key={d}>
                 {!picked && (
                   <h3 className={`pt-2 text-sm font-medium ${d === now ? "text-primary" : "text-base-content/70"}`}>
                     {fmt(d, { weekday: "short", month: "short", day: "numeric" })}
-                    {d === now ? " · Today" : ""}
+                    {d === now ? t` · Today` : ""}
                   </h3>
                 )}
                 <ul className="divide-y divide-base-content/10">
@@ -220,7 +221,9 @@ export function MaintenanceCalendar(props: {
                       onEdit={() => props.onEdit(e.task)}
                       expected={
                         e.kind === "expected"
-                          ? `Expected, if the one before is done on time${e.short ? ` · not enough ${e.task.part!.name} left by then` : ""}`
+                          ? e.short
+                            ? t`Expected, if the one before is done on time · not enough ${ph({ part: e.task.part!.name })} left by then`
+                            : t`Expected, if the one before is done on time`
                           : undefined
                       }
                     />

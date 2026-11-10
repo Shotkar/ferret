@@ -5,10 +5,13 @@
  */
 import type { PlanMeter, PlanReport } from "@ferret/shared";
 import { PLAN_FEATURE_NAMES, type PlanFeature } from "@ferret/shared/utils";
+import { planFeatureWord } from "./lib/words";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./lib/api";
 import { settingsHref } from "./lib/route";
 import { HelpLink } from "./HelpLink";
+import { t, ph, plural } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 /** The household's plan and usage (also read by the search box: no Ask without AI). */
 export function usePlan(householdId: string) {
@@ -26,13 +29,13 @@ export function NotInPlan({ feature, planName }: { feature: PlanFeature; planNam
   return (
     <div className="alert alert-soft alert-warning flex flex-wrap items-center gap-3" role="status">
       <span className="icon-[tabler--lock] size-5 shrink-0" />
-      <span className="min-w-0 grow basis-60">
-        {PLAN_FEATURE_NAMES[feature]} aren't part of the {planName} plan. Anything you made before is kept — paused — and works
+      <Trans><span className="min-w-0 grow basis-60">
+        {ph({ features: planFeatureWord(feature) })} aren't part of the {planName} plan. Anything you made before is kept — paused — and works
         again on a plan that has them.
       </span>
       <a href={settingsHref("plan")} className="btn btn-sm btn-primary">
         See plans
-      </a>
+      </a></Trans>
     </div>
   );
 }
@@ -63,11 +66,11 @@ function Meter({ label, icon, meter, format = number }: { label: string; icon: s
           {label}
         </span>
         <span className="text-sm text-base-content/70">
-          {limit === null ? format(used) : limit === 0 ? "Not in this plan" : `${format(used)} of ${format(limit)}`}
+          {limit === null ? format(used) : limit === 0 ? t`Not in this plan` : t`${ph({ format: format(used) })} of ${ph({ format2: format(limit) })}`}
         </span>
       </div>
       {limit !== null && limit > 0 && (
-        <progress className={`progress ${tone}`} value={Math.round(share * 100)} max={100} aria-label={`${label}: ${format(used)} of ${format(limit)}`} />
+        <progress className={`progress ${tone}`} value={Math.round(share * 100)} max={100} aria-label={t`${label}: ${ph({ format: format(used) })} of ${ph({ format2: format(limit) })}`} />
       )}
     </div>
   );
@@ -83,18 +86,18 @@ export function PlanUsage({ householdId, isOwner }: { householdId: string; isOwn
           <div className="card-body gap-3">
             <h2 id="plan-title" className="card-title flex items-center gap-2">
               <span className="icon-[tabler--rosette-discount-check] size-5 text-primary" />
-              {r.plan.name} plan
+              <Trans>{ph({ plan: r.plan.name })} plan</Trans>
             </h2>
             <p className="text-sm text-base-content/70">
-              {r.plan.limits.ai ? "Includes AI: photo suggestions, Ask Ferret, documents read and search by meaning." : "Search by words; no AI."}
-              {r.period.end && ` This month's AI actions and lookups start again on ${new Date(`${r.period.end}T00:00:00Z`).toLocaleDateString(undefined, { month: "long", day: "numeric", timeZone: "UTC" })}.`}
+              {r.plan.limits.ai ? t`Includes AI: photo suggestions, Ask Ferret, documents read and search by meaning.` : t`Search by words; no AI.`}
+              {r.period.end && t` This month's AI actions and lookups start again on ${ph({ toLocaleDateString: new Date(`${r.period.end}T00:00:00Z`).toLocaleDateString(undefined, { month: "long", day: "numeric", timeZone: "UTC" }) })}.`}
             </p>
             <ul className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
               {(Object.keys(PLAN_FEATURE_NAMES) as PlanFeature[]).map((f) => (
                 <li key={f} className={`flex items-center gap-1.5 ${r.plan!.limits[f] ? "" : "text-base-content/70"}`}>
                   <span className={`${r.plan!.limits[f] ? "icon-[tabler--check] text-success" : "icon-[tabler--x]"} size-4 shrink-0`} aria-hidden />
-                  {PLAN_FEATURE_NAMES[f]}
-                  {!r.plan!.limits[f] && <span className="sr-only">(not in this plan)</span>}
+                  {planFeatureWord(f)}
+                  {!r.plan!.limits[f] && <span className="sr-only"><Trans>(not in this plan)</Trans></span>}
                 </li>
               ))}
             </ul>
@@ -109,13 +112,13 @@ export function PlanUsage({ householdId, isOwner }: { householdId: string; isOwn
                 {r.plan.upgradeUrl && (
                   <a href={r.plan.upgradeUrl} className="btn btn-primary btn-wrap">
                     <span className="icon-[tabler--arrow-up-circle] size-5" />
-                    Upgrade
+                    <Trans>Upgrade</Trans>
                   </a>
                 )}
                 {r.plan.manageUrl && (
                   <a href={r.plan.manageUrl} className="btn btn-soft btn-primary btn-wrap">
                     <span className="icon-[tabler--credit-card] size-5" />
-                    Manage billing
+                    <Trans>Manage billing</Trans>
                   </a>
                 )}
                 {r.plan.links.map((l) => (
@@ -126,7 +129,7 @@ export function PlanUsage({ householdId, isOwner }: { householdId: string; isOwn
                 ))}
               </div>
             )}
-            {!isOwner && <p className="text-sm text-base-content/70">The household's owner manages its plan.</p>}
+            {!isOwner && <p className="text-sm text-base-content/70"><Trans>The household's owner manages its plan.</Trans></p>}
           </div>
         </section>
       )}
@@ -136,25 +139,25 @@ export function PlanUsage({ householdId, isOwner }: { householdId: string; isOwn
           <div className="flex items-center justify-between gap-2">
             <h2 id="usage-title" className="card-title flex items-center gap-2">
               <span className="icon-[tabler--gauge] size-5 text-primary" />
-              Usage{r && <span className="font-normal text-base-content/70"> · {periodLabel(r.period)}</span>}
+              <Trans>Usage</Trans>{r && <span className="font-normal text-base-content/70"> · {periodLabel(r.period)}</span>}
             </h2>
-            <HelpLink page="guide/plan-and-usage" label="Plan & usage" />
+            <HelpLink page="guide/plan-and-usage" label={t`Plan & usage`} />
           </div>
           {report.isError && <div className="alert alert-soft alert-error text-sm">{report.error.message}</div>}
-          {report.isPending && <span className="loading loading-spinner loading-sm" aria-label="Loading" />}
+          {report.isPending && <span className="loading loading-spinner loading-sm" aria-label={t`Loading`} />}
           {r && (
             <>
-              {!r.plan && <p className="text-sm text-base-content/70">Nothing is limited on this server — these are just this month's numbers.</p>}
+              {!r.plan && <p className="text-sm text-base-content/70"><Trans>Nothing is limited on this server — these are just this month's numbers.</Trans></p>}
               <div className="@container">
                 <div className="grid gap-4 @lg:grid-cols-2">
-                  <Meter label="AI actions" icon="icon-[tabler--sparkles]" meter={r.aiActions} />
-                  <Meter label="Things" icon="icon-[tabler--box]" meter={r.items} />
-                  <Meter label="Photos and files" icon="icon-[tabler--photo]" meter={r.fileBytes} format={bytes} />
-                  <Meter label="People" icon="icon-[tabler--users]" meter={r.members} />
-                  {r.barcodeLookups && <Meter label="Barcode lookups" icon="icon-[tabler--barcode]" meter={r.barcodeLookups} />}
+                  <Meter label={t`AI actions`} icon="icon-[tabler--sparkles]" meter={r.aiActions} />
+                  <Meter label={t`Things`} icon="icon-[tabler--box]" meter={r.items} />
+                  <Meter label={t`Photos and files`} icon="icon-[tabler--photo]" meter={r.fileBytes} format={bytes} />
+                  <Meter label={t`People`} icon="icon-[tabler--users]" meter={r.members} />
+                  {r.barcodeLookups && <Meter label={t`Barcode lookups`} icon="icon-[tabler--barcode]" meter={r.barcodeLookups} />}
                 </div>
               </div>
-              <p className="text-xs text-base-content/70">A photo's suggestions count as 2 AI actions; a question to Ask Ferret or a document read, 1.</p>
+              <p className="text-xs text-base-content/70"><Trans>A photo's suggestions count as 2 AI actions; a question to Ask Ferret or a document read, 1.</Trans></p>
             </>
           )}
         </div>
@@ -165,7 +168,7 @@ export function PlanUsage({ householdId, isOwner }: { householdId: string; isOwn
           <div className="card-body gap-3">
             <h2 id="by-person-title" className="card-title flex items-center gap-2">
               <span className="icon-[tabler--user] size-5 text-primary" />
-              By person
+              <Trans>By person</Trans>
             </h2>
             <ul className="divide-y divide-base-300">
               {r.people.map((p) => (
@@ -173,11 +176,11 @@ export function PlanUsage({ householdId, isOwner }: { householdId: string; isOwn
                   <span className="font-medium">{p.name}</span>
                   <span className="text-sm text-base-content/70">
                     {[
-                      `${number(p.aiActions)} AI ${p.aiActions === 1 ? "action" : "actions"}`,
-                      p.photos && `${number(p.photos)} ${p.photos === 1 ? "photo" : "photos"}`,
-                      p.asks && `${number(p.asks)} ${p.asks === 1 ? "question" : "questions"}`,
-                      p.documents && `${number(p.documents)} ${p.documents === 1 ? "document" : "documents"}`,
-                      p.barcodeLookups && `${number(p.barcodeLookups)} barcode ${p.barcodeLookups === 1 ? "lookup" : "lookups"}`,
+                      plural(p.aiActions, { one: "# AI action", other: "# AI actions" }),
+                      p.photos && plural(p.photos, { one: "# photo", other: "# photos" }),
+                      p.asks && plural(p.asks, { one: "# question", other: "# questions" }),
+                      p.documents && plural(p.documents, { one: "# document", other: "# documents" }),
+                      p.barcodeLookups && plural(p.barcodeLookups, { one: "# barcode lookup", other: "# barcode lookups" }),
                     ]
                       .filter(Boolean)
                       .join(" · ")}

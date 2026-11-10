@@ -9,17 +9,20 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "./lib/api";
 import { ImportStatus, useImportRun } from "./Import";
+import { importFieldWord } from "./lib/words";
 import { usePlaces } from "./lib/places";
 import { PLACES_HREF } from "./lib/route";
 import { decimalMark, money, currencySymbol, toCents } from "./lib/money";
 import { useFeatures } from "./lib/features";
 import type { ImportTriageRow } from "@ferret/shared";
+import { t, ph, plural, msg } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
-const PRESET_NAMES = { ferret: "Ferret's own export", amazon: "Amazon order history" } as const;
+const PRESET_NAMES = { ferret: msg`Ferret's own export`, amazon: msg`Amazon order history` } as const;
 const SHOWN = 300;
 
 const CsvSteps = ({ current }: { current: number }) => (
-  <Steps label="Import steps" steps={[{ label: "Choose a file" }, { label: "Check columns and rows" }, { label: "Import" }]} current={current} />
+  <Steps label={t`Import steps`} steps={[{ label: t`Choose a file` }, { label: t`Check columns and rows` }, { label: t`Import` }]} current={current} />
 );
 
 export function ImportCsv({ householdId }: { householdId: string }) {
@@ -30,9 +33,9 @@ export function ImportCsv({ householdId }: { householdId: string }) {
   async function choose(f: File | undefined) {
     if (!f) return;
     setError(null);
-    if (f.size > 20 * 1024 * 1024) return setError("That file is over 20 MB — split it into smaller ones.");
+    if (f.size > 20 * 1024 * 1024) return setError(t`That file is over 20 MB — split it into smaller ones.`);
     const table = parseCsv(await f.text());
-    if (table.length < 2) return setError("That file has no rows under its header.");
+    if (table.length < 2) return setError(t`That file has no rows under its header.`);
     setFile({ name: f.name, table });
     setMapping(guessMapping(table[0]!));
   }
@@ -44,19 +47,19 @@ export function ImportCsv({ householdId }: { householdId: string }) {
       <section className="card">
         <div className="card-body gap-4">
           <p className="text-base-content/80">
-            A spreadsheet saved as <strong>CSV</strong>, with a header row. You'll see which column goes where before anything is
-            saved — and an import can be undone.
+            <Trans>A spreadsheet saved as <strong>CSV</strong>, with a header row. You'll see which column goes where before anything is
+            saved — and an import can be undone.</Trans>
           </p>
           <ul className="list-inside list-disc space-y-1 text-sm text-base-content/70">
-            <li>Numbers, Excel or Google Sheets: File → Export / Download → CSV.</li>
+            <li><Trans>Numbers, Excel or Google Sheets: File → Export / Download → CSV.</Trans></li>
             <li>
-              Amazon: Account → Request your data → Your orders; use <code>Order History.csv</code> from the download (older ones:{" "}
-              <code>Retail.OrderHistory.1.csv</code>). A newer download later brings in only the new orders.
+              <Trans>Amazon: Account → Request your data → Your orders; use <code>Order History.csv</code> from the download (older ones:{" "}
+              <code>Retail.OrderHistory.1.csv</code>). A newer download later brings in only the new orders.</Trans>
             </li>
           </ul>
           <label className="btn btn-primary w-fit">
             <span className="icon-[tabler--file-upload] size-5" />
-            Choose a CSV file
+            <Trans>Choose a CSV file</Trans>
             <input type="file" accept=".csv,text/csv,.tsv,text/tab-separated-values" className="hidden" onChange={(e) => void choose(e.target.files?.[0])} />
           </label>
           {error && <div className="alert alert-soft alert-error">{error}</div>}
@@ -143,19 +146,19 @@ function Mapper({
     return (
       <li key={col} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2">
         <div className="min-w-0 flex-1 basis-48">
-          <p className="truncate font-medium">{h || `Column ${col + 1}`}</p>
+          <p className="truncate font-medium">{h || t`Column ${ph({ number: col + 1 })}`}</p>
           <p className="truncate text-sm text-base-content/70">{sample(col) || "empty"}</p>
         </div>
         <select
           className="select w-full sm:w-56"
-          aria-label={`Where ${h || `column ${col + 1}`} goes`}
+          aria-label={h ? t`Where ${ph({ column: h })} goes` : t`Where column ${ph({ number: col + 1 })} goes`}
           value={mapping[col] ?? ""}
           onChange={(e) => setField(col, (e.target.value || null) as ImportField | null)}
         >
-          <option value="">Leave out</option>
+          <option value="">{t`Leave out`}</option>
           {(Object.keys(IMPORT_FIELDS) as ImportField[]).map((f) => (
             <option key={f} value={f}>
-              {IMPORT_FIELDS[f]}
+              {importFieldWord(f)}
             </option>
           ))}
         </select>
@@ -173,7 +176,7 @@ function Mapper({
     return (
       <>
         <CsvSteps current={run.isSuccess ? 3 : 2} />
-        <ImportStatus run={run} progress={progress} describe={(n) => `Line ${chosen[n]?.r.line ?? "?"}: ${chosen[n]?.r.draft?.name ?? ""}`} />
+        <ImportStatus run={run} progress={progress} describe={(n) => t`Line ${ph({ line: chosen[n]?.r.line ?? "?" })}: ${ph({ name: chosen[n]?.r.draft?.name ?? "" })}`} />
       </>
     );
   }
@@ -189,25 +192,25 @@ function Mapper({
                 {file.name}
               </h2>
               <p className="text-sm text-base-content/70">
-                {rows.length} {rows.length === 1 ? "row" : "rows"}
-                {preset ? ` · looks like ${PRESET_NAMES[preset]}` : ""}
+                {plural(rows.length, { one: "# row", other: "# rows" })}
+                {preset ? t` · looks like ${ph({ preset: t(PRESET_NAMES[preset]) })}` : ""}
               </p>
             </div>
             <button type="button" className="btn btn-text btn-sm" onClick={onReset}>
-              Another file
+              <Trans>Another file</Trans>
             </button>
           </div>
-          <p className="text-sm text-base-content/70">Which column goes where? Ferret guessed — change anything that's wrong.</p>
+          <p className="text-sm text-base-content/70"><Trans>Which column goes where? Ferret guessed — change anything that's wrong.</Trans></p>
           <ul className="divide-y divide-base-content/10">{used.map(columnRow)}</ul>
           {unused.length > 0 && (
             <details className="rounded-box bg-base-200 px-3 py-2" open={used.length === 0}>
               <summary className="cursor-pointer py-1 font-medium">
-                {unused.length} {unused.length === 1 ? "column" : "columns"} left out
+                {plural(unused.length, { one: "# column left out", other: "# columns left out" })}
               </summary>
               <ul className="divide-y divide-base-content/10">{unused.map(columnRow)}</ul>
             </details>
           )}
-          {!mapping.includes("name") && <div className="alert alert-soft alert-warning">Choose the column with each thing's name.</div>}
+          {!mapping.includes("name") && <div className="alert alert-soft alert-warning"><Trans>Choose the column with each thing's name.</Trans></div>}
         </div>
       </section>
 
@@ -217,7 +220,7 @@ function Mapper({
             {properties.length ? (
               <>
                 <label className="label-text" htmlFor="csv-property">
-                  Places named in the file go in
+                  <Trans>Places named in the file go in</Trans>
                 </label>
                 <select id="csv-property" className="select" value={property ?? ""} onChange={(e) => setPropertyId(e.target.value)}>
                   {properties.map((p) => (
@@ -226,15 +229,15 @@ function Mapper({
                     </option>
                   ))}
                 </select>
-                <p className="text-sm text-base-content/70">Ones that aren't there yet are made, e.g. "Garage › Shelf 2".</p>
+                <p className="text-sm text-base-content/70"><Trans>Ones that aren't there yet are made, e.g. "Garage › Shelf 2".</Trans></p>
               </>
             ) : (
               <div className="alert alert-soft alert-warning">
-                The file says where things are — add your home under{" "}
+                <Trans>The file says where things are — add your home under{" "}
                 <a href={PLACES_HREF} className="link">
                   Places
                 </a>{" "}
-                first, or leave the "Where it is" column out.
+                first, or leave the "Where it is" column out.</Trans>
               </div>
             )}
           </div>
@@ -244,14 +247,14 @@ function Mapper({
       <section className="card" aria-labelledby="csv-rows">
         <div className="card-body gap-3">
           <h2 id="csv-rows" className="card-title text-base">
-            What to import
+            <Trans>What to import</Trans>
           </h2>
           <div className="flex flex-wrap gap-3">
-            <input className="input min-w-0 flex-1 basis-48" type="search" placeholder="Find a row" value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Find a row" />
+            <input className="input min-w-0 flex-1 basis-48" type="search" placeholder={t`Find a row`} value={filter} onChange={(e) => setFilter(e.target.value)} aria-label={t`Find a row`} />
             {mapping.some((f) => f === "purchasePrice" || f === "value" || f === "purchaseTotal") && (
               <label className="input w-full sm:w-52">
-                <span className="my-auto whitespace-nowrap text-sm text-base-content/70">Leave out under {currencySymbol()}</span>
-                <input className="grow" inputMode="decimal" value={under} onChange={(e) => setUnder(e.target.value)} placeholder="0" aria-label="Leave out things that cost less than" />
+                <Trans><span className="my-auto whitespace-nowrap text-sm text-base-content/70">Leave out under {ph({ currencySymbol: currencySymbol() })}</span></Trans>
+                <input className="grow" inputMode="decimal" value={under} onChange={(e) => setUnder(e.target.value)} placeholder="0" aria-label={t`Leave out things that cost less than`} />
               </label>
             )}
           </div>
@@ -260,17 +263,17 @@ function Mapper({
               type="button"
               className="btn btn-text btn-sm"
               onClick={() => setUnticked(new Set(rows.flatMap((r, i) => (isKnown(r) ? [i] : []))))}
-              title={knownCount ? "Everything not already in Ferret" : undefined}
+              title={knownCount ? t`Everything not already in Ferret` : undefined}
             >
-              Tick all
+              <Trans>Tick all</Trans>
             </button>
             <button type="button" className="btn btn-text btn-sm" onClick={() => setUnticked(new Set(rows.map((_, i) => i)))}>
-              Untick all
+              <Trans>Untick all</Trans>
             </button>
             {features?.textAi && (
               <button type="button" className="btn btn-soft btn-primary btn-sm" disabled={sorted.busy || sorted.done} onClick={sorted.start}>
                 <span className="icon-[tabler--sparkles] size-4" />
-                {sorted.busy ? `Sorting… ${sorted.progress}` : sorted.done ? "Sorted with AI" : "Sort with AI"}
+                {sorted.busy ? t`Sorting… ${ph({ progress: sorted.progress })}` : sorted.done ? t`Sorted with AI` : t`Sort with AI`}
               </button>
             )}
           </div>
@@ -279,17 +282,17 @@ function Mapper({
             <div className="alert alert-soft alert-info flex items-start gap-2 text-sm">
               <span className="icon-[tabler--sparkles] size-5 shrink-0" />
               <span>
-                {sorted.skipped} {sorted.skipped === 1 ? "line looks" : "lines look"} like consumables or not worth a record, so {sorted.skipped === 1 ? "it's" : "they're"} unticked;{" "}
-                {sorted.categorised} got a category from yours. Check before importing — tick anything it got wrong.
+                {plural(sorted.skipped, { one: "# line looks like a consumable or not worth a record, so it's unticked;", other: "# lines look like consumables or not worth a record, so they're unticked;" })}{" "}
+                {plural(sorted.categorised, { one: "# got a category from yours.", other: "# got a category from yours." })} <Trans>Check before importing — tick anything it got wrong.</Trans>
               </span>
             </div>
           )}
-          {knownQuery.isLoading && <p className="text-sm text-base-content/70">Checking what's already in Ferret…</p>}
+          {knownQuery.isLoading && <p className="text-sm text-base-content/70"><Trans>Checking what's already in Ferret…</Trans></p>}
           {knownCount > 0 && (
             <div className="alert alert-soft alert-info flex items-start gap-2 text-sm">
               <span className="icon-[tabler--copy-check] size-5 shrink-0" />
               <span>
-                {knownCount} {knownCount === 1 ? "line is" : "lines are"} already in Ferret from an earlier import of this file, so they're left out.
+                {plural(knownCount, { one: "# line is already in Ferret from an earlier import of this file, so it's left out.", other: "# lines are already in Ferret from an earlier import of this file, so they're left out." })}
               </span>
             </div>
           )}
@@ -299,18 +302,18 @@ function Mapper({
                 <label className={`flex items-start gap-3 py-2 ${r.draft ? "cursor-pointer" : "opacity-70"}`}>
                   <input type="checkbox" className="checkbox checkbox-primary mt-1" checked={ticked(r, i)} disabled={!r.draft} onChange={() => toggle(i)} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">{r.draft?.name ?? `Line ${r.line}`}</span>
+                    <span className="block truncate font-medium">{r.draft?.name ?? t`Line ${ph({ line: r.line })}`}</span>
                     <span className="block truncate text-sm text-base-content/70">
                       {[
                         [r.draft?.brand, r.draft?.model].filter(Boolean).join(" "),
                         r.draft?.place,
                         r.draft?.purchasePriceCents != null ? money(r.draft.purchasePriceCents) : null,
                         r.draft?.purchaseDate,
-                        r.draft?.returnBy ? `return by ${r.draft.returnBy}` : null,
-                        isKnown(r) ? "already in Ferret" : null,
-                        r.unlikely ? "cancelled or returned" : null,
-                        !r.draft?.category && sorted.result[i]?.category ? `AI: ${sorted.result[i]!.category}` : null,
-                        sorted.result[i]?.keep === false ? "AI: probably a consumable" : null,
+                        r.draft?.returnBy ? t`return by ${ph({ date: r.draft.returnBy })}` : null,
+                        isKnown(r) ? t`already in Ferret` : null,
+                        r.unlikely ? t`cancelled or returned` : null,
+                        !r.draft?.category && sorted.result[i]?.category ? t`AI: ${ph({ category: sorted.result[i]!.category })}` : null,
+                        sorted.result[i]?.keep === false ? t`AI: probably a consumable` : null,
                       ]
                         .filter(Boolean)
                         .join(" · ") || " "}
@@ -321,14 +324,14 @@ function Mapper({
               </li>
             ))}
           </ul>
-          {visible.length > SHOWN && <p className="text-sm text-base-content/70">And {visible.length - SHOWN} more (find one above to see it).</p>}
+          {visible.length > SHOWN && <p className="text-sm text-base-content/70"><Trans>And {ph({ more: visible.length - SHOWN })} more (find one above to see it).</Trans></p>}
           {run.isError && <ImportStatus run={run} progress={progress} describe={() => ""} />}
           <div className="flex flex-wrap items-center justify-end gap-3">
             <span className="text-sm text-base-content/70">
-              {chosen.length} of {rows.length} ticked
+              <Trans>{ph({ ticked: chosen.length })} of {ph({ total: rows.length })} ticked</Trans>
             </span>
             <button type="button" className="btn btn-primary" disabled={!chosen.length || (needsProperty && !property) || knownQuery.isLoading} onClick={start}>
-              Import {chosen.length} {chosen.length === 1 ? "thing" : "things"}
+              {plural(chosen.length, { one: "Import # thing", other: "Import # things" })}
             </button>
           </div>
         </div>
@@ -353,7 +356,7 @@ function useAiSort(rows: DraftRow[], untick: (indexes: number[]) => void) {
       for (;;) {
         await new Promise((r) => setTimeout(r, 2000));
         const run = await api.importTriageRun(id);
-        if (run.status === "failed") throw new Error(run.error ?? "Sorting didn't work");
+        if (run.status === "failed") throw new Error(run.error ?? t`Sorting didn't work`);
         if (run.status === "done") {
           const byRow: (ImportTriageRow | null)[] = [];
           (run.result ?? []).forEach((r, n) => (byRow[indexes[n]!] = r));

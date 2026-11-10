@@ -5,6 +5,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "./lib/api";
+import { t, ph } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 export interface ViewerPhoto {
   id: string;
@@ -94,17 +96,17 @@ export function PhotoViewer(props: { photos: ViewerPhoto[]; start: number; title
       className="fixed inset-0 z-[90] flex flex-col bg-black text-white"
       role="dialog"
       aria-modal="true"
-      aria-label={`${props.title} — photo ${index + 1} of ${photos.length}`}
+      aria-label={t`${ph({ title: props.title })} — photo ${ph({ number: index + 1 })} of ${ph({ count: photos.length })}`}
     >
       <div className="flex items-center gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <p className="min-w-0 flex-1 truncate text-sm text-white/80">
           {props.title}
-          {many && ` · ${index + 1} of ${photos.length}`}
+          {many && t` · ${ph({ number: index + 1 })} of ${ph({ count: photos.length })}`}
         </p>
         <button
           type="button"
           className="btn btn-circle btn-sm btn-text text-white hover:bg-white/15"
-          aria-label={zoom ? "Zoom out" : "Zoom in"}
+          aria-label={zoom ? t`Zoom out` : t`Zoom in`}
           aria-pressed={Boolean(zoom)}
           onClick={() => setZoom(zoom ? null : { x: 0.5, y: 0.5 })}
         >
@@ -115,11 +117,11 @@ export function PhotoViewer(props: { photos: ViewerPhoto[]; start: number; title
           target="_blank"
           rel="noreferrer"
           className="btn btn-circle btn-sm btn-text text-white hover:bg-white/15"
-          aria-label={`Open the original of ${photo.filename}`}
+          aria-label={t`Open the original of ${ph({ filename: photo.filename })}`}
         >
           <span className="icon-[tabler--external-link] size-5" />
         </a>
-        <button ref={closeButton} type="button" className="btn btn-circle btn-sm btn-text text-white hover:bg-white/15" aria-label="Close" onClick={onClose}>
+        <button ref={closeButton} type="button" className="btn btn-circle btn-sm btn-text text-white hover:bg-white/15" aria-label={t`Close`} onClick={onClose}>
           <span className="icon-[tabler--x] size-5" />
         </button>
       </div>
@@ -144,7 +146,7 @@ export function PhotoViewer(props: { photos: ViewerPhoto[]; start: number; title
             <button
               type="button"
               className="btn btn-circle absolute start-3 top-1/2 -translate-y-1/2 border-0 bg-black/50 text-white hover:bg-black/70 max-sm:hidden"
-              aria-label="Previous photo"
+              aria-label={t`Previous photo`}
               onPointerDown={(e) => e.stopPropagation()}
               onPointerUp={(e) => e.stopPropagation()}
               onClick={() => go(-1)}
@@ -154,7 +156,7 @@ export function PhotoViewer(props: { photos: ViewerPhoto[]; start: number; title
             <button
               type="button"
               className="btn btn-circle absolute end-3 top-1/2 -translate-y-1/2 border-0 bg-black/50 text-white hover:bg-black/70 max-sm:hidden"
-              aria-label="Next photo"
+              aria-label={t`Next photo`}
               onPointerDown={(e) => e.stopPropagation()}
               onPointerUp={(e) => e.stopPropagation()}
               onClick={() => go(1)}
@@ -167,14 +169,14 @@ export function PhotoViewer(props: { photos: ViewerPhoto[]; start: number; title
 
       <div className="flex flex-col gap-3 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         {photo.caption && <p className="mx-auto max-w-3xl text-center text-sm text-white/85">{photo.caption}</p>}
-        {photo.smallCopy && <p className="mx-auto max-w-3xl text-center text-xs text-white/85">Only a small copy of this photo is kept.</p>}
+        {photo.smallCopy && <p className="mx-auto max-w-3xl text-center text-xs text-white/85"><Trans>Only a small copy of this photo is kept.</Trans></p>}
         {many && (
-          <div className="flex justify-center gap-2 overflow-x-auto" role="group" aria-label="Photos">
+          <div className="flex justify-center gap-2 overflow-x-auto" role="group" aria-label={t`Photos`}>
             {photos.map((p, i) => (
               <button
                 key={p.id}
                 type="button"
-                aria-label={`Photo ${i + 1}`}
+                aria-label={t`Photo ${ph({ number: i + 1 })}`}
                 aria-current={i === index}
                 onClick={() => {
                   setZoom(null);

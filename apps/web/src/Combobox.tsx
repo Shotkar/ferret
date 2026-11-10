@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { api } from "./lib/api";
 import { usePlaces } from "./lib/places";
+import { t, ph } from "@lingui/core/macro";
 
 export interface Choice {
   id: string;
@@ -108,7 +109,7 @@ export function Combobox(props: {
         />
         {props.loading && showing && <span className="loading loading-spinner loading-xs my-auto" />}
         {props.value && !text && (
-          <button type="button" className="btn btn-text btn-xs btn-circle my-auto" aria-label={`Clear ${props.label}`} onClick={() => choose(null)}>
+          <button type="button" className="btn btn-text btn-xs btn-circle my-auto" aria-label={t`Clear ${ph({ label: props.label })}`} onClick={() => choose(null)}>
             <span className="icon-[tabler--x] size-4" />
           </button>
         )}
@@ -147,7 +148,7 @@ export function Combobox(props: {
               {o?.id === props.value?.id && <span className="icon-[tabler--check] size-4 shrink-0 text-primary" />}
             </li>
           ))}
-          {options.length === 0 && !props.loading && <li className="px-3 py-2 text-sm text-base-content/70">{props.empty ?? "No matches"}</li>}
+          {options.length === 0 && !props.loading && <li className="px-3 py-2 text-sm text-base-content/70">{props.empty ?? t`No matches`}</li>}
         </ul>
       )}
     </div>
@@ -184,12 +185,12 @@ export function ItemPicker(props: {
   return (
     <Combobox
       {...props}
-      placeholder={props.boxes ? "Type to find a box" : "Type to find an item"}
+      placeholder={props.boxes ? t`Type to find a box` : t`Type to find an item`}
       choices={choices}
       onQuery={setQuery}
       loading={results.isFetching}
-      heading={q ? undefined : "Recently changed"}
-      empty={q ? `Nothing matches "${q}"` : props.boxes ? "No boxes yet — mark an item as a box" : "No items yet"}
+      heading={q ? undefined : t`Recently changed`}
+      empty={q ? t`Nothing matches "${q}"` : props.boxes ? t`No boxes yet — mark an item as a box` : t`No items yet`}
     />
   );
 }
@@ -235,7 +236,7 @@ export function PlacePicker(props: {
       choices={choices}
       onQuery={setQuery}
       disabled={!places.data}
-      empty={all.length ? "No place matches that" : "No places yet — add them under Places"}
+      empty={all.length ? t`No place matches that` : t`No places yet — add them under Places`}
     />
   );
 }
@@ -243,8 +244,8 @@ export function PlacePicker(props: {
 function useDebounced<T>(value: T, ms: number) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), ms);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setDebounced(value), ms);
+    return () => clearTimeout(timer);
   }, [value, ms]);
   return debounced;
 }

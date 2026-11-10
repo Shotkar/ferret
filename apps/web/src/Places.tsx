@@ -16,6 +16,9 @@ import { countLabel, findLocation, placesKey, usePlaces } from "./lib/places";
 import { missingHref, placeHref, propertyHref } from "./lib/route";
 import { DialogActions, Modal } from "./Modal";
 import { currencySymbol, toCents, centsToInput } from "./lib/money";
+import { t, ph, plural, msg } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
+import type { MessageDescriptor } from "@lingui/core";
 
 type Property = PlacesTree["properties"][number];
 
@@ -24,13 +27,13 @@ type Dialog =
   | { kind: "property"; property?: Property }
   | { kind: "location"; property: Property; parentId?: string; location?: LocationNode };
 
-export const PROPERTY_TYPES: Record<(typeof propertyTypes)[number], { label: string; icon: string }> = {
-  home: { label: "Home", icon: "icon-[tabler--home]" },
-  vacation: { label: "Vacation home", icon: "icon-[tabler--beach]" },
-  rental: { label: "Rental", icon: "icon-[tabler--building]" },
-  storage: { label: "Storage unit", icon: "icon-[tabler--building-warehouse]" },
-  vehicle: { label: "Vehicle", icon: "icon-[tabler--car]" },
-  other: { label: "Other", icon: "icon-[tabler--map-pin]" },
+export const PROPERTY_TYPES: Record<(typeof propertyTypes)[number], { label: MessageDescriptor; icon: string }> = {
+  home: { label: msg`Home`, icon: "icon-[tabler--home]" },
+  vacation: { label: msg`Vacation home`, icon: "icon-[tabler--beach]" },
+  rental: { label: msg`Rental`, icon: "icon-[tabler--building]" },
+  storage: { label: msg`Storage unit`, icon: "icon-[tabler--building-warehouse]" },
+  vehicle: { label: msg`Vehicle`, icon: "icon-[tabler--car]" },
+  other: { label: msg`Other`, icon: "icon-[tabler--map-pin]" },
 };
 
 export function Places({ householdName, householdId }: { householdName: string; householdId: string }) {
@@ -47,17 +50,17 @@ export function Places({ householdName, householdId }: { householdName: string; 
     <div className="min-h-dvh bg-base-200">
       <nav className="navbar sticky top-0 z-10 border-b border-base-300 bg-base-100/85 backdrop-blur-md px-4">
         <div className="navbar-start items-center gap-2">
-          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label="Back to your stuff">
+          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label={t`Back to your stuff`}>
             <span className="icon-[tabler--arrow-left] size-5" />
           </a>
-          <h1 className="text-lg font-semibold">Places</h1>
+          <h1 className="text-lg font-semibold"><Trans>Places</Trans></h1>
         </div>
         <BarSearch />
         <div className="navbar-end items-center">
           {canEdit && (
             <button type="button" className="btn btn-primary btn-sm" onClick={() => setDialog({ kind: "property" })}>
               <span className="icon-[tabler--plus] size-4" />
-              Property
+              <Trans>Property</Trans>
             </button>
           )}
         </div>
@@ -73,7 +76,7 @@ export function Places({ householdName, householdId }: { householdName: string; 
             <button
               type="button"
               className="btn btn-text btn-sm btn-circle"
-              aria-label="Dismiss"
+              aria-label={t`Dismiss`}
               onClick={() => {
                 removeLocation.reset();
                 removeProperty.reset();
@@ -88,14 +91,14 @@ export function Places({ householdName, householdId }: { householdName: string; 
           <div className="card">
             <div className="card-body items-center gap-3 text-center">
               <span className="icon-[tabler--home-plus] text-primary size-10" />
-              <h2 className="text-lg font-semibold">Where does {householdName} keep things?</h2>
+              <h2 className="text-lg font-semibold"><Trans>Where does {householdName} keep things?</Trans></h2>
               <p className="text-base-content/70 max-w-sm text-sm">
-                Add your home first, then its rooms, closets and shelves — so "where's the drill?" has an answer.
+                <Trans>Add your home first, then its rooms, closets and shelves — so "where's the drill?" has an answer.</Trans>
               </p>
               {canEdit && (
                 <button type="button" className="btn btn-primary" onClick={() => setDialog({ kind: "property" })}>
                   <span className="icon-[tabler--plus] size-5" />
-                  Add your home
+                  <Trans>Add your home</Trans>
                 </button>
               )}
             </div>
@@ -117,7 +120,7 @@ export function Places({ householdName, householdId }: { householdName: string; 
                       {p.name}
                     </a>
                   </h2>
-                  <p className="text-base-content/70 text-sm">{PROPERTY_TYPES[p.type].label}</p>
+                  <p className="text-base-content/70 text-sm">{t(PROPERTY_TYPES[p.type].label)}</p>
                 </div>
                 {canEdit && (
                   <RowActions
@@ -137,7 +140,7 @@ export function Places({ householdName, householdId }: { householdName: string; 
                   onRemove={(location) => removeLocation.mutate(location.id)}
                 />
               ) : (
-                <p className="text-base-content/70 text-sm">No rooms yet.</p>
+                <p className="text-base-content/70 text-sm"><Trans>No rooms yet.</Trans></p>
               )}
 
               {canEdit && (
@@ -147,7 +150,7 @@ export function Places({ householdName, householdId }: { householdName: string; 
                   onClick={() => setDialog({ kind: "location", property: p })}
                 >
                   <span className="icon-[tabler--plus] size-4" />
-                  Add a room
+                  <Trans>Add a room</Trans>
                 </button>
               )}
             </div>
@@ -157,9 +160,9 @@ export function Places({ householdName, householdId }: { householdName: string; 
         {places.data && places.data.unplacedItems > 0 && (
           <p className="text-base-content/70 text-center text-sm">
             <a href={missingHref("place")} className="link tap">
-              {places.data.unplacedItems === 1 ? "1 item isn't" : `${places.data.unplacedItems} items aren't`} in any place yet
+              {plural(places.data.unplacedItems, { one: "# item isn't in any place yet", other: "# items aren't in any place yet" })}
             </a>{" "}
-            — set it from the item's Edit.
+            <Trans>— set it from the item's Edit.</Trans>
           </p>
         )}
       </main>
@@ -193,7 +196,7 @@ function Tree(props: {
               <span className="truncate text-base-content">{n.name}</span>
               {n.totalCount > 0 && (
                 <span className="badge badge-soft badge-primary badge-sm" title={countLabel(n)}>
-                  {n.totalCount === n.itemCount ? n.totalCount : `${n.totalCount} (${n.itemCount} here)`}
+                  {n.totalCount === n.itemCount ? n.totalCount : t`${ph({ totalCount: n.totalCount })} (${ph({ itemCount: n.itemCount })} here)`}
                 </span>
               )}
             </a>
@@ -202,7 +205,7 @@ function Tree(props: {
                 <button
                   type="button"
                   className="btn btn-text btn-sm btn-circle"
-                  aria-label={`Add a place inside ${n.name}`}
+                  aria-label={t`Add a place inside ${ph({ name: n.name })}`}
                   onClick={() => props.onAdd(n.id)}
                 >
                   <span className="icon-[tabler--plus] size-4" />
@@ -232,20 +235,20 @@ function RowActions({ name, onEdit, onRemove }: { name: string; onEdit: () => vo
             onRemove();
           }}
         >
-          Remove
+          <Trans>Remove</Trans>
         </button>
         <button type="button" className="btn btn-text btn-xs" onClick={() => setConfirming(false)}>
-          Keep
+          <Trans>Keep</Trans>
         </button>
       </span>
     );
   }
   return (
     <>
-      <button type="button" className="btn btn-text btn-sm btn-circle" aria-label={`Rename or move ${name}`} onClick={onEdit}>
+      <button type="button" className="btn btn-text btn-sm btn-circle" aria-label={t`Rename or move ${name}`} onClick={onEdit}>
         <span className="icon-[tabler--pencil] size-4" />
       </button>
-      <button type="button" className="btn btn-text btn-sm btn-circle" aria-label={`Remove ${name}`} onClick={() => setConfirming(true)}>
+      <button type="button" className="btn btn-text btn-sm btn-circle" aria-label={t`Remove ${name}`} onClick={() => setConfirming(true)}>
         <span className="icon-[tabler--trash] size-4" />
       </button>
     </>
@@ -288,41 +291,41 @@ function PropertyDialog({ property, onClose, onSaved }: { property?: Property; o
     </div>
   );
   return (
-    <Modal id="property-dialog" title={property ? `Edit ${property.name}` : "Add a property"} onClose={onClose}>
+    <Modal id="property-dialog" title={property ? t`Edit ${ph({ name: property.name })}` : t`Add a property`} onClose={onClose}>
       <form className="flex flex-col gap-6" onSubmit={onSubmit}>
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="label-text" htmlFor="property-name">
-                Name
+                <Trans>Name</Trans>
               </label>
-              <input id="property-name" name="name" className="input" placeholder="e.g. Highland House" defaultValue={property?.name} maxLength={120} required autoFocus />
+              <input id="property-name" name="name" className="input" placeholder={t`e.g. Highland House`} defaultValue={property?.name} maxLength={120} required autoFocus />
             </div>
             <div>
               <label className="label-text" htmlFor="property-type">
-                Kind
+                <Trans>Kind</Trans>
               </label>
               <select id="property-type" name="type" className="select" defaultValue={property?.type ?? "home"}>
-                {propertyTypes.map((t) => (
-                  <option key={t} value={t}>
-                    {PROPERTY_TYPES[t].label}
+                {propertyTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {t(PROPERTY_TYPES[type].label)}
                   </option>
                 ))}
               </select>
             </div>
           </div>
-          {field("street", "Street address", { autoComplete: "street-address", maxLength: 200 })}
+          {field("street", t`Street address`, { autoComplete: "street-address", maxLength: 200 })}
           <div className="grid grid-cols-2 gap-4">
-            {field("city", "City", { autoComplete: "address-level2", maxLength: 120 })}
-            {field("region", "State / region", { autoComplete: "address-level1", maxLength: 120 })}
-            {field("postalCode", "ZIP / postal code", { autoComplete: "postal-code", maxLength: 20 })}
-            {field("country", "Country", { autoComplete: "country-name", maxLength: 80 })}
+            {field("city", t`City`, { autoComplete: "address-level2", maxLength: 120 })}
+            {field("region", t`State / region`, { autoComplete: "address-level1", maxLength: 120 })}
+            {field("postalCode", t`ZIP / postal code`, { autoComplete: "postal-code", maxLength: 20 })}
+            {field("country", t`Country`, { autoComplete: "country-name", maxLength: 80 })}
           </div>
           <div className="grid grid-cols-2 gap-4">
-            {field("yearBuilt", "Year built", { type: "number", min: 1600, max: 2200, inputMode: "numeric" })}
+            {field("yearBuilt", t`Year built`, { type: "number", min: 1600, max: 2200, inputMode: "numeric" })}
             <div>
               <label className="label-text" htmlFor="property-value">
-                Worth
+                <Trans>Worth</Trans>
               </label>
               <div className="input">
                 <span className="my-auto me-1 text-base-content/70">{currencySymbol()}</span>
@@ -332,19 +335,19 @@ function PropertyDialog({ property, onClose, onSaved }: { property?: Property; o
                   className="grow"
                   inputMode="decimal"
                   defaultValue={centsToInput(d?.valueCents, true)}
-                  placeholder="for insurance"
+                  placeholder={t`for insurance`}
                 />
               </div>
             </div>
           </div>
           <div>
             <label className="label-text" htmlFor="property-notes">
-              Notes
+              <Trans>Notes</Trans>
             </label>
-            <textarea id="property-notes" name="notes" className="textarea" rows={2} defaultValue={d?.notes ?? ""} maxLength={5000} placeholder="Policy number, gate code, who has keys…" />
+            <textarea id="property-notes" name="notes" className="textarea" rows={2} defaultValue={d?.notes ?? ""} maxLength={5000} placeholder={t`Policy number, gate code, who has keys…`} />
           </div>
         </div>
-        <DialogFooter error={save.error?.message} busy={save.isPending} submit={property ? "Save" : "Add property"} onCancel={onClose} />
+        <DialogFooter error={save.error?.message} busy={save.isPending} submit={property ? t`Save` : t`Add property`} onCancel={onClose} />
       </form>
     </Modal>
   );
@@ -382,19 +385,19 @@ function LocationDialog(props: {
       <form className="flex flex-col gap-6" onSubmit={onSubmit}>
         <DialogHeading
           id="location-dialog"
-          title={location ? `Edit ${location.name}` : parentName ? `Add a place in ${parentName}` : `Add a room to ${property.name}`}
-          subtitle="Rooms, closets, shelves, boxes — as fine as you like"
+          title={location ? t`Edit ${ph({ name: location.name })}` : parentName ? t`Add a place in ${parentName}` : t`Add a room to ${ph({ name: property.name })}`}
+          subtitle={t`Rooms, closets, shelves, boxes — as fine as you like`}
         />
         <div className="space-y-4">
           <div>
             <label className="label-text" htmlFor="location-name">
-              Name
+              <Trans>Name</Trans>
             </label>
             <input
               id="location-name"
               name="name"
               className="input"
-              placeholder={parent ? "e.g. Top shelf" : "e.g. Garage"}
+              placeholder={parent ? t`e.g. Top shelf` : t`e.g. Garage`}
               defaultValue={location?.name}
               maxLength={120}
               required
@@ -405,15 +408,15 @@ function LocationDialog(props: {
             householdId={props.householdId}
             id="location-parent"
             name="parentId"
-            label="Inside"
+            label={t`Inside`}
             value={parent}
             onChange={setParent}
-            noneLabel={`${property.name} (a room)`}
+            noneLabel={t`${ph({ property: property.name })} (a room)`}
             propertyId={property.id}
             skip={location?.id}
           />
         </div>
-        <DialogFooter error={save.error?.message} busy={save.isPending} submit={location ? "Save" : "Add"} onCancel={onClose} />
+        <DialogFooter error={save.error?.message} busy={save.isPending} submit={location ? t`Save` : t`Add`} onCancel={onClose} />
       </form>
     </Modal>
   );
@@ -444,7 +447,7 @@ function DialogFooter({ error, busy, submit, onCancel }: { error?: string; busy:
       {error && <div className="alert alert-soft alert-error">{error}</div>}
       <DialogActions>
         <button type="button" className="btn btn-secondary btn-soft" onClick={onCancel}>
-          Cancel
+          <Trans>Cancel</Trans>
         </button>
         <button type="submit" className="btn btn-primary" disabled={busy}>
           {busy && <span className="loading loading-spinner loading-sm" />}

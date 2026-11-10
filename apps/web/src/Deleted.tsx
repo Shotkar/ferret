@@ -11,6 +11,8 @@ import { useState } from "react";
 import { api } from "./lib/api";
 import { useCanEdit } from "./lib/auth";
 import { itemHref } from "./lib/route";
+import { t, ph, plural } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 export function Deleted({ householdId }: { householdId: string }) {
   const deleted = useQuery({ queryKey: ["trash", householdId], queryFn: api.listDeleted });
@@ -20,25 +22,25 @@ export function Deleted({ householdId }: { householdId: string }) {
     <div className="min-h-dvh bg-base-200">
       <nav className="navbar sticky top-0 z-10 border-b border-base-300 bg-base-100/85 backdrop-blur-md px-4">
         <div className="navbar-start min-w-0 items-center gap-2">
-          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label="Back">
+          <a href="#/" className="btn btn-text btn-sm btn-square" aria-label={t`Back`}>
             <span className="icon-[tabler--arrow-left] size-5" />
           </a>
-          <h1 className="truncate text-lg font-semibold">Recently deleted</h1>
+          <h1 className="truncate text-lg font-semibold"><Trans>Recently deleted</Trans></h1>
         </div>
         <BarSearch />
       </nav>
       <main className="mx-auto flex max-w-3xl flex-col gap-4 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <p className="text-sm text-base-content/70">
-          Deleted things stay here for {TRASH_DAYS} days, with their photos, documents, warranties and maintenance, then go
-          for good.
+          <Trans>Deleted things stay here for {TRASH_DAYS} days, with their photos, documents, warranties and maintenance, then go
+          for good.</Trans>
         </p>
         {restored && (
           <div className="alert alert-soft alert-success flex items-center gap-3 text-sm" role="status">
             <span className="icon-[tabler--circle-check] size-5" />
-            <span className="flex-1">{restored.name} is back.</span>
+            <Trans><span className="flex-1">{ph({ name: restored.name })} is back.</span>
             <a href={itemHref(restored.id)} className="btn btn-soft btn-success btn-sm">
               Open
-            </a>
+            </a></Trans>
           </div>
         )}
         {deleted.isPending && <span className="loading loading-spinner text-primary mx-auto my-12" />}
@@ -47,8 +49,8 @@ export function Deleted({ householdId }: { householdId: string }) {
           <div className="card">
             <div className="card-body items-center gap-3 text-center">
               <span className="icon-[tabler--trash-off] size-10 text-primary" />
-              <h2 className="text-lg font-semibold">Nothing deleted lately</h2>
-              <p className="max-w-sm text-sm text-base-content/70">Anything you remove in the next {TRASH_DAYS} days will wait here in case you change your mind.</p>
+              <h2 className="text-lg font-semibold"><Trans>Nothing deleted lately</Trans></h2>
+              <p className="max-w-sm text-sm text-base-content/70"><Trans>Anything you remove in the next {TRASH_DAYS} days will wait here in case you change your mind.</Trans></p>
             </div>
           </div>
         )}
@@ -106,30 +108,30 @@ function DeletedRow(props: {
         <h2 className="truncate font-medium text-base-content">{item.name}</h2>
         {about && <p className="truncate text-sm text-base-content/70">{about}</p>}
         <p className="text-xs text-base-content/70">
-          Deleted {formatDay(item.deletedAt)}
-          {item.deletedBy && ` by ${item.deletedBy}`} · {daysLeft === 0 ? "goes for good today" : `goes for good in ${daysLeft} ${daysLeft === 1 ? "day" : "days"}`}
+          {item.deletedBy ? t`Deleted ${ph({ date: formatDay(item.deletedAt) })} by ${ph({ person: item.deletedBy })}` : t`Deleted ${ph({ date: formatDay(item.deletedAt) })}`} ·{" "}
+          {daysLeft === 0 ? t`goes for good today` : plural(daysLeft, { one: "goes for good in # day", other: "goes for good in # days" })}
         </p>
         {(restore.isError || purge.isError) && <p className="text-sm text-error">{restore.error?.message ?? purge.error?.message}</p>}
       </div>
       {canEdit &&
         (confirming ? (
           <div className="flex shrink-0 items-center gap-1 max-sm:w-full max-sm:justify-end">
-            <span className="text-sm text-base-content/80">Gone for good — no undo.</span>
+            <Trans><span className="text-sm text-base-content/80">Gone for good — no undo.</span></Trans>
             <button type="button" className="btn btn-error btn-sm" disabled={purge.isPending} onClick={() => purge.mutate()}>
-              Delete
+              <Trans>Delete</Trans>
             </button>
             <button type="button" className="btn btn-text btn-sm" onClick={() => setConfirming(false)}>
-              Keep
+              <Trans>Keep</Trans>
             </button>
           </div>
         ) : (
           <div className="flex shrink-0 items-center gap-1 max-sm:w-full max-sm:justify-end">
             <button type="button" className="btn btn-soft btn-primary btn-sm" disabled={restore.isPending} onClick={() => restore.mutate()}>
               {restore.isPending ? <span className="loading loading-spinner loading-xs" /> : <span className="icon-[tabler--arrow-back-up] size-4" />}
-              Restore
+              <Trans>Restore</Trans>
             </button>
             <button type="button" className="btn btn-text btn-sm btn-error" onClick={() => setConfirming(true)}>
-              Delete now
+              <Trans>Delete now</Trans>
             </button>
           </div>
         ))}

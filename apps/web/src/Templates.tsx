@@ -11,6 +11,8 @@ import { FieldsEditor, keyedFields } from "./Fields";
 import { api } from "./lib/api";
 import { useCanEdit } from "./lib/auth";
 import { DialogActions, Modal } from "./Modal";
+import { t, ph, plural } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 export const templatesKey = (householdId: string) => ["templates", householdId];
 export function useTemplates(householdId: string) {
@@ -35,7 +37,7 @@ export const TEMPLATE_ICONS: Record<string, string> = {
   "music": "icon-[tabler--music]",
   star: "icon-[tabler--star]",
 };
-export const templateIcon = (t: { icon: string | null }) => (t.icon && TEMPLATE_ICONS[t.icon]) || "icon-[tabler--template]";
+export const templateIcon = (tpl: { icon: string | null }) => (tpl.icon && TEMPLATE_ICONS[tpl.icon]) || "icon-[tabler--template]";
 
 /** The Categories & tags screen's Templates card. */
 export function TemplatesSection({ householdId }: { householdId: string }) {
@@ -51,26 +53,26 @@ export function TemplatesSection({ householdId }: { householdId: string }) {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="templates-title" className="card-title flex items-center gap-2 text-base">
             <span className="icon-[tabler--template] size-5 text-primary" />
-            Templates
+            <Trans>Templates</Trans>
           </h2>
           {canEdit && (
             <button type="button" className="btn btn-soft btn-primary btn-sm" onClick={() => setEditing({})}>
               <span className="icon-[tabler--plus] size-4" />
-              Template
+              <Trans>Template</Trans>
             </button>
           )}
         </div>
         <p className="-mt-1 text-sm text-base-content/70">
-          For things you have lots of the same kind of — coins, cards, dolls: the details to fill in for each (year, grade…),
-          and the category and tags they start with. Pick one when adding or editing a thing.
+          <Trans>For things you have lots of the same kind of — coins, cards, dolls: the details to fill in for each (year, grade…),
+          and the category and tags they start with. Pick one when adding or editing a thing.</Trans>
         </p>
         {templates.data?.length === 0 && (
           <div className="rounded-box border border-dashed border-base-content/20 p-5 text-center">
-            <p className="text-sm text-base-content/70">No templates yet. Start with ones for the usual collections, and change them as you like.</p>
+            <p className="text-sm text-base-content/70"><Trans>No templates yet. Start with ones for the usual collections, and change them as you like.</Trans></p>
             {canEdit && (
               <button type="button" className="btn btn-primary btn-sm mt-3" disabled={starter.isPending} onClick={() => starter.mutate()}>
                 {starter.isPending && <span className="loading loading-spinner loading-xs" />}
-                Add starter templates
+                <Trans>Add starter templates</Trans>
               </button>
             )}
           </div>
@@ -78,18 +80,18 @@ export function TemplatesSection({ householdId }: { householdId: string }) {
         {starter.isError && <div className="alert alert-soft alert-error">{starter.error.message}</div>}
         {templates.data && templates.data.length > 0 && (
           <ul className="divide-y divide-base-content/10">
-            {templates.data.map((t) => (
-              <li key={t.id} className="flex items-center gap-3 py-2">
-                <span className={`${templateIcon(t)} size-5 shrink-0 text-primary`} />
+            {templates.data.map((tpl) => (
+              <li key={tpl.id} className="flex items-center gap-3 py-2">
+                <span className={`${templateIcon(tpl)} size-5 shrink-0 text-primary`} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{t.name}</p>
+                  <p className="truncate font-medium">{tpl.name}</p>
                   <p className="truncate text-xs text-base-content/70">
-                    {t.fields.map((f) => f.label).join(" · ") || "No fields yet"}
-                    {t.itemCount > 0 && ` — ${t.itemCount} ${t.itemCount === 1 ? "thing" : "things"}`}
+                    {tpl.fields.map((f) => f.label).join(" · ") || t`No fields yet`}
+                    {tpl.itemCount > 0 && ` — ${plural(tpl.itemCount, { one: "# thing", other: "# things" })}`}
                   </p>
                 </div>
                 {canEdit && (
-                  <button type="button" className="btn btn-text btn-sm btn-circle" aria-label={`Edit ${t.name}`} onClick={() => setEditing({ template: t })}>
+                  <button type="button" className="btn btn-text btn-sm btn-circle" aria-label={t`Edit ${ph({ name: tpl.name })}`} onClick={() => setEditing({ template: tpl })}>
                     <span className="icon-[tabler--pencil] size-4" />
                   </button>
                 )}
@@ -132,24 +134,24 @@ function TemplateDialog(props: { householdId: string; template?: ItemTemplate; o
     save.mutate(String(new FormData(e.currentTarget).get("name")).trim());
   }
   return (
-    <Modal id="template-dialog" title={template ? `Edit ${template.name}` : "New template"} onClose={onClose}>
+    <Modal id="template-dialog" title={template ? t`Edit ${ph({ name: template.name })}` : t`New template`} onClose={onClose}>
       <form className="flex flex-col gap-6" onSubmit={onSubmit}>
         <div className="space-y-4">
           <div className="grid grid-cols-[1fr_auto] gap-3">
             <div>
               <label className="label-text" htmlFor="template-name">
-                Name
+                <Trans>Name</Trans>
               </label>
-              <input id="template-name" name="name" className="input" defaultValue={template?.name} placeholder="e.g. Coin" maxLength={80} required autoFocus />
+              <input id="template-name" name="name" className="input" defaultValue={template?.name} placeholder={t`e.g. Coin`} maxLength={80} required autoFocus />
             </div>
             <div>
               <label className="label-text" htmlFor="template-icon">
-                Icon
+                <Trans>Icon</Trans>
               </label>
               <div className="flex items-center gap-2">
                 <span className={`${templateIcon({ icon })} size-6 text-primary`} aria-hidden />
                 <select id="template-icon" className="select w-32" value={icon} onChange={(e) => setIcon(e.target.value)}>
-                  <option value="">Plain</option>
+                  <option value="">{t`Plain`}</option>
                   {Object.keys(TEMPLATE_ICONS).map((k) => (
                     <option key={k} value={k}>
                       {k.replace(/-/g, " ").replace(/ \d+$/, "")}
@@ -160,18 +162,18 @@ function TemplateDialog(props: { householdId: string; template?: ItemTemplate; o
             </div>
           </div>
           <FieldsEditor
-            legend="Details to fill in"
-            hint="e.g. a coin's year, mint mark and grade. They show on each thing made from it, beside its category's."
+            legend={t`Details to fill in`}
+            hint={t`e.g. a coin's year, mint mark and grade. They show on each thing made from it, beside its category's.`}
             fields={fields}
             onChange={setFields}
             max={30}
           />
           <div>
-            <p className="label-text">Starts in</p>
+            <p className="label-text"><Trans>Starts in</Trans></p>
             <CategoryPicker householdId={householdId} value={categoryId} onChange={setCategoryId} />
           </div>
           <div>
-            <p className="label-text">With tags</p>
+            <p className="label-text"><Trans>With tags</Trans></p>
             <TagInput householdId={householdId} value={tags} onChange={setTags} />
           </div>
         </div>
@@ -179,16 +181,16 @@ function TemplateDialog(props: { householdId: string; template?: ItemTemplate; o
           <div className="rounded-box bg-base-200 p-3 text-sm">
             {!confirmRemove ? (
               <button type="button" className="btn btn-text btn-error btn-sm" onClick={() => setConfirmRemove(true)}>
-                Remove this template
+                <Trans>Remove this template</Trans>
               </button>
             ) : (
               <div className="flex flex-wrap items-center gap-2">
-                <span>Remove it? {template.itemCount > 0 ? `Its ${template.itemCount} things keep what's filled in.` : ""}</span>
+                <span><Trans>Remove it?</Trans> {template.itemCount > 0 ? t`Its ${ph({ itemCount: template.itemCount })} things keep what's filled in.` : ""}</span>
                 <button type="button" className="btn btn-error btn-sm" disabled={remove.isPending} onClick={() => remove.mutate()}>
-                  Remove
+                  <Trans>Remove</Trans>
                 </button>
                 <button type="button" className="btn btn-text btn-sm" onClick={() => setConfirmRemove(false)}>
-                  Keep
+                  <Trans>Keep</Trans>
                 </button>
               </div>
             )}
@@ -197,11 +199,11 @@ function TemplateDialog(props: { householdId: string; template?: ItemTemplate; o
         {(save.isError || remove.isError) && <div className="alert alert-soft alert-error">{(save.error ?? remove.error)!.message}</div>}
         <DialogActions>
           <button type="button" className="btn btn-secondary btn-soft" onClick={onClose}>
-            Cancel
+            <Trans>Cancel</Trans>
           </button>
           <button type="submit" className="btn btn-primary" disabled={save.isPending}>
             {save.isPending && <span className="loading loading-spinner loading-sm" />}
-            {template ? "Save" : "Add template"}
+            {template ? t`Save` : t`Add template`}
           </button>
         </DialogActions>
       </form>
@@ -216,18 +218,18 @@ export function TemplatePicker({ householdId, value, onChange }: { householdId: 
   return (
     <div>
       <label className="label-text" htmlFor="item-template">
-        Template
+        <Trans>Template</Trans>
       </label>
       <select
         id="item-template"
         className="select"
         value={value ?? ""}
-        onChange={(e) => onChange(templates.data!.find((t) => t.id === e.target.value) ?? null)}
+        onChange={(e) => onChange(templates.data!.find((tpl) => tpl.id === e.target.value) ?? null)}
       >
-        <option value="">None</option>
-        {templates.data.map((t) => (
-          <option key={t.id} value={t.id}>
-            {t.name}
+        <option value="">{t`None`}</option>
+        {templates.data.map((tpl) => (
+          <option key={tpl.id} value={tpl.id}>
+            {tpl.name}
           </option>
         ))}
       </select>

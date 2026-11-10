@@ -5,6 +5,7 @@
  */
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { useAppearance } from "./lib/appearance";
+import { t } from "@lingui/core/macro";
 
 interface Turnstile {
   render(el: HTMLElement, opts: Record<string, unknown>): string;
@@ -25,10 +26,10 @@ function loadTurnstile() {
     const script = document.createElement("script");
     script.src = SCRIPT;
     script.async = true;
-    script.onload = () => (window.turnstile ? resolve(window.turnstile) : reject(new Error("Turnstile didn't load")));
+    script.onload = () => (window.turnstile ? resolve(window.turnstile) : reject(new Error(t`Turnstile didn't load`)));
     script.onerror = () => {
       loading = undefined;
-      reject(new Error("Turnstile didn't load"));
+      reject(new Error(t`Turnstile didn't load`));
     };
     document.head.append(script);
   });

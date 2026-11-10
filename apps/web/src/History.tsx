@@ -8,6 +8,8 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "./lib/api";
 import { ago, VIA } from "./Overview";
+import { t, ph } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 const FIRST = 5;
 
@@ -51,7 +53,7 @@ export function ItemHistory({ itemId, householdId }: { itemId: string; household
     <section className="flex flex-col gap-3" aria-labelledby={`history-${itemId}`}>
       <h2 id={`history-${itemId}`} className="text-base-content flex items-center gap-2 font-semibold">
         <span className="icon-[tabler--history] text-primary size-5" />
-        History
+        <Trans>History</Trans>
       </h2>
       <div className="card">
         <div className="card-body gap-0 p-3 sm:p-4">
@@ -68,9 +70,9 @@ export function ItemHistory({ itemId, householdId }: { itemId: string; household
               <div className="min-w-0 flex-1 pb-4">
                 <p className="break-words text-sm text-base-content">{e.summary}</p>
                 <p className="text-xs text-base-content/70" title={new Date(e.at).toLocaleString()}>
-                  {e.by ?? (e.action === "recall.found" ? "Ferret" : "Someone")}
-                  {e.via !== "web" && ` via ${(VIA[e.via] ?? VIA.web!).label}`} · {ago(e.at)}
-                  {e.times > 1 && ` · ${e.times} times`}
+                  {e.by ?? (e.action === "recall.found" ? t`Ferret` : t`Someone`)}
+                  {e.via !== "web" && t` via ${ph({ label: t((VIA[e.via] ?? VIA.web!).label) })}`} · {ago(e.at)}
+                  {e.times > 1 && t` · ${ph({ times: e.times })} times`}
                 </p>
               </div>
             </li>
@@ -80,13 +82,13 @@ export function ItemHistory({ itemId, householdId }: { itemId: string; household
             <div className="flex flex-wrap gap-2">
               {!open ? (
                 <button type="button" className="btn btn-text btn-sm" onClick={() => setOpen(true)}>
-                  Show all
+                  <Trans>Show all</Trans>
                 </button>
               ) : (
                 history.hasNextPage && (
                   <button type="button" className="btn btn-text btn-sm" disabled={history.isFetchingNextPage} onClick={() => void history.fetchNextPage()}>
                     {history.isFetchingNextPage && <span className="loading loading-spinner loading-xs" />}
-                    Show older
+                    <Trans>Show older</Trans>
                   </button>
                 )
               )}

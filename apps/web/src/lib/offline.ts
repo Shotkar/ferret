@@ -12,6 +12,7 @@
  */
 import type { PlacesTree, ScanResult } from "@ferret/shared";
 import { api } from "./api";
+import { t } from "@lingui/core/macro";
 
 export type ScanAction = "use" | "restock" | "lookup" | "add";
 
@@ -173,7 +174,7 @@ export async function syncCaptures(householdId: string): Promise<number> {
         done++;
       } catch (err) {
         if (isOffline(err)) break;
-        await saveCapture({ ...c, error: err instanceof Error ? err.message : "Couldn't upload it" });
+        await saveCapture({ ...c, error: err instanceof Error ? err.message : t`Couldn't upload it` });
       }
     }
     return done;

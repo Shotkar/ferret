@@ -13,12 +13,15 @@ import { itemHref } from "./lib/route";
 import { type Choice, ItemPicker } from "./Combobox";
 import { Scanner } from "./Scanner";
 import { navigateTo } from "./lib/navigate";
+import { t, ph, msg } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
+import type { MessageDescriptor } from "@lingui/core";
 
-const MODES: { value: ScanMode; label: string; help: string }[] = [
-  { value: "auto", label: "Auto", help: "Each code does what it's set to" },
-  { value: "lookup", label: "Look up", help: "Open what's scanned" },
-  { value: "use", label: "Use", help: "Take one out for each scan" },
-  { value: "restock", label: "Restock", help: "Put some in for each scan" },
+const MODES: { value: ScanMode; label: MessageDescriptor; help: MessageDescriptor }[] = [
+  { value: "auto", label: msg`Auto`, help: msg`Each code does what it's set to` },
+  { value: "lookup", label: msg`Look up`, help: msg`Open what's scanned` },
+  { value: "use", label: msg`Use`, help: msg`Take one out for each scan` },
+  { value: "restock", label: msg`Restock`, help: msg`Put some in for each scan` },
 ];
 const MODE_KEY = "ferret-scan-mode";
 
@@ -163,27 +166,27 @@ export function ScanSession({
 
   const top = adding ? (
     <div className="px-3 pb-2 text-center" onPointerDown={prepare}>
-      <p className="font-medium text-white">Scan to add</p>
-      <p className="text-xs text-white/70">Something you already have adds to its count</p>
+      <p className="font-medium text-white"><Trans>Scan to add</Trans></p>
+      <p className="text-xs text-white/70"><Trans>Something you already have adds to its count</Trans></p>
     </div>
   ) : (
     <div className="px-3 pb-2" onPointerDown={prepare}>
-      <div className="join w-full" role="radiogroup" aria-label="What a scan does">
+      <div className="join w-full" role="radiogroup" aria-label={t`What a scan does`}>
         {MODES.map((m) => (
           <button
             key={m.value}
             type="button"
             role="radio"
             aria-checked={mode === m.value}
-            title={m.help}
+            title={t(m.help)}
             className={`btn join-item btn-sm grow ${mode === m.value ? "btn-primary" : "border-white/20 bg-white/10 text-white hover:bg-white/20"}`}
             onClick={() => setMode(m.value)}
           >
-            {m.label}
+            {t(m.label)}
           </button>
         ))}
       </div>
-      <p className="mt-1 text-center text-xs text-white/70">{MODES.find((m) => m.value === mode)!.help}</p>
+      <p className="mt-1 text-center text-xs text-white/70">{t(MODES.find((m) => m.value === mode)!.help)}</p>
     </div>
   );
 
@@ -236,24 +239,24 @@ function PanelView({
   if (panel.kind === "have") {
     const only = panel.items.length === 1 ? panel.items[0]! : null;
     return (
-      <div className={card} role="dialog" aria-label="You have this already">
+      <div className={card} role="dialog" aria-label={t`You have this already`}>
         {only ? (
           <>
-            <p className="text-sm text-base-content/70">You have this</p>
+            <p className="text-sm text-base-content/70"><Trans>You have this</Trans></p>
             <p className="truncate font-medium">{only.name}</p>
             {only.place && <p className="truncate text-sm text-base-content/70">{only.place}</p>}
             <div className="mt-3 flex flex-wrap gap-2">
               <button type="button" className="btn btn-primary btn-wrap grow" onClick={() => onFollow(panel.code, only.id, "restock")}>
-                Add {panel.step} (now {only.quantity + panel.step})
+                <Trans>Add {ph({ step: panel.step })} (now {ph({ after: only.quantity + panel.step })}</Trans>)
               </button>
               <button type="button" className="btn btn-soft btn-wrap grow" onClick={() => onSeparate(panel.code)}>
-                Add as a separate item
+                <Trans>Add as a separate item</Trans>
               </button>
             </div>
           </>
         ) : (
           <>
-            <p className="mb-2 font-medium">You have this — add {panel.step} to which?</p>
+            <p className="mb-2 font-medium"><Trans>You have this — add {ph({ step: panel.step })} to which?</Trans></p>
             <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
               {panel.items.map((i) => (
                 <li key={i.id}>
@@ -262,23 +265,23 @@ function PanelView({
                       <span className="block truncate">{i.name}</span>
                       {i.place && <span className="block truncate text-xs font-normal text-base-content/70">{i.place}</span>}
                     </span>
-                    <span className="shrink-0 text-sm font-normal">now {i.quantity + panel.step}</span>
+                    <Trans><span className="shrink-0 text-sm font-normal">now {ph({ after: i.quantity + panel.step })}</span></Trans>
                   </button>
                 </li>
               ))}
             </ul>
             <button type="button" className="btn btn-soft btn-wrap mt-2 w-full" onClick={() => onSeparate(panel.code)}>
-              Add as a separate item
+              <Trans>Add as a separate item</Trans>
             </button>
           </>
         )}
         <div className="mt-2 flex flex-wrap justify-between gap-2">
           <button type="button" className="btn btn-text btn-sm" onClick={onDismiss}>
-            Never mind
+            <Trans>Never mind</Trans>
           </button>
           {only && (
             <button type="button" className="btn btn-text btn-sm" onClick={() => onOpen(only.id)}>
-              Open it
+              <Trans>Open it</Trans>
             </button>
           )}
         </div>
@@ -289,9 +292,9 @@ function PanelView({
     return (
       <div className={`${card} flex items-center gap-3`} role="status" aria-live="polite">
         <span className="icon-[tabler--home-check] size-7 shrink-0 text-success" />
-        <p className="min-w-0 flex-1 text-sm">Saved the pairing code to {panel.name}.</p>
+        <p className="min-w-0 flex-1 text-sm"><Trans>Saved the pairing code to {ph({ name: panel.name })}</Trans>.</p>
         <button type="button" className="btn btn-text btn-sm" onClick={onDismiss}>
-          OK
+          <Trans>OK</Trans>
         </button>
       </div>
     );
@@ -303,7 +306,7 @@ function PanelView({
         <span className="icon-[tabler--alert-triangle] size-6 shrink-0 text-error" />
         <p className="min-w-0 flex-1 text-sm">{panel.message}</p>
         <button type="button" className="btn btn-text btn-sm" onClick={onDismiss}>
-          OK
+          <Trans>OK</Trans>
         </button>
       </div>
     );
@@ -317,25 +320,25 @@ function PanelView({
           <p className="truncate font-medium">{panel.item.name}</p>
           <p className="text-sm text-base-content/70">
             {none
-              ? "None left to take"
+              ? t`None left to take`
               : panel.undone
-                ? `Undone — ${panel.item.quantity} left`
-                : `${panel.applied > 0 ? `+${panel.applied}` : `−${-panel.applied}`} · ${panel.item.quantity} left`}
+                ? t`Undone — ${ph({ quantity: panel.item.quantity })} left`
+                : t`${ph({ change: panel.applied > 0 ? `+${panel.applied}` : `−${-panel.applied}` })} · ${ph({ quantity: panel.item.quantity })} left`}
           </p>
         </div>
         {!none && !panel.undone && panel.movementId && (
           <button type="button" className="btn btn-soft btn-sm" onClick={() => onUndo(panel)}>
-            Undo
+            <Trans>Undo</Trans>
           </button>
         )}
       </div>
     );
   }
   if (panel.kind === "choose") {
-    const verb = panel.behaviour === "use" ? `Use ${panel.step} from` : panel.behaviour === "restock" ? `Add ${panel.step} to` : "Which one?";
+    
     return (
-      <div className={card} role="dialog" aria-label="Which one?">
-        <p className="mb-2 font-medium">{panel.behaviour === "use" || panel.behaviour === "restock" ? `${verb} which?` : "Which one?"}</p>
+      <div className={card} role="dialog" aria-label={t`Which one?`}>
+        <p className="mb-2 font-medium">{panel.behaviour === "use" ? t`Use ${ph({ step: panel.step })} from which?` : panel.behaviour === "restock" ? t`Add ${ph({ step: panel.step })} to which?` : t`Which one?`}</p>
         <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
           {panel.items.map((i) => (
             <li key={i.id}>
@@ -350,28 +353,28 @@ function PanelView({
           ))}
         </ul>
         <button type="button" className="btn btn-text btn-sm mt-2" onClick={onDismiss}>
-          Never mind
+          <Trans>Never mind</Trans>
         </button>
       </div>
     );
   }
   return (
-    <div className={card} role="dialog" aria-label={`${panel.item.name}: use, restock or open?`}>
+    <div className={card} role="dialog" aria-label={t`${ph({ name: panel.item.name })}: use, restock or open?`}>
       <p className="font-medium">{panel.item.name}</p>
-      <p className="mb-2 text-sm text-base-content/70">{panel.item.quantity} left</p>
+      <p className="mb-2 text-sm text-base-content/70"><Trans>{ph({ quantity: panel.item.quantity })} left</Trans></p>
       <div className="flex flex-wrap gap-2">
         <button type="button" className="btn btn-primary grow" onClick={() => onFollow(panel.code, panel.item.id, "use")}>
-          Use {panel.step}
+          <Trans>Use {ph({ step: panel.step })}</Trans>
         </button>
         <button type="button" className="btn btn-soft btn-primary grow" onClick={() => onFollow(panel.code, panel.item.id, "restock")}>
-          Add {panel.step}
+          <Trans>Add {ph({ step: panel.step })}</Trans>
         </button>
         <button type="button" className="btn btn-soft grow" onClick={() => onOpen(panel.item.id)}>
-          Open
+          <Trans>Open</Trans>
         </button>
       </div>
       <button type="button" className="btn btn-text btn-sm mt-2" onClick={onDismiss}>
-        Never mind
+        <Trans>Never mind</Trans>
       </button>
     </div>
   );
@@ -392,24 +395,25 @@ function PairingPanel({
   const qc = useQueryClient();
   const [target, setTarget] = useState<Choice | null>(null);
   const save = useMutation({
-    mutationFn: (t: Choice) => api.addPairing(t.id, { code: panel.code }),
-    onSuccess: (_, t) => {
-      void qc.invalidateQueries({ queryKey: ["pairing", householdId, t.id] });
-      onSaved(t.label);
+    mutationFn: (value: Choice) => api.addPairing(value.id, { code: panel.code }),
+    onSuccess: (_, value) => {
+      void qc.invalidateQueries({ queryKey: ["pairing", householdId, value.id] });
+      onSaved(value.label);
     },
   });
-  const what = `${panel.type === "homekit" ? "HomeKit" : "Matter"} code${panel.category ? ` (${panel.category})` : ""}`;
+  const kind = panel.type === "homekit" ? "HomeKit" : "Matter";
+  const what = panel.category ? t`${ph({ kind })} code (${ph({ category: panel.category })})` : t`${ph({ kind })} code`;
   return (
-    <div className="rounded-box bg-base-100 p-3 shadow-lg" role="dialog" aria-label={`Which item is this ${what} for?`}>
-      <p className="mb-2 font-medium">A {what} — which item is it for?</p>
-      <ItemPicker householdId={householdId} id="pairing-item" name="pairingItem" label="Item" value={target} onChange={setTarget} />
+    <div className="rounded-box bg-base-100 p-3 shadow-lg" role="dialog" aria-label={t`Which item is this ${what} for?`}>
+      <p className="mb-2 font-medium"><Trans>A {what} — which item is it for?</Trans></p>
+      <ItemPicker householdId={householdId} id="pairing-item" name="pairingItem" label={t`Item`} value={target} onChange={setTarget} />
       {save.isError && <p className="mt-2 text-sm text-error">{save.error.message}</p>}
       <div className="mt-3 flex flex-wrap justify-end gap-2">
         <button type="button" className="btn btn-text btn-sm" onClick={onDismiss}>
-          Never mind
+          <Trans>Never mind</Trans>
         </button>
         <button type="button" className="btn btn-primary btn-sm" disabled={!target || save.isPending} onClick={() => target && save.mutate(target)}>
-          Save code
+          <Trans>Save code</Trans>
         </button>
       </div>
     </div>

@@ -8,6 +8,7 @@
  */
 import { type ReactNode, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { t } from "@lingui/core/macro";
 
 export function Modal({
   id,
@@ -32,7 +33,7 @@ export function Modal({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
   const close = (
-    <button type="button" className="btn btn-circle btn-sm btn-text absolute end-3 top-3" aria-label="Close" onClick={onClose}>
+    <button type="button" className="btn btn-circle btn-sm btn-text absolute end-3 top-3" aria-label={t`Close`} onClick={onClose}>
       <span className="icon-[tabler--x] size-4 text-base-content" />
     </button>
   );

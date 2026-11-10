@@ -4,11 +4,13 @@
  * what Ferret is — FlyonUI's "Login 2" layout. On a phone, just the form.
  */
 import type { ReactNode } from "react";
+import { Trans } from "@lingui/react/macro";
+import { t, msg } from "@lingui/core/macro";
 
 export function Logo({ className = "" }: { className?: string }) {
   return (
     <span className={`inline-flex items-center gap-2 font-bold tracking-tight ${className}`}>
-      <PawMark className="size-[1.4em] shrink-0" /> Ferret
+      <PawMark className="size-[1.4em] shrink-0" /> <Trans>Ferret</Trans>
     </span>
   );
 }
@@ -27,10 +29,10 @@ export function PawMark({ className }: { className?: string }) {
 }
 
 const POINTS = [
-  { icon: "icon-[tabler--search]", text: "Find anything by what it is, what it's for, or a word on its receipt." },
-  { icon: "icon-[tabler--shield-check]", text: "Warranties, manuals and maintenance, with a reminder before they matter." },
-  { icon: "icon-[tabler--file-certificate]", text: "An insurance report ready the day you need one." },
-  { icon: "icon-[tabler--lock]", text: "Shared with your household, kept on your own server, files encrypted." },
+  { icon: "icon-[tabler--search]", text: msg`Find anything by what it is, what it's for, or a word on its receipt.` },
+  { icon: "icon-[tabler--shield-check]", text: msg`Warranties, manuals and maintenance, with a reminder before they matter.` },
+  { icon: "icon-[tabler--file-certificate]", text: msg`An insurance report ready the day you need one.` },
+  { icon: "icon-[tabler--lock]", text: msg`Shared with your household, kept on your own server, files encrypted.` },
 ];
 
 export function AuthLayout(props: {
@@ -61,14 +63,14 @@ export function AuthLayout(props: {
         {/* A big, faint paw as the panel's picture. */}
         <PawMark className="pointer-events-none absolute -end-24 -bottom-24 size-[28rem] opacity-10" />
         <div className="relative flex max-w-md flex-col gap-8">
-          <p className="text-4xl font-semibold leading-tight">Find anything you own.</p>
+          <p className="text-4xl font-semibold leading-tight"><Trans>Find anything you own.</Trans></p>
           <ul className="flex flex-col gap-5">
             {POINTS.map((p) => (
               <li key={p.icon} className="flex items-start gap-3">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-box bg-primary-content/15">
                   <span className={`${p.icon} size-5`} />
                 </span>
-                <span className="pt-2 text-primary-content/90">{p.text}</span>
+                <span className="pt-2 text-primary-content/90">{t(p.text)}</span>
               </li>
             ))}
           </ul>

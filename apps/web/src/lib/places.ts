@@ -1,6 +1,7 @@
 import type { LocationNode, PlacesTree } from "@ferret/shared";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./api";
+import { plural } from "@lingui/core/macro";
 
 export const placesKey = (householdId: string) => ["places", householdId];
 
@@ -24,7 +25,7 @@ export function findLocation(tree: PlacesTree | undefined, id: string) {
   }
 }
 
-const things = (n: number) => `${n.toLocaleString()} ${n === 1 ? "thing" : "things"}`;
+const things = (n: number) => plural(n, { one: "# thing", other: "# things" });
 
 /** "12 things (3 here)" — the "here" part only when some of them are in places inside it. */
 export function countLabel(n: LocationNode) {

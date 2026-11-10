@@ -4,7 +4,8 @@
  * Stat cards follow FlyonUI Pro "Statistics 6"; the rest are FlyonUI cards, lists and progress bars.
  */
 import type { MissingDetail, Overview as OverviewData } from "@ferret/shared";
-import { describeInterval, missingDetails } from "@ferret/shared/utils";
+import { missingDetails } from "@ferret/shared/utils";
+import { everyText } from "./lib/words";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./lib/api";
 import { money } from "./lib/money";
@@ -14,14 +15,17 @@ import { CLAIM_STATUS } from "./Claims";
 import { SetupChecklist } from "./Setup";
 import { BY_VALUE_HREF, CATEGORIES_HREF, COLLECTIONS_HREF, categoryHref, collectionHref, ITEMS_HREF, REPORT_HREF, SHOPPING_HREF, WARRANTIES_HREF, itemHref, MAINTENANCE_HREF, missingHref, placeHref, tagHref } from "./lib/route";
 import { useCollections } from "./Collections";
+import { t, ph, plural, msg } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
+import type { MessageDescriptor } from "@lingui/core";
 
-export const MISSING_LABELS: Record<MissingDetail, { label: string; filter: string; icon: string }> = {
-  photo: { label: "Photo", filter: "No photo yet", icon: "icon-[tabler--camera]" },
-  value: { label: "Value or price", filter: "No value or price", icon: "icon-[tabler--cash]" },
-  place: { label: "Where it's kept", filter: "Not in any place", icon: "icon-[tabler--map-pin]" },
-  document: { label: "Receipt or manual", filter: "No receipt or manual", icon: "icon-[tabler--receipt]" },
-  category: { label: "Category", filter: "No category yet", icon: "icon-[tabler--category]" },
-  serial: { label: "Serial number (valuable things)", filter: "Valuable, no serial number", icon: "icon-[tabler--barcode]" },
+export const MISSING_LABELS: Record<MissingDetail, { label: MessageDescriptor; filter: MessageDescriptor; icon: string }> = {
+  photo: { label: msg`Photo`, filter: msg`No photo yet`, icon: "icon-[tabler--camera]" },
+  value: { label: msg`Value or price`, filter: msg`No value or price`, icon: "icon-[tabler--cash]" },
+  place: { label: msg`Where it's kept`, filter: msg`Not in any place`, icon: "icon-[tabler--map-pin]" },
+  document: { label: msg`Receipt or manual`, filter: msg`No receipt or manual`, icon: "icon-[tabler--receipt]" },
+  category: { label: msg`Category`, filter: msg`No category yet`, icon: "icon-[tabler--category]" },
+  serial: { label: msg`Serial number (valuable things)`, filter: msg`Valuable, no serial number`, icon: "icon-[tabler--barcode]" },
 };
 
 
@@ -43,26 +47,26 @@ export function OverviewSections({ householdId, places }: { householdId: string;
       <div className="@container">
         <div className="grid grid-cols-1 gap-3 @2xs:grid-cols-2 @4xl:grid-cols-4 sm:gap-4">
           <Stat
-            label="Worth"
+            label={t`Worth`}
             value={money(o.total.valueCents)}
-            note={o.total.itemsWithoutValue ? `${o.total.itemsWithoutValue} without a value` : "Everything valued"}
+            note={o.total.itemsWithoutValue ? t`${ph({ itemsWithoutValue: o.total.itemsWithoutValue })} without a value` : t`Everything valued`}
             icon="icon-[tabler--coin]"
             tone="primary"
             href={BY_VALUE_HREF}
           />
-          <Stat label="Things" value={o.total.items.toLocaleString()} note="See them all" icon="icon-[tabler--box]" tone="success" href={ITEMS_HREF} />
+          <Stat label={t`Things`} value={o.total.items.toLocaleString()} note={t`See them all`} icon="icon-[tabler--box]" tone="success" href={ITEMS_HREF} />
           <Stat
-            label="Maintenance"
+            label={t`Maintenance`}
             value={(o.maintenance.overdue + o.maintenance.due).toLocaleString()}
-            note={o.maintenance.overdue ? `${o.maintenance.overdue} overdue` : "Due in 2 weeks"}
+            note={o.maintenance.overdue ? t`${ph({ overdue: o.maintenance.overdue })} overdue` : t`Due in 2 weeks`}
             icon="icon-[tabler--tool]"
             tone={o.maintenance.overdue ? "warning" : "info"}
             href={MAINTENANCE_HREF}
           />
           <Stat
-            label="Warranties"
+            label={t`Warranties`}
             value={soon.toLocaleString()}
-            note="Ending in 60 days"
+            note={t`Ending in 60 days`}
             icon="icon-[tabler--shield-check]"
             tone={soon ? "warning" : "success"}
             href={WARRANTIES_HREF}
@@ -74,7 +78,7 @@ export function OverviewSections({ householdId, places }: { householdId: string;
       {/* On a wide screen, the sections flow into two columns (each kept whole). */}
       <div className="flex flex-col gap-4 md:block md:columns-2 md:gap-4 md:[&>*]:mb-4 md:[&>*]:break-inside-avoid">
       {o.total.valueCents > 0 && (
-        <Section icon="icon-[tabler--chart-area-line]" title="Worth over time" aside={<span className="text-sm text-base-content/70">by when things came in</span>}>
+        <Section icon="icon-[tabler--chart-area-line]" title={t`Worth over time`} aside={<span className="text-sm text-base-content/70"><Trans>by when things came in</Trans></span>}>
           <WorthOverTime byMonth={o.byMonth} />
         </Section>
       )}
@@ -86,15 +90,15 @@ export function OverviewSections({ householdId, places }: { householdId: string;
       {o.byRoom.length > 0 && (
         <ValueBars
           icon="icon-[tabler--coins]"
-          title="Worth, room by room"
+          title={t`Worth, room by room`}
           groups={o.byRoom}
           href={(g) => (g.locationId ? placeHref(g.locationId) : undefined)}
           label={(name) => (o.properties > 1 ? name : name.replace(/^[^›]+› /, ""))}
-          aside={o.properties > 1 && <span className="text-sm text-base-content/70">{o.properties} properties</span>}
+          aside={o.properties > 1 && <span className="text-sm text-base-content/70">{plural(o.properties, { one: "# property", other: "# properties" })}</span>}
         />
       )}
       {o.byCategory.some((g) => g.name !== "No category" && g.valueCents > 0) && (
-        <Section icon="icon-[tabler--chart-donut]" title="Worth, by category">
+        <Section icon="icon-[tabler--chart-donut]" title={t`Worth, by category`}>
           <CategoryDonut
             groups={o.byCategory}
             href={(name) => {
@@ -172,8 +176,8 @@ function Gaps({ o }: { o: OverviewData }) {
   const total = o.total.items;
   if (total === 0) {
     return (
-      <Section icon="icon-[tabler--list-check]" title="Ready for a claim?">
-        <p className="text-sm text-base-content/70">Add a few things and Ferret will show what each one still needs.</p>
+      <Section icon="icon-[tabler--list-check]" title={t`Ready for a claim?`}>
+        <p className="text-sm text-base-content/70"><Trans>Add a few things and Ferret will show what each one still needs.</Trans></p>
       </Section>
     );
   }
@@ -181,18 +185,18 @@ function Gaps({ o }: { o: OverviewData }) {
   return (
     <Section
       icon="icon-[tabler--list-check]"
-      title="Ready for a claim?"
+      title={t`Ready for a claim?`}
       aside={
         <span className="flex items-center gap-2">
-          {done && <span className="badge badge-soft badge-success">All set</span>}
-          <a href={REPORT_HREF} className="tap link link-primary link-hover text-sm">
+          {done && <span className="badge badge-soft badge-success"><Trans>All set</Trans></span>}
+          <Trans><a href={REPORT_HREF} className="tap link link-primary link-hover text-sm">
             Report
-          </a>
+          </a></Trans>
         </span>
       }
     >
       <p className="-mt-2 text-sm text-base-content/70">
-        {done ? "Every item has a photo, a value, a place and a receipt." : "Tap a line to see the items that still need it."}
+        {done ? t`Every item has a photo, a value, a place and a receipt.` : t`Tap a line to see the items that still need it.`}
       </p>
       <ul className="flex flex-col gap-1">
         {missingDetails.map((d) => {
@@ -203,15 +207,15 @@ function Gaps({ o }: { o: OverviewData }) {
               <span className={`${MISSING_LABELS[d].icon} size-5 shrink-0 text-base-content/70`} />
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-2 text-sm">
-                  <span className="text-base-content">{MISSING_LABELS[d].label}</span>
-                  <span className="text-base-content/70">
+                  <span className="text-base-content">{t(MISSING_LABELS[d].label)}</span>
+                  <Trans><span className="text-base-content/70">
                     {have} of {total}
-                  </span>
+                  </span></Trans>
                 </span>
                 <span
                   className="progress mt-1.5 h-1.5"
                   role="progressbar"
-                  aria-label={`${MISSING_LABELS[d].label}: ${have} of ${total}`}
+                  aria-label={t`${ph({ label: t(MISSING_LABELS[d].label) })}: ${have} of ${total}`}
                   aria-valuenow={percent}
                   aria-valuemin={0}
                   aria-valuemax={100}
@@ -246,16 +250,16 @@ function ToBuy({ o }: { o: OverviewData }) {
   return (
     <Section
       icon="icon-[tabler--shopping-cart]"
-      title="To buy"
+      title={t`To buy`}
       aside={
         <a href={SHOPPING_HREF} className="tap link link-primary link-hover text-sm">
-          Shopping list
+          <Trans>Shopping list</Trans>
         </a>
       }
     >
       <div className="-mt-2 flex flex-wrap gap-2">
-        {out > 0 && <span className="badge badge-soft badge-error">{out} run out</span>}
-        {count > out && <span className="badge badge-soft badge-warning">{count - out} running low</span>}
+        {out > 0 && <span className="badge badge-soft badge-error"><Trans>{out} run out</Trans></span>}
+        {count > out && <span className="badge badge-soft badge-warning"><Trans>{ph({ low: count - out })} running low</Trans></span>}
       </div>
       <ul className="flex flex-col gap-1">
         {next.map((i) => (
@@ -263,7 +267,7 @@ function ToBuy({ o }: { o: OverviewData }) {
             <a href={itemHref(i.id)} className="flex min-h-11 items-center gap-3 rounded-field px-2 py-1.5 hover:bg-base-200">
               <span className={`size-2.5 shrink-0 rounded-full ${i.quantity === 0 ? "bg-error" : "bg-warning"}`} aria-hidden />
               <span className="min-w-0 flex-1 truncate text-base-content">{i.name}</span>
-              <span className="shrink-0 text-sm text-base-content/70">{i.quantity === 0 ? "none left" : `${i.quantity} left`}</span>
+              <span className="shrink-0 text-sm text-base-content/70">{i.quantity === 0 ? t`none left` : t`${ph({ quantity: i.quantity })} left`}</span>
             </a>
           </li>
         ))}
@@ -277,37 +281,37 @@ function Upkeep({ o }: { o: OverviewData }) {
   return (
     <Section
       icon="icon-[tabler--tool]"
-      title="Maintenance"
+      title={t`Maintenance`}
       aside={
         <a href={MAINTENANCE_HREF} className="tap link link-primary link-hover text-sm">
-          {next.length ? "See all" : "Add tasks"}
+          {next.length ? t`See all` : t`Add tasks`}
         </a>
       }
     >
       {next.length === 0 ? (
-        <p className="-mt-2 text-sm text-base-content/70">Nothing scheduled — track filters, servicing and the like.</p>
+        <p className="-mt-2 text-sm text-base-content/70"><Trans>Nothing scheduled — track filters, servicing and the like.</Trans></p>
       ) : (
         <>
           <div className="-mt-2 flex flex-wrap gap-2">
-            {overdue > 0 && <span className="badge badge-soft badge-error">{overdue} overdue</span>}
-            {due > 0 && <span className="badge badge-soft badge-warning">{due} due in 2 weeks</span>}
-            {!overdue && !due && <span className="badge badge-soft badge-success">Nothing due soon</span>}
+            {overdue > 0 && <span className="badge badge-soft badge-error"><Trans>{overdue} overdue</Trans></span>}
+            {due > 0 && <span className="badge badge-soft badge-warning"><Trans>{due} due in 2 weeks</Trans></span>}
+            {!overdue && !due && <span className="badge badge-soft badge-success"><Trans>Nothing due soon</Trans></span>}
           </div>
           <ul className="flex flex-col gap-1">
-            {next.map((t) => (
-              <li key={t.id}>
+            {next.map((value) => (
+              <li key={value.id}>
                 <a href={MAINTENANCE_HREF} className="flex min-h-11 items-center gap-3 rounded-field px-2 py-1.5 hover:bg-base-200">
                   <span
-                    className={`size-2.5 shrink-0 rounded-full ${t.status === "overdue" ? "bg-error" : t.status === "due" ? "bg-warning" : "bg-primary/40"}`}
+                    className={`size-2.5 shrink-0 rounded-full ${value.status === "overdue" ? "bg-error" : value.status === "due" ? "bg-warning" : "bg-primary/40"}`}
                     aria-hidden
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-base-content">{t.title}</span>
+                    <span className="block truncate text-base-content">{value.title}</span>
                     <span className="block truncate text-sm text-base-content/70">
-                      {[t.itemName ?? t.place, describeInterval(t.intervalCount, t.intervalUnit)].filter(Boolean).join(" · ")}
+                      {[value.itemName ?? value.place, everyText(value.intervalCount, value.intervalUnit)].filter(Boolean).join(" · ")}
                     </span>
                   </span>
-                  <span className="shrink-0 text-sm text-base-content/70">{t.dueOn && formatDate(t.dueOn)}</span>
+                  <span className="shrink-0 text-sm text-base-content/70">{value.dueOn && formatDate(value.dueOn)}</span>
                 </a>
               </li>
             ))}
@@ -322,10 +326,10 @@ function Warranties({ o }: { o: OverviewData }) {
   return (
     <Section
       icon="icon-[tabler--shield-check]"
-      title="Warranties to act on"
+      title={t`Warranties to act on`}
       aside={
         <a href={WARRANTIES_HREF} className="tap link link-primary link-hover text-sm">
-          All warranties
+          <Trans>All warranties</Trans>
         </a>
       }
     >
@@ -341,7 +345,7 @@ function Warranties({ o }: { o: OverviewData }) {
                 </span>
               </span>
               <span className={`badge badge-soft ${w.status === "expired" ? "badge-error" : "badge-warning"}`}>
-                {w.status === "expired" ? "Ended" : daysLeft(w.endsOn)}
+                {w.status === "expired" ? t`Ended` : daysLeft(w.endsOn)}
               </span>
             </a>
           </li>
@@ -352,12 +356,12 @@ function Warranties({ o }: { o: OverviewData }) {
             <a href={itemHref(c.itemId)} className="flex min-h-11 items-center gap-3 rounded-field px-2 py-1.5 hover:bg-base-200">
               <span className="icon-[tabler--file-alert] size-5 shrink-0 text-base-content/70" />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-base-content">{c.itemName}: claim</span>
+                <Trans><span className="block truncate text-base-content">{ph({ itemName: c.itemName })}: claim</span></Trans>
                 <span className="block truncate text-sm text-base-content/70">
                   {[c.warrantyProvider, c.reference && `#${c.reference}`, `filed ${formatDate(c.filedOn)}`].filter(Boolean).join(" · ")}
                 </span>
               </span>
-              <span className={`badge badge-soft ${CLAIM_STATUS[c.status].badge}`}>{CLAIM_STATUS[c.status].label}</span>
+              <span className={`badge badge-soft ${CLAIM_STATUS[c.status].badge}`}>{t(CLAIM_STATUS[c.status].label)}</span>
             </a>
           </li>
         ))}
@@ -394,7 +398,7 @@ function ValueBars(props: {
                   <span className="progress-bar progress-primary" style={{ width: `${(g.valueCents / max) * 100}%` }} />
                 </span>
                 <span className="w-16 shrink-0 text-end text-xs text-base-content/70">
-                  {g.items} {g.items === 1 ? "item" : "items"}
+                  {plural(g.items, { one: "# item", other: "# items" })}
                 </span>
               </div>
             </>
@@ -420,22 +424,22 @@ function ValueBars(props: {
 function Collections({ householdId }: { householdId: string }) {
   const tags = useTags(householdId);
   const collections = useCollections(householdId);
-  const top = [...(tags.data ?? [])].filter((t) => t.items > 0).sort((a, b) => b.items - a.items).slice(0, 12);
+  const top = [...(tags.data ?? [])].filter((tag) => tag.items > 0).sort((a, b) => b.items - a.items).slice(0, 12);
   const sets = collections.data ?? [];
   return (
     <Section
       icon="icon-[tabler--stack-2]"
-      title="Collections"
+      title={t`Collections`}
       aside={
         <a href={sets.length ? COLLECTIONS_HREF : CATEGORIES_HREF} className="tap link link-primary link-hover text-sm">
-          {sets.length ? "All collections" : "Categories & tags"}
+          {sets.length ? t`All collections` : t`Categories & tags`}
         </a>
       }
     >
       {top.length === 0 && sets.length === 0 ? (
         <p className="-mt-2 text-sm text-base-content/70">
-          Start a <a href={COLLECTIONS_HREF} className="link link-primary tap">collection</a> (coins, cards, dolls), or tag things (camping,
-          Christmas, Grandma's china) and each tag gathers them here.
+          <Trans>Start a <a href={COLLECTIONS_HREF} className="link link-primary tap">collection</a> (coins, cards, dolls), or tag things (camping,
+          Christmas, Grandma's china) and each tag gathers them here.</Trans>
         </p>
       ) : (
         <div className="flex flex-col gap-3">
@@ -447,7 +451,7 @@ function Collections({ householdId }: { householdId: string }) {
                     <span className="min-w-0 flex-1 truncate text-base-content">{c.name}</span>
                     <span className="text-sm text-base-content/70">
                       {c.owned}
-                      {c.wanted ? ` of ${c.owned + c.wanted}` : ""}
+                      {c.wanted ? t` of ${ph({ total: c.owned + c.wanted })}` : ""}
                     </span>
                     {c.valueCents > 0 && <span className="font-medium text-base-content">{money(c.valueCents)}</span>}
                   </a>
@@ -457,11 +461,11 @@ function Collections({ householdId }: { householdId: string }) {
           )}
           {top.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {top.map((t) => (
-                <a key={t.id} href={tagHref(t.name)} className="tap badge badge-soft badge-primary badge-lg gap-1.5">
+              {top.map((value) => (
+                <a key={value.id} href={tagHref(value.name)} className="tap badge badge-soft badge-primary badge-lg gap-1.5">
                   <span className="icon-[tabler--tag] size-3.5" />
-                  {t.name}
-                  <span className="text-xs opacity-70">{t.items}</span>
+                  {value.name}
+                  <span className="text-xs opacity-70">{value.items}</span>
                 </a>
               ))}
             </div>
@@ -476,10 +480,10 @@ function MostValuable({ o }: { o: OverviewData }) {
   return (
     <Section
       icon="icon-[tabler--diamond]"
-      title="Most valuable"
+      title={t`Most valuable`}
       aside={
         <a href={BY_VALUE_HREF} className="tap link link-primary link-hover text-sm">
-          See all
+          <Trans>See all</Trans>
         </a>
       }
     >
@@ -498,15 +502,15 @@ function MostValuable({ o }: { o: OverviewData }) {
   );
 }
 
-export const VIA: Record<string, { label: string; icon: string }> = {
-  web: { label: "app", icon: "icon-[tabler--user]" },
-  api: { label: "script", icon: "icon-[tabler--code]" },
-  mcp: { label: "Claude", icon: "icon-[tabler--sparkles]" },
+export const VIA: Record<string, { label: MessageDescriptor; icon: string }> = {
+  web: { label: msg`app`, icon: "icon-[tabler--user]" },
+  api: { label: msg`script`, icon: "icon-[tabler--code]" },
+  mcp: { label: msg`Claude`, icon: "icon-[tabler--sparkles]" },
 };
 
 function Activity({ o }: { o: OverviewData }) {
   return (
-    <Section icon="icon-[tabler--history]" title="Recent changes">
+    <Section icon="icon-[tabler--history]" title={t`Recent changes`}>
       <ul className="flex flex-col gap-3">
         {o.activity.map((a) => {
           const via = VIA[a.via] ?? VIA.web!;
@@ -530,8 +534,8 @@ function Activity({ o }: { o: OverviewData }) {
                   <span className="block text-sm text-base-content">{a.summary}</span>
                 )}
                 <span className="text-xs text-base-content/70">
-                  {a.actorName ?? (a.action === "recall.found" ? "Ferret" : "Someone")}
-                  {a.via !== "web" && ` via ${via.label}`} · {ago(a.createdAt)}
+                  {a.actorName ?? (a.action === "recall.found" ? t`Ferret` : t`Someone`)}
+                  {a.via !== "web" && t` via ${ph({ label: t(via.label) })}`} · {ago(a.createdAt)}
                 </span>
               </span>
             </li>
@@ -547,7 +551,7 @@ const formatDate = (iso: string) =>
 
 export function daysLeft(endsOn: string) {
   const days = Math.ceil((new Date(`${endsOn}T00:00:00`).getTime() - Date.now()) / 86_400_000);
-  return days <= 1 ? "Today" : `${days} days`;
+  return days <= 1 ? t`Today` : plural(days, { one: "# day", other: "# days" });
 }
 
 export function ago(iso: string) {

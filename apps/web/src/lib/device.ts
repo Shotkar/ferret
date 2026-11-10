@@ -1,3 +1,4 @@
+import { t } from "@lingui/core/macro";
 /**
  * Plain-words labels for sessions and sign-ins: "Safari on iPhone" from a user
  * agent, "Home network" from a private IP. Good enough to recognise your own
@@ -5,7 +6,7 @@
  */
 
 export function describeDevice(userAgent: string | null): { label: string; icon: string } {
-  if (!userAgent) return { label: "Unknown device", icon: "icon-[tabler--device-desktop-question]" };
+  if (!userAgent) return { label: t`Unknown device`, icon: "icon-[tabler--device-desktop-question]" };
   const ua = userAgent;
   const os = /iPhone/.test(ua)
     ? "iPhone"
@@ -46,10 +47,10 @@ export function describeDevice(userAgent: string | null): { label: string; icon:
 /** Where an address is: your own network, Tailscale, or out on the internet (shown as the address). */
 export function describeNetwork(address: string | null): string {
   const ip = address && shortIPv6(address);
-  if (!ip || ip === "::") return "Unknown network";
-  if (/^(127\.|::1$)/.test(ip)) return "This server";
-  if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|^fd7a:115c:a1e0:/i.test(ip)) return `Tailscale · ${ip}`;
-  if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|f[cd][0-9a-f]{2}:|fe80:)/i.test(ip)) return `Home network · ${ip}`;
+  if (!ip || ip === "::") return t`Unknown network`;
+  if (/^(127\.|::1$)/.test(ip)) return t`This server`;
+  if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|^fd7a:115c:a1e0:/i.test(ip)) return t`Tailscale · ${ip}`;
+  if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|f[cd][0-9a-f]{2}:|fe80:)/i.test(ip)) return t`Home network · ${ip}`;
   return ip;
 }
 

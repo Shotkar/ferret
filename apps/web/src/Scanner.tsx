@@ -11,6 +11,8 @@
  */
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { readBarcode } from "./lib/barcode";
+import { t, ph } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 /** The same code again within this long is the same scan, still in front of the camera. */
 const REPEAT_MS = 2500;
@@ -58,7 +60,7 @@ export function Scanner({
     const stop = () => {
       stopped = true;
       clearTimeout(timer);
-      stream?.getTracks().forEach((t) => t.stop());
+      stream?.getTracks().forEach((track) => track.stop());
       if (video.current) video.current.srcObject = null;
     };
     stopCamera.current = stop;
@@ -83,7 +85,7 @@ export function Scanner({
             last.current.at = now; // still in view: keep ignoring it
           }
         } catch (err) {
-          setError(`Couldn't read barcodes here: ${(err as Error).message}`);
+          setError(t`Couldn't read barcodes here: ${ph({ error: (err as Error).message })}`);
           return;
         }
       }
@@ -94,15 +96,15 @@ export function Scanner({
       ?.getUserMedia({ video: { facingMode: "environment" }, audio: false })
       .then((s) => {
         stream = s;
-        if (stopped) return s.getTracks().forEach((t) => t.stop());
+        if (stopped) return s.getTracks().forEach((track) => track.stop());
         if (video.current) {
           video.current.srcObject = s;
           void video.current.play();
         }
         void scan();
       })
-      .catch(() => setError("Camera not available — take a photo of the barcode instead."));
-    if (!navigator.mediaDevices) setError("Camera not available — take a photo of the barcode instead.");
+      .catch(() => setError(t`Camera not available — take a photo of the barcode instead.`));
+    if (!navigator.mediaDevices) setError(t`Camera not available — take a photo of the barcode instead.`);
 
     return () => {
       document.removeEventListener("visibilitychange", onHidden);
@@ -116,22 +118,22 @@ export function Scanner({
       const code = await readBarcode(await createImageBitmap(file));
       if (code) {
         if (!(await onResultRef.current(code))) stopCamera.current();
-      } else setError("No barcode found in that photo. Try again, closer and in good light.");
+      } else setError(t`No barcode found in that photo. Try again, closer and in good light.`);
     } catch (err) {
-      setError(`Couldn't read that photo: ${(err as Error).message}`);
+      setError(t`Couldn't read that photo: ${ph({ error: (err as Error).message })}`);
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black" role="dialog" aria-modal="true" aria-label="Scan a barcode">
+    <div className="fixed inset-0 z-50 flex flex-col bg-black" role="dialog" aria-modal="true" aria-label={t`Scan a barcode`}>
       <div className="flex items-center justify-between p-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-white">
-        <span className="font-semibold">Scan a barcode</span>
+        <Trans><span className="font-semibold">Scan a barcode</span></Trans>
         <button
           type="button"
           className="btn btn-circle btn-text text-white"
-          aria-label="Close scanner"
+          aria-label={t`Close scanner`}
           onClick={() => {
             stopCamera.current();
             onClose();
@@ -154,11 +156,11 @@ export function Scanner({
         {error ? (
           <p className="text-center text-sm text-white/90">{error}</p>
         ) : (
-          <p className="text-center text-sm text-white/70">Point the camera at the barcode.</p>
+          <p className="text-center text-sm text-white/70"><Trans>Point the camera at the barcode.</Trans></p>
         )}
         <button type="button" className="btn btn-soft btn-primary" disabled={busy} onClick={() => photo.current?.click()}>
           {busy ? <span className="loading loading-spinner loading-sm" /> : <span className="icon-[tabler--camera] size-5" />}
-          Take a photo instead
+          <Trans>Take a photo instead</Trans>
         </button>
         <input
           ref={photo}

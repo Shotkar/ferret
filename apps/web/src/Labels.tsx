@@ -14,6 +14,8 @@ import { authClient, useCanEdit } from "./lib/auth";
 import { itemHref, placeHref, printLabelsHref } from "./lib/route";
 import { HelpLink } from "./HelpLink";
 import { navigateTo } from "./lib/navigate";
+import { t, ph, plural, msg } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 /** The address a label's QR code holds. */
 export const labelUrl = (code: string) => `${window.location.origin}/l/${code}`;
@@ -27,7 +29,7 @@ export function QrCode({ value, className, style }: { value: string; className?:
     return { d, size };
   }, [value]);
   return (
-    <svg viewBox={`-1 -1 ${path.size + 2} ${path.size + 2}`} className={className} style={style} role="img" aria-label={`QR code for ${value}`} shapeRendering="crispEdges">
+    <svg viewBox={`-1 -1 ${path.size + 2} ${path.size + 2}`} className={className} style={style} role="img" aria-label={t`QR code for ${ph({ text: value })}`} shapeRendering="crispEdges">
       <rect x={-1} y={-1} width={path.size + 2} height={path.size + 2} fill="white" />
       <path d={path.d} fill="black" />
     </svg>
@@ -40,11 +42,11 @@ export function QrCode({ value, className, style }: { value: string; className?:
  * the label outlines in Avery's blank PDF templates (U-0430-01, U-0431-01).
  */
 const TEMPLATES = {
-  "5163": { name: "Avery 5163 — 2″ × 4″, 10 per sheet (boxes)", cols: 2, rows: 5, w: 4, h: 2, left: 0.17, top: 0.5, gapX: 0.16, gapY: 0 },
-  "5160": { name: "Avery 5160 — 1″ × 2⅝″, 30 per sheet (shelves, bins)", cols: 3, rows: 10, w: 2.625, h: 1, left: 0.188, top: 0.5, gapX: 0.125, gapY: 0 },
-  "22806": { name: "Avery 22806 — 2″ square, 12 per sheet (boxes, bins)", cols: 3, rows: 4, w: 2, h: 2, left: 0.625, top: 0.625, gapX: 0.625, gapY: 0.5826 },
-  "22805": { name: "Avery 22805 — 1½″ square, 24 per sheet (jars, small bins)", cols: 4, rows: 6, w: 1.5, h: 1.5, left: 0.7799, top: 0.5, gapX: 0.3132, gapY: 0.2 },
-  plain: { name: "Plain paper — 6 per page, cut out and tape on", cols: 2, rows: 3, w: 3.75, h: 3.25, left: 0.5, top: 0.5, gapX: 0.5, gapY: 0.5 },
+  "5163": { name: msg`Avery 5163 — 2″ × 4″, 10 per sheet (boxes)`, cols: 2, rows: 5, w: 4, h: 2, left: 0.17, top: 0.5, gapX: 0.16, gapY: 0 },
+  "5160": { name: msg`Avery 5160 — 1″ × 2⅝″, 30 per sheet (shelves, bins)`, cols: 3, rows: 10, w: 2.625, h: 1, left: 0.188, top: 0.5, gapX: 0.125, gapY: 0 },
+  "22806": { name: msg`Avery 22806 — 2″ square, 12 per sheet (boxes, bins)`, cols: 3, rows: 4, w: 2, h: 2, left: 0.625, top: 0.625, gapX: 0.625, gapY: 0.5826 },
+  "22805": { name: msg`Avery 22805 — 1½″ square, 24 per sheet (jars, small bins)`, cols: 4, rows: 6, w: 1.5, h: 1.5, left: 0.7799, top: 0.5, gapX: 0.3132, gapY: 0.2 },
+  plain: { name: msg`Plain paper — 6 per page, cut out and tape on`, cols: 2, rows: 3, w: 3.75, h: 3.25, left: 0.5, top: 0.5, gapX: 0.5, gapY: 0.5 },
 } as const;
 type SheetId = keyof typeof TEMPLATES;
 
@@ -53,28 +55,28 @@ type SheetId = keyof typeof TEMPLATES;
  * printer's own driver supplies the paper: pick it in the print dialog. `row`: QR beside the text; else QR above it.
  */
 const ROLLS = {
-  dk1201: { group: "Brother QL", name: "DK-1201 — 29 × 90 mm (address)", w: 90, h: 29 },
-  dk1209: { group: "Brother QL", name: "DK-1209 — 29 × 62 mm (small address)", w: 62, h: 29 },
-  dk1208: { group: "Brother QL", name: "DK-1208 — 38 × 90 mm (large address)", w: 90, h: 38 },
-  dk11204: { group: "Brother QL", name: "DK-11204 — 17 × 54 mm (multi-purpose)", w: 54, h: 17 },
-  dk2205: { group: "Brother QL", name: "DK-2205 — 62 mm continuous (cut at 40 mm)", w: 62, h: 40 },
-  dk2210: { group: "Brother QL", name: "DK-2210 — 29 mm continuous (cut at 50 mm)", w: 50, h: 29 },
-  dk11221: { group: "Brother QL", name: "DK-11221 — 23 × 23 mm (square)", w: 23, h: 23 },
-  dk1202: { group: "Brother QL", name: "DK-1202 — 62 × 100 mm (shipping)", w: 100, h: 62 },
-  tze24: { group: "Brother P-touch", name: "TZe 24 mm tape (60 mm long)", w: 60, h: 24 },
-  tze18: { group: "Brother P-touch", name: "TZe 18 mm tape (50 mm long)", w: 50, h: 18 },
-  tze12: { group: "Brother P-touch", name: "TZe 12 mm tape (40 mm long)", w: 40, h: 12 },
-  dymo30252: { group: "Dymo LabelWriter", name: "30252 — 1⅛″ × 3½″ (address)", w: 89, h: 28 },
-  dymo30336: { group: "Dymo LabelWriter", name: "30336 — 1″ × 2⅛″ (multi-purpose)", w: 54, h: 25 },
-  dymo30334: { group: "Dymo LabelWriter", name: "30334 — 2¼″ × 1¼″ (multi-purpose)", w: 57, h: 32 },
-  dymo30332: { group: "Dymo LabelWriter", name: "30332 — 1″ × 1″ (square)", w: 25, h: 25 },
-  dymo30330: { group: "Dymo LabelWriter", name: "30330 — ¾″ × 2″ (return address)", w: 51, h: 19 },
-  dymo30256: { group: "Dymo LabelWriter", name: "30256 — 2⁵⁄₁₆″ × 4″ (shipping)", w: 102, h: 59 },
-  dymo1744907: { group: "Dymo LabelWriter", name: "1744907 — 4″ × 6″ (5XL shipping)", w: 102, h: 152 },
-  thermal2x1: { group: "Other thermal printers", name: "2″ × 1″", w: 51, h: 25 },
-  thermal15x1: { group: "Other thermal printers", name: "1½″ × 1″", w: 38, h: 25 },
-  thermal225x125: { group: "Other thermal printers", name: "2¼″ × 1¼″", w: 57, h: 32 },
-  thermal4x6: { group: "Other thermal printers", name: "4″ × 6″ (shipping)", w: 102, h: 152 },
+  dk1201: { group: "Brother QL", name: msg`DK-1201 — 29 × 90 mm (address)`, w: 90, h: 29 },
+  dk1209: { group: "Brother QL", name: msg`DK-1209 — 29 × 62 mm (small address)`, w: 62, h: 29 },
+  dk1208: { group: "Brother QL", name: msg`DK-1208 — 38 × 90 mm (large address)`, w: 90, h: 38 },
+  dk11204: { group: "Brother QL", name: msg`DK-11204 — 17 × 54 mm (multi-purpose)`, w: 54, h: 17 },
+  dk2205: { group: "Brother QL", name: msg`DK-2205 — 62 mm continuous (cut at 40 mm)`, w: 62, h: 40 },
+  dk2210: { group: "Brother QL", name: msg`DK-2210 — 29 mm continuous (cut at 50 mm)`, w: 50, h: 29 },
+  dk11221: { group: "Brother QL", name: msg`DK-11221 — 23 × 23 mm (square)`, w: 23, h: 23 },
+  dk1202: { group: "Brother QL", name: msg`DK-1202 — 62 × 100 mm (shipping)`, w: 100, h: 62 },
+  tze24: { group: "Brother P-touch", name: msg`TZe 24 mm tape (60 mm long)`, w: 60, h: 24 },
+  tze18: { group: "Brother P-touch", name: msg`TZe 18 mm tape (50 mm long)`, w: 50, h: 18 },
+  tze12: { group: "Brother P-touch", name: msg`TZe 12 mm tape (40 mm long)`, w: 40, h: 12 },
+  dymo30252: { group: "Dymo LabelWriter", name: msg`30252 — 1⅛″ × 3½″ (address)`, w: 89, h: 28 },
+  dymo30336: { group: "Dymo LabelWriter", name: msg`30336 — 1″ × 2⅛″ (multi-purpose)`, w: 54, h: 25 },
+  dymo30334: { group: "Dymo LabelWriter", name: msg`30334 — 2¼″ × 1¼″ (multi-purpose)`, w: 57, h: 32 },
+  dymo30332: { group: "Dymo LabelWriter", name: msg`30332 — 1″ × 1″ (square)`, w: 25, h: 25 },
+  dymo30330: { group: "Dymo LabelWriter", name: msg`30330 — ¾″ × 2″ (return address)`, w: 51, h: 19 },
+  dymo30256: { group: "Dymo LabelWriter", name: msg`30256 — 2⁵⁄₁₆″ × 4″ (shipping)`, w: 102, h: 59 },
+  dymo1744907: { group: "Dymo LabelWriter", name: msg`1744907 — 4″ × 6″ (5XL shipping)`, w: 102, h: 152 },
+  thermal2x1: { group: "Other thermal printers", name: msg`2″ × 1″`, w: 51, h: 25 },
+  thermal15x1: { group: "Other thermal printers", name: msg`1½″ × 1″`, w: 38, h: 25 },
+  thermal225x125: { group: "Other thermal printers", name: msg`2¼″ × 1¼″`, w: 57, h: 32 },
+  thermal4x6: { group: "Other thermal printers", name: msg`4″ × 6″ (shipping)`, w: 102, h: 152 },
 } as const;
 type RollId = keyof typeof ROLLS;
 type TemplateId = SheetId | RollId;
@@ -148,8 +150,8 @@ export function PrintLabels({ householdName, householdId, codes }: { householdNa
   const byCode = new Map((all.data?.data ?? []).map((l) => [l.code, l]));
   const labels = codes.map((c) => byCode.get(c) ?? { code: c, householdId, item: null, location: null });
   const roll = isRoll(template) ? ROLLS[template] : null;
-  const t = isRoll(template) ? TEMPLATES["5163"] : TEMPLATES[template];
-  const perSheet = roll ? 1 : t.cols * t.rows;
+  const tpl = isRoll(template) ? TEMPLATES["5163"] : TEMPLATES[template];
+  const perSheet = roll ? 1 : tpl.cols * tpl.rows;
   const slots: (Label | null)[] = [...Array(skip).fill(null), ...labels];
   const preview = usePreviewScale();
   const sheets = Array.from({ length: Math.max(1, Math.ceil(slots.length / perSheet)) }, (_, i) => slots.slice(i * perSheet, (i + 1) * perSheet));
@@ -163,7 +165,7 @@ export function PrintLabels({ householdName, householdId, codes }: { householdNa
           <a
             href="#/"
             className="btn btn-text btn-sm btn-square"
-            aria-label="Back"
+            aria-label={t`Back`}
             onClick={(e) => {
               if (window.history.length > 1) {
                 e.preventDefault();
@@ -173,14 +175,14 @@ export function PrintLabels({ householdName, householdId, codes }: { householdNa
           >
             <span className="icon-[tabler--arrow-left] size-5" />
           </a>
-          <h1 className="text-lg font-semibold">Print labels</h1>
-          <HelpLink page="guide/labels.html" label="QR labels" />
+          <h1 className="text-lg font-semibold"><Trans>Print labels</Trans></h1>
+          <HelpLink page="guide/labels.html" label={t`QR labels`} />
         </div>
         <div className="navbar-end items-center">
           {labels.length > 0 && (
             <button type="button" className="btn btn-primary btn-sm" onClick={() => window.print()}>
               <span className="icon-[tabler--printer] size-4" />
-              Print
+              <Trans>Print</Trans>
             </button>
           )}
         </div>
@@ -191,7 +193,7 @@ export function PrintLabels({ householdName, householdId, codes }: { householdNa
           <div className="card-body gap-4 p-4 sm:p-6">
             <div>
               <label className="label-text" htmlFor="label-template">
-                Labels
+                <Trans>Labels</Trans>
               </label>
               <select
                 id="label-template"
@@ -206,20 +208,20 @@ export function PrintLabels({ householdName, householdId, codes }: { householdNa
                   }
                 }}
               >
-                <optgroup label="Sheets (any printer)">
+                <optgroup label={t`Sheets (any printer)`}>
                   {(Object.keys(TEMPLATES) as SheetId[]).map((id) => (
                     <option key={id} value={id}>
-                      {TEMPLATES[id].name}
+                      {t(TEMPLATES[id].name)}
                     </option>
                   ))}
                 </optgroup>
                 {[...new Set(Object.values(ROLLS).map((x) => x.group))].map((group) => (
-                  <optgroup key={group} label={`${group} (label printer)`}>
+                  <optgroup key={group} label={group === "Other thermal printers" ? t`Other thermal printers` : t`${ph({ brand: group })} (label printer)`}>
                     {(Object.keys(ROLLS) as RollId[])
                       .filter((id) => ROLLS[id].group === group)
                       .map((id) => (
                         <option key={id} value={id}>
-                          {ROLLS[id].name}
+                          {t(ROLLS[id].name)}
                         </option>
                       ))}
                   </optgroup>
@@ -231,13 +233,13 @@ export function PrintLabels({ householdName, householdId, codes }: { householdNa
               canEdit ? (
                 <div className="space-y-2">
                   <p className="text-sm text-base-content/70">
-                    Blank labels to stick on boxes as you pack. Scan one later and say what it is — a new box, or something already in
-                    Ferret.
+                    <Trans>Blank labels to stick on boxes as you pack. Scan one later and say what it is — a new box, or something already in
+                    Ferret.</Trans>
                   </p>
                   <div className="flex flex-wrap items-end gap-2">
                     <div>
                       <label className="label-text" htmlFor="label-count">
-                        How many
+                        <Trans>How many</Trans>
                       </label>
                       <input
                         id="label-count"
@@ -251,26 +253,27 @@ export function PrintLabels({ householdName, householdId, codes }: { householdNa
                     </div>
                     <button type="button" className="btn btn-wrap btn-primary" disabled={make.isPending} onClick={() => make.mutate()}>
                       {make.isPending && <span className="loading loading-spinner loading-sm" />}
-                      Make {count} blank {count === 1 ? "label" : "labels"}
+                      {plural(count, { one: "Make # blank label", other: "Make # blank labels" })}
                     </button>
                   </div>
-                  {!roll && <p className="text-xs text-base-content/70">Tip: a full sheet of 5163 is 10, of 5160 is 30, of 22806 is 12, of 22805 is 24.</p>}
+                  {!roll && <p className="text-xs text-base-content/70"><Trans>Tip: a full sheet of 5163 is 10, of 5160 is 30, of 22806 is 12, of 22805 is 24.</Trans></p>}
                   {make.isError && <div className="alert alert-soft alert-error">{make.error.message}</div>}
                 </div>
               ) : (
-                <p className="text-sm text-base-content/70">Open a box or place to print its label.</p>
+                <p className="text-sm text-base-content/70"><Trans>Open a box or place to print its label.</Trans></p>
               )
             ) : (
               <p className="text-sm text-base-content/70">
-                {labels.length} {labels.length === 1 ? "label" : "labels"}
-                {roll ? "" : ` on ${sheets.length} ${sheets.length === 1 ? "sheet" : "sheets"}`}.
+                {roll
+                  ? plural(labels.length, { one: "# label.", other: "# labels." })
+                  : t`${ph({ labels: plural(labels.length, { one: "# label", other: "# labels" }) })} on ${ph({ sheets: plural(sheets.length, { one: "# sheet", other: "# sheets" }) })}.`}
               </p>
             )}
 
             {!roll && labels.length > 0 && (
               <label className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="icon-[tabler--layout-grid] size-4 text-base-content/70" />
-                A part-used sheet? Skip the first
+                <Trans>A part-used sheet? Skip the first</Trans>
                 <input
                   type="number"
                   min={0}
@@ -279,38 +282,38 @@ export function PrintLabels({ householdName, householdId, codes }: { householdNa
                   value={skip}
                   onChange={(e) => setSkip(Math.max(0, Math.min(perSheet - 1, Number(e.target.value) || 0)))}
                 />
-                {skip === 1 ? "label" : "labels"}
+                {plural(skip, { one: "label", other: "labels" })}
               </label>
             )}
 
             {roll ? (
               <div className="rounded-box bg-base-200 p-3 text-sm">
-                <p className="font-medium">In the print dialog:</p>
+                <p className="font-medium"><Trans>In the print dialog:</Trans></p>
                 <ul className="mt-1 list-inside list-disc space-y-0.5 text-base-content/80">
-                  <li>Choose your label printer, and its paper: {roll.name.replace(/ \(.*\)$/, "")}.</li>
-                  <li>Scale 100% (not "Fit"), margins None, no headers or footers.</li>
-                  {roll.w > roll.h && <li>If it comes out sideways, switch Landscape / Portrait.</li>}
+                  <li><Trans>Choose your label printer, and its paper: {ph({ paper: t(roll.name).replace(/ \(.*\)$/, "") })}</Trans>.</li>
+                  <li><Trans>Scale 100% (not "Fit"), margins None, no headers or footers.</Trans></li>
+                  {roll.w > roll.h && <li><Trans>If it comes out sideways, switch Landscape / Portrait.</Trans></li>}
                 </ul>
-                <p className="mt-2 text-base-content/70">Each label prints on its own label. The printer needs its driver installed on this computer.</p>
+                <p className="mt-2 text-base-content/70"><Trans>Each label prints on its own label. The printer needs its driver installed on this computer.</Trans></p>
               </div>
             ) : (
             <details className="text-sm">
-              <summary className="cursor-pointer text-base-content/70">Printing tips and alignment</summary>
+              <summary className="cursor-pointer text-base-content/70"><Trans>Printing tips and alignment</Trans></summary>
               <div className="mt-3 space-y-3">
                 <p className="text-base-content/70">
-                  Print at <strong>100% / Actual size</strong> (not "Fit to page"), with no headers or footers. Try a plain page first and hold
-                  it against a label sheet to the light. If it's off, nudge it:
+                  <Trans>Print at <strong>100% / Actual size</strong> (not "Fit to page"), with no headers or footers. Try a plain page first and hold
+                  it against a label sheet to the light. If it's off, nudge it:</Trans>
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <label className="flex items-center gap-2">
-                    Right
+                    <Trans>Right</Trans>
                     <input type="number" step={0.5} className="input input-sm w-20" value={nudge.x} onChange={(e) => setNudge({ ...nudge, x: Number(e.target.value) || 0 })} />
-                    mm
+                    <Trans>mm</Trans>
                   </label>
                   <label className="flex items-center gap-2">
-                    Down
+                    <Trans>Down</Trans>
                     <input type="number" step={0.5} className="input input-sm w-20" value={nudge.y} onChange={(e) => setNudge({ ...nudge, y: Number(e.target.value) || 0 })} />
-                    mm
+                    <Trans>mm</Trans>
                   </label>
                 </div>
               </div>
@@ -318,7 +321,7 @@ export function PrintLabels({ householdName, householdId, codes }: { householdNa
             )}
           </div>
         </section>
-        {labels.length > 0 && <p className="text-center text-sm text-base-content/70">Preview:</p>}
+        {labels.length > 0 && <p className="text-center text-sm text-base-content/70"><Trans>Preview:</Trans></p>}
       </main>
 
       {labels.length > 0 && roll && (
@@ -354,10 +357,10 @@ export function PrintLabels({ householdName, householdId, codes }: { householdNa
                         template={template as SheetId}
                         householdName={householdName}
                         style={{
-                          left: `${t.left + (j % t.cols) * (t.w + t.gapX)}in`,
-                          top: `${t.top + Math.floor(j / t.cols) * (t.h + t.gapY)}in`,
-                          width: `${t.w}in`,
-                          height: `${t.h}in`,
+                          left: `${tpl.left + (j % tpl.cols) * (tpl.w + tpl.gapX)}in`,
+                          top: `${tpl.top + Math.floor(j / tpl.cols) * (tpl.h + tpl.gapY)}in`,
+                          width: `${tpl.w}in`,
+                          height: `${tpl.h}in`,
                         }}
                       />
                     ) : (
@@ -367,10 +370,10 @@ export function PrintLabels({ householdName, householdId, codes }: { householdNa
                         aria-hidden
                         className="absolute rounded-sm border border-dashed border-gray-300 bg-gray-100 print:hidden"
                         style={{
-                          left: `${t.left + (j % t.cols) * (t.w + t.gapX)}in`,
-                          top: `${t.top + Math.floor(j / t.cols) * (t.h + t.gapY)}in`,
-                          width: `${t.w}in`,
-                          height: `${t.h}in`,
+                          left: `${tpl.left + (j % tpl.cols) * (tpl.w + tpl.gapX)}in`,
+                          top: `${tpl.top + Math.floor(j / tpl.cols) * (tpl.h + tpl.gapY)}in`,
+                          width: `${tpl.w}in`,
+                          height: `${tpl.h}in`,
                         }}
                       />
                     ),
@@ -410,7 +413,7 @@ function LabelCell({ label, template, householdName, style }: { label: Label; te
       <div className="min-w-0 leading-tight">
         <div className={`font-mono font-bold tracking-wider ${small ? "text-[13pt]" : "text-[22pt]"}`}>{label.code}</div>
         {name && <div className={`line-clamp-2 font-semibold ${small ? "text-[7.5pt]" : "text-[12pt]"}`}>{name}</div>}
-        {!small && <div className="mt-1 text-[8pt] text-gray-600">🐾 Ferret · {householdName}</div>}
+        {!small && <div className="mt-1 text-[8pt] text-gray-600"><Trans>🐾 Ferret · {householdName}</Trans></div>}
       </div>
     </div>
   );
@@ -442,7 +445,7 @@ function RollLabel({ label, w, h, householdName }: { label: Label; w: number; h:
             {name}
           </div>
         )}
-        {h >= 50 && <div className="mt-1 text-gray-600" style={{ fontSize: `${small * 0.8}mm` }}>🐾 Ferret · {householdName}</div>}
+        {h >= 50 && <div className="mt-1 text-gray-600" style={{ fontSize: `${small * 0.8}mm` }}><Trans>🐾 Ferret · {householdName}</Trans></div>}
       </div>
     </div>
   );
@@ -474,13 +477,13 @@ export function LabelLanding({ code, householdId }: { code: string; householdId:
   const attach = useMutation({
     mutationFn: async () => {
       if (mode === "box") {
-        const name = (document.getElementById("new-box-name") as HTMLInputElement).value.trim() || `Box ${code}`;
+        const name = (document.getElementById("new-box-name") as HTMLInputElement).value.trim() || t`Box ${code}`;
         const box = await api.createItem({ name, isContainer: true, locationId: place, origin: "label" });
         return api.assignLabel(code, { itemId: box.id });
       }
       if (mode === "item" && item) return api.assignLabel(code, { itemId: item.id });
       if (mode === "place" && place) return api.assignLabel(code, { locationId: place });
-      throw new Error("Choose what it's on first");
+      throw new Error(t`Choose what it's on first`);
     },
     onSuccess: (l) => {
       void qc.invalidateQueries({ queryKey: ["items", householdId] });
@@ -492,8 +495,8 @@ export function LabelLanding({ code, householdId }: { code: string; householdId:
 
   if (label.isError) {
     return (
-      <Centered icon="icon-[tabler--qrcode-off]" title={`Label ${code}`}>
-        <p className="text-sm text-base-content/70">This label isn't one of yours — or the code was misread. Try scanning again.</p>
+      <Centered icon="icon-[tabler--qrcode-off]" title={t`Label ${code}`}>
+        <p className="text-sm text-base-content/70"><Trans>This label isn't one of yours — or the code was misread. Try scanning again.</Trans></p>
       </Centered>
     );
   }
@@ -505,19 +508,19 @@ export function LabelLanding({ code, householdId }: { code: string; householdId:
     );
   }
   return (
-    <Centered icon="icon-[tabler--qrcode]" title={`New label ${code}`}>
+    <Centered icon="icon-[tabler--qrcode]" title={t`New label ${code}`}>
       {!canEdit ? (
-        <p className="text-sm text-base-content/70">This label isn't on anything yet.</p>
+        <p className="text-sm text-base-content/70"><Trans>This label isn't on anything yet.</Trans></p>
       ) : (
         <div className="flex w-full flex-col gap-3 text-start">
-          <p className="text-center text-sm text-base-content/70">What did you stick it on?</p>
+          <p className="text-center text-sm text-base-content/70"><Trans>What did you stick it on?</Trans></p>
           {/* FlyonUI's radio buttons in a join: the checked one fills in. */}
-          <div className="join w-full" role="radiogroup" aria-label="What it's on">
+          <div className="join w-full" role="radiogroup" aria-label={t`What it's on`}>
             {(
               [
-                ["box", "A new box"],
-                ["item", "Something in Ferret"],
-                ["place", "A shelf or place"],
+                ["box", t`A new box`],
+                ["item", t`Something in Ferret`],
+                ["place", t`A shelf or place`],
               ] as const
             ).map(([m, text]) => (
               <input
@@ -535,18 +538,18 @@ export function LabelLanding({ code, householdId }: { code: string; householdId:
             <>
               <div>
                 <label className="label-text" htmlFor="new-box-name">
-                  Box name
+                  <Trans>Box name</Trans>
                 </label>
-                <input id="new-box-name" className="input" placeholder={`e.g. Kitchen — plates (or leave as "Box ${code}")`} autoFocus />
+                <input id="new-box-name" className="input" placeholder={t`e.g. Kitchen — plates (or leave as "Box ${code}")`} autoFocus />
               </div>
-              <PlacePicker householdId={householdId} id="new-box-place" name="locationId" label="Where it is" value={place} onChange={setPlace} noneLabel="Not decided yet" />
+              <PlacePicker householdId={householdId} id="new-box-place" name="locationId" label={t`Where it is`} value={place} onChange={setPlace} noneLabel={t`Not decided yet`} />
             </>
           )}
           {mode === "item" && (
-            <ItemPicker householdId={householdId} id="label-item" name="itemId" label="Which one" value={item} onChange={setItem} />
+            <ItemPicker householdId={householdId} id="label-item" name="itemId" label={t`Which one`} value={item} onChange={setItem} />
           )}
           {mode === "place" && (
-            <PlacePicker householdId={householdId} id="label-place" name="locationId" label="Which place" value={place} onChange={setPlace} noneLabel="Choose a place" />
+            <PlacePicker householdId={householdId} id="label-place" name="locationId" label={t`Which place`} value={place} onChange={setPlace} noneLabel={t`Choose a place`} />
           )}
           {attach.isError && <div className="alert alert-soft alert-error text-sm">{attach.error.message}</div>}
           {mode && (
@@ -557,7 +560,7 @@ export function LabelLanding({ code, householdId }: { code: string; householdId:
               onClick={() => attach.mutate()}
             >
               {attach.isPending && <span className="loading loading-spinner loading-sm" />}
-              {mode === "box" ? "Make the box" : "Put the label on it"}
+              {mode === "box" ? t`Make the box` : t`Put the label on it`}
             </button>
           )}
         </div>
@@ -573,10 +576,10 @@ function Centered({ icon, title, children }: { icon: string; title: string; chil
         <div className="card-body items-center gap-3 text-center">
           <span className={`${icon} size-10 text-primary`} />
           <h1 className="font-mono text-lg font-semibold">{title}</h1>
-          {children}
+          <Trans>{children}
           <a href="#/" className="btn btn-text btn-sm">
             Back to Ferret
-          </a>
+          </a></Trans>
         </div>
       </div>
     </main>

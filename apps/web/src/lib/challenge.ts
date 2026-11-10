@@ -4,12 +4,13 @@
  * header value to retry with. Loaded only when it's needed.
  */
 import type { Challenge } from "altcha-lib/types";
+import { t } from "@lingui/core/macro";
 
 export const CHALLENGE_HEADER = "x-altcha";
 
 export async function solveSignInChallenge(challenge: Challenge): Promise<string> {
   const [{ solveChallenge }, { deriveKey }] = await Promise.all([import("altcha-lib"), import("altcha-lib/algorithms/web/pbkdf2")]);
   const solution = await solveChallenge({ challenge, deriveKey });
-  if (!solution) throw new Error("Couldn't finish the check — try again");
+  if (!solution) throw new Error(t`Couldn't finish the check — try again`);
   return btoa(JSON.stringify({ challenge: { parameters: challenge.parameters, signature: challenge.signature }, solution }));
 }

@@ -16,6 +16,8 @@ import { QrCode, labelUrl } from "./Labels";
 import { Modal } from "./Modal";
 import { Scanner } from "./Scanner";
 import { AddFromPhotos } from "./PhotoAdd";
+import { t, ph } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 export function BoxContents({ box, householdId }: { box: ItemListing; householdId: string }) {
   const qc = useQueryClient();
@@ -49,7 +51,7 @@ export function BoxContents({ box, householdId }: { box: ItemListing; householdI
     <section className="flex flex-col gap-3" aria-labelledby="box-contents">
       <h2 id="box-contents" className="flex items-center gap-2 font-semibold text-base-content">
         <span className="icon-[tabler--package] size-5 text-primary" />
-        Inside
+        <Trans>Inside</Trans>
         {list.length > 0 && <span className="badge badge-soft badge-primary badge-sm">{list.length}</span>}
       </h2>
 
@@ -57,15 +59,15 @@ export function BoxContents({ box, householdId }: { box: ItemListing; householdI
         <div className="card">
           <div className="card-body gap-3 p-4">
             <form className="flex flex-wrap gap-2" onSubmit={onAdd}>
-              <input name="name" className="input min-w-40 flex-1" placeholder={`Add to ${box.name}…`} required />
+              <input name="name" className="input min-w-40 flex-1" placeholder={t`Add to ${ph({ name: box.name })}…`} required />
               <button className="btn btn-primary" disabled={add.isPending}>
-                Add
+                <Trans>Add</Trans>
               </button>
               <AddFromPhotos householdId={householdId} containerItemId={box.id} />
               {roomScanOn && (
                 <a href={scanRoomHref({ containerItemId: box.id })} className="btn btn-soft btn-primary btn-wrap">
                   <span className="icon-[tabler--scan-eye] size-5" />
-                  Scan what's inside
+                  <Trans>Scan what's inside</Trans>
                 </a>
               )}
             </form>
@@ -75,7 +77,7 @@ export function BoxContents({ box, householdId }: { box: ItemListing; householdI
                   householdId={householdId}
                   id="put-in"
                   name="putIn"
-                  label="Or put something already in Ferret in it"
+                  label={t`Or put something already in Ferret in it`}
                   value={picked}
                   onChange={setPicked}
                   exclude={[box.id, ...list.map((i) => i.id)]}
@@ -87,7 +89,7 @@ export function BoxContents({ box, householdId }: { box: ItemListing; householdI
                 disabled={!picked || putIn.isPending}
                 onClick={() => picked && putIn.mutate(picked.id, { onSuccess: () => setPicked(null) })}
               >
-                Put in
+                <Trans>Put in</Trans>
               </button>
             </div>
             {error && <div className="alert alert-soft alert-error text-sm">{error.message}</div>}
@@ -96,7 +98,7 @@ export function BoxContents({ box, householdId }: { box: ItemListing; householdI
       )}
 
       {list.length === 0 ? (
-        <p className="text-sm text-base-content/70">Empty.</p>
+        <p className="text-sm text-base-content/70"><Trans>Empty.</Trans></p>
       ) : (
         <ul className="card divide-y divide-base-content/10">
           {list.map((it) => (
@@ -113,7 +115,7 @@ export function BoxContents({ box, householdId }: { box: ItemListing; householdI
                   <span className="block truncate text-base-content">{it.name}</span>
                   <span className="block truncate text-xs text-base-content/70">
                     {[
-                      it.isContainer ? `${it.contents} inside` : [it.brand, it.quantity !== 1 ? `×${it.quantity}` : null].filter(Boolean).join(" · "),
+                      it.isContainer ? t`${ph({ contents: it.contents })} inside` : [it.brand, it.quantity !== 1 ? `×${it.quantity}` : null].filter(Boolean).join(" · "),
                       lastScannedText(it.lastScanned, true),
                     ]
                       .filter(Boolean)
@@ -123,7 +125,7 @@ export function BoxContents({ box, householdId }: { box: ItemListing; householdI
               </a>
               {canEdit && (
                 <button type="button" className="btn btn-text btn-sm" disabled={takeOut.isPending} onClick={() => takeOut.mutate(it.id)}>
-                  Take out
+                  <Trans>Take out</Trans>
                 </button>
               )}
             </li>
@@ -162,10 +164,10 @@ export function LabelBadge({
         type="button"
         className={`tap badge badge-soft max-w-48 gap-1 font-mono ${shown ? "badge-primary" : "border border-dashed border-base-content/30 font-sans text-base-content/70"}`}
         onClick={() => setOpen(true)}
-        aria-label={shown ? `Label ${shown} — show, print or change` : `Give ${name} a QR label`}
+        aria-label={shown ? t`Label ${shown} — show, print or change` : t`Give ${name} a QR label`}
       >
         <span className={`${code ? "icon-[tabler--qrcode]" : shown ? "icon-[tabler--tag]" : "icon-[tabler--plus]"} size-4 shrink-0`} />
-        <span className="truncate">{shown ?? "QR label"}</span>
+        <span className="truncate">{shown ?? t`QR label`}</span>
       </button>
       {open && (
         <LabelDialog target={target} code={code} ownLabels={ownLabels} name={name} householdId={householdId} canEdit={canEdit} onClose={() => setOpen(false)} />
@@ -183,7 +185,7 @@ function InUse({ error }: { error: Error & { details?: unknown } }) {
       {holder?.itemId && (
         <>
           {" "}
-          — <a href={itemHref(holder.itemId)} className="link tap">open {holder.name ?? "it"}</a>
+          <Trans>— <a href={itemHref(holder.itemId)} className="link tap">open {ph({ name: holder.name ?? t`it` })}</a></Trans>
         </>
       )}
     </p>
@@ -264,14 +266,14 @@ function LabelDialog(props: {
   const useOne = canEdit && (
     <form className="flex flex-col gap-2" onSubmit={onAttach}>
       <label className="label-text" htmlFor="blank-code">
-        {forItem ? "Use a label you already have — a blank one you've printed, or an asset tag or sticker" : "Use a blank label you've printed — type its code"}
+        {forItem ? t`Use a label you already have — a blank one you've printed, or an asset tag or sticker` : t`Use a blank label you've printed — type its code`}
       </label>
       <div className="flex flex-wrap gap-2">
         <input
           id="blank-code"
           name="code"
           className="input min-w-0 grow basis-40 font-mono"
-          placeholder={forItem ? "e.g. 7HQ2MX or ASSET-0042" : "e.g. 7HQ2MX"}
+          placeholder={forItem ? t`e.g. 7HQ2MX or ASSET-0042` : t`e.g. 7HQ2MX`}
           maxLength={500}
           autoCapitalize="characters"
           autoCorrect="off"
@@ -279,11 +281,11 @@ function LabelDialog(props: {
           required
         />
         <button type="submit" className="btn btn-soft btn-primary" disabled={attach.isPending}>
-          Use it
+          <Trans>Use it</Trans>
         </button>
         <button type="button" className="btn btn-soft" onClick={() => setScanning(true)}>
           <span className="icon-[tabler--scan] size-5" />
-          Scan it
+          <Trans>Scan it</Trans>
         </button>
       </div>
       {attach.isError && <InUse error={attach.error} />}
@@ -291,35 +293,35 @@ function LabelDialog(props: {
   );
 
   return (
-    <Modal id="qr-label" title={`Labels · ${name}`} onClose={onClose}>
+    <Modal id="qr-label" title={t`Labels · ${name}`} onClose={onClose}>
       <div className="flex flex-col gap-5">
         {code ? (
           <div className="flex flex-col items-center gap-4 text-center">
             <QrCode value={labelUrl(code)} className="size-48 rounded-box border border-base-content/10 p-2" />
             <div>
               <p className="font-mono text-2xl font-bold tracking-wider text-base-content">{code}</p>
-              <p className="text-sm text-base-content/70">Scan it with the camera to open {name}. Printing it again always gives the same code.</p>
+              <p className="text-sm text-base-content/70"><Trans>Scan it with the camera to open {name}. Printing it again always gives the same code.</Trans></p>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
               <a href={printLabelsHref([code])} className="btn btn-primary">
                 <span className="icon-[tabler--printer] size-5" />
-                Print
+                <Trans>Print</Trans>
               </a>
               {canEdit && !confirmOff && (
                 <button type="button" className="btn btn-text btn-error" onClick={() => setConfirmOff(true)}>
-                  Take label off
+                  <Trans>Take label off</Trans>
                 </button>
               )}
             </div>
             {confirmOff && (
               <div className="flex flex-col items-center gap-2 rounded-box bg-base-200 p-3 text-sm">
-                <p>A printed {code} will stop opening {name} (it becomes a blank label you can use somewhere else).</p>
+                <p><Trans>A printed {code} will stop opening {name} (it becomes a blank label you can use somewhere else).</Trans></p>
                 <div className="flex gap-2">
                   <button type="button" className="btn btn-error btn-sm" disabled={takeOff.isPending} onClick={() => takeOff.mutate()}>
-                    Take it off
+                    <Trans>Take it off</Trans>
                   </button>
                   <button type="button" className="btn btn-text btn-sm" onClick={() => setConfirmOff(false)}>
-                    Keep
+                    <Trans>Keep</Trans>
                   </button>
                 </div>
               </div>
@@ -329,12 +331,16 @@ function LabelDialog(props: {
         ) : (
           <>
             <p className="text-base-content/70">
-              Stick a QR label on {name}: scanning it with a phone's camera opens {name} in Ferret{target.locationId ? ", with everything kept there" : ""}.
+              {target.locationId ? (
+                <Trans>Stick a QR label on {name}: scanning it with a phone's camera opens {name} in Ferret, with everything kept there.</Trans>
+              ) : (
+                <Trans>Stick a QR label on {name}: scanning it with a phone's camera opens {name} in Ferret.</Trans>
+              )}
             </p>
             {canEdit && (
               <button type="button" className="btn btn-primary" disabled={make.isPending} onClick={() => make.mutate()}>
                 {make.isPending ? <span className="loading loading-spinner loading-sm" /> : <span className="icon-[tabler--qrcode] size-5" />}
-                Make a new label
+                <Trans>Make a new label</Trans>
               </button>
             )}
             {make.isError && <p className="text-sm text-error">{make.error.message}</p>}
@@ -344,7 +350,7 @@ function LabelDialog(props: {
         {own.length > 0 && (
           <section className="flex flex-col gap-2" aria-labelledby="own-labels">
             <h3 id="own-labels" className="text-sm font-medium text-base-content">
-              Its own labels
+              <Trans>Its own labels</Trans>
             </h3>
             <ul className="flex flex-col gap-1">
               {own.map((l) => (
@@ -355,21 +361,21 @@ function LabelDialog(props: {
                     (removing?.id === l.id ? (
                       <span className="flex shrink-0 gap-1">
                         <button type="button" className="btn btn-error btn-xs" disabled={removeOwn.isPending} onClick={() => removeOwn.mutate(l)}>
-                          Take off
+                          <Trans>Take off</Trans>
                         </button>
                         <button type="button" className="btn btn-text btn-xs" onClick={() => setRemoving(null)}>
-                          Keep
+                          <Trans>Keep</Trans>
                         </button>
                       </span>
                     ) : (
-                      <button type="button" className="btn btn-text btn-xs" aria-label={`Take label ${l.code} off`} onClick={() => setRemoving(l)}>
-                        Take off
+                      <button type="button" className="btn btn-text btn-xs" aria-label={t`Take label ${ph({ code: l.code })} off`} onClick={() => setRemoving(l)}>
+                        <Trans>Take off</Trans>
                       </button>
                     ))}
                 </li>
               ))}
             </ul>
-            <p className="text-xs text-base-content/70">Scanning one of these opens {name} too.</p>
+            <p className="text-xs text-base-content/70"><Trans>Scanning one of these opens {name} too.</Trans></p>
             {removeOwn.isError && <p className="text-sm text-error">{removeOwn.error.message}</p>}
           </section>
         )}

@@ -14,6 +14,8 @@ import { describeDevice, describeNetwork } from "./lib/device";
 import { QrCode } from "./Labels";
 import { Modal } from "./Modal";
 import { DeleteAccount } from "./DeleteForGood";
+import { t, ph, plural } from "@lingui/core/macro";
+import { Trans } from "@lingui/react/macro";
 
 export function Security() {
   return (
@@ -44,10 +46,10 @@ function Passkeys() {
         const code = (failed as { code?: string }).code;
         throw new Error(
           code === "SESSION_NOT_FRESH"
-            ? "For safety, adding a passkey needs a recent sign-in — sign out and back in, then add it."
+            ? t`For safety, adding a passkey needs a recent sign-in — sign out and back in, then add it.`
             : /cancel|abort|not allowed/i.test(failed.message ?? "")
-              ? "Cancelled — nothing was added."
-              : (failed.message ?? "Couldn't add it"),
+              ? t`Cancelled — nothing was added.`
+              : (failed.message ?? t`Couldn't add it`),
         );
       }
     },
@@ -70,22 +72,22 @@ function Passkeys() {
           <div className="min-w-0 flex-1 basis-64 space-y-1">
             <h2 id="passkeys-title" className="card-title flex flex-wrap items-center gap-2">
               <span className="icon-[tabler--fingerprint] size-5 text-primary" />
-              Passkeys
+              <Trans>Passkeys</Trans>
               {keys.length > 0 && <span className="badge badge-soft badge-success badge-sm">{keys.length}</span>}
             </h2>
             <p className="text-sm text-base-content/70">
-              Sign in with Face ID, Touch ID, Windows Hello or a security key instead of your password — nothing to type, and
-              nothing a fake site can steal. A passkey counts as both steps of two-step sign-in.
+              <Trans>Sign in with Face ID, Touch ID, Windows Hello or a security key instead of your password — nothing to type, and
+              nothing a fake site can steal. A passkey counts as both steps of two-step sign-in.</Trans>
             </p>
           </div>
           {supported && (
             <button type="button" className="btn btn-primary btn-sm" disabled={add.isPending} onClick={() => add.mutate()}>
               {add.isPending ? <span className="loading loading-spinner loading-xs" /> : <span className="icon-[tabler--plus] size-4" />}
-              Add a passkey
+              <Trans>Add a passkey</Trans>
             </button>
           )}
         </div>
-        {!supported && <div className="alert alert-soft alert-info text-sm">This browser can't use passkeys.</div>}
+        {!supported && <div className="alert alert-soft alert-info text-sm"><Trans>This browser can't use passkeys.</Trans></div>}
         {error && <div className="alert alert-soft alert-error text-sm" role="alert">{error}</div>}
         {keys.length > 0 && (
           <ul className="divide-y divide-base-content/10">
@@ -93,19 +95,19 @@ function Passkeys() {
               <li key={k.id} className="flex flex-wrap items-center gap-3 py-3">
                 <span className="icon-[tabler--key] size-5 shrink-0 text-base-content/70" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{k.name || "Passkey"}</p>
+                  <p className="truncate font-medium">{k.name || t`Passkey`}</p>
                   <p className="text-sm text-base-content/70">
-                    Added {k.createdAt ? new Date(k.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" }) : ""}
-                    {k.backedUp ? " · synced (iCloud, Google…)" : " · this device only"}
+                    <Trans>Added</Trans> {k.createdAt ? new Date(k.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" }) : ""}
+                    {k.backedUp ? t` · synced (iCloud, Google…)` : t` · this device only`}
                   </p>
                 </div>
                 <button
                   type="button"
                   className="btn btn-text btn-sm btn-error"
                   disabled={remove.isPending}
-                  onClick={() => window.confirm(`Remove “${k.name || "Passkey"}”? It won't sign in to Ferret any more.`) && remove.mutate(k.id)}
+                  onClick={() => window.confirm(t`Remove “${ph({ name: k.name || t`Passkey` })}”? It won't sign in to Ferret any more.`) && remove.mutate(k.id)}
                 >
-                  Remove
+                  <Trans>Remove</Trans>
                 </button>
               </li>
             ))}
@@ -124,7 +126,7 @@ function deviceName() {
   if (/Android/.test(ua)) return "Android";
   if (/Macintosh/.test(ua)) return "Mac";
   if (/Windows/.test(ua)) return "Windows";
-  return "Passkey";
+  return t`Passkey`;
 }
 
 // ── Two-step sign-in ────────────────────────────────────────────────────────
@@ -143,18 +145,18 @@ function TwoStep() {
           <div className="min-w-0 flex-1 basis-64 space-y-1">
             <h2 id="two-step-title" className="card-title flex flex-wrap items-center gap-2">
               <span className="icon-[tabler--shield-lock] size-5 text-primary" />
-              Two-step sign-in
-              {on ? <span className="badge badge-soft badge-success badge-sm">On</span> : <span className="badge badge-soft badge-sm">Off</span>}
+              <Trans>Two-step sign-in</Trans>
+              {on ? <span className="badge badge-soft badge-success badge-sm"><Trans>On</Trans></span> : <span className="badge badge-soft badge-sm"><Trans>Off</Trans></span>}
             </h2>
             <p className="text-sm text-base-content/70">
               {on
-                ? "Signing in takes your password and a code from your authenticator app. Devices you trust skip the code for 30 days."
-                : "Ask for a code from an authenticator app (1Password, Google Authenticator, Authy…) as well as your password, so a leaked password isn't enough."}
+                ? t`Signing in takes your password and a code from your authenticator app. Devices you trust skip the code for 30 days.`
+                : t`Ask for a code from an authenticator app (1Password, Google Authenticator, Authy…) as well as your password, so a leaked password isn't enough.`}
             </p>
           </div>
           {!on && (
             <button type="button" className="btn btn-primary btn-sm" disabled={session.isPending} onClick={() => setDialog("enable")}>
-              Turn on
+              <Trans>Turn on</Trans>
             </button>
           )}
         </div>
@@ -162,10 +164,10 @@ function TwoStep() {
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn btn-soft btn-primary btn-sm" onClick={() => setDialog("backup-codes")}>
               <span className="icon-[tabler--lifebuoy] size-4" />
-              New backup codes
+              <Trans>New backup codes</Trans>
             </button>
             <button type="button" className="btn btn-text btn-sm btn-error" onClick={() => setDialog("disable")}>
-              Turn off
+              <Trans>Turn off</Trans>
             </button>
           </div>
         )}
@@ -180,7 +182,7 @@ function TwoStep() {
 /** A Better Auth client call: its data, or throw its error (for useMutation). */
 async function unwrap<T>(call: Promise<{ data: T | null; error: { message?: string } | null }>) {
   const { data, error } = await call;
-  if (error || !data) throw new Error(error?.message ?? "Something went wrong");
+  if (error || !data) throw new Error(error?.message ?? t`Something went wrong`);
   return data;
 }
 
@@ -191,7 +193,7 @@ function EnableDialog({ onClose }: { onClose: () => void }) {
   const start = useMutation({
     mutationFn: async (password: string) => {
       const result = await unwrap(authClient.twoFactor.enable({ password }));
-      if (result.method !== "totp") throw new Error("The server didn't offer an authenticator code");
+      if (result.method !== "totp") throw new Error(t`The server didn't offer an authenticator code`);
       return result;
     },
     onSuccess: setSetup,
@@ -207,34 +209,34 @@ function EnableDialog({ onClose }: { onClose: () => void }) {
       <div className="flex flex-col gap-5">
         <div className="space-y-1 text-center">
           <h3 id="two-step-enable-title" className="text-2xl font-semibold text-base-content">
-            {confirmed ? "Two-step sign-in is on" : "Turn on two-step sign-in"}
+            {confirmed ? t`Two-step sign-in is on` : t`Turn on two-step sign-in`}
           </h3>
           <p className="text-base-content/80">
             {confirmed
-              ? "Save these backup codes. Each one signs you in once if you lose your phone."
+              ? t`Save these backup codes. Each one signs you in once if you lose your phone.`
               : setup
-                ? "Scan this with your authenticator app, then type the code it shows."
-                : "First, your password."}
+                ? t`Scan this with your authenticator app, then type the code it shows.`
+                : t`First, your password.`}
           </p>
         </div>
 
         {!setup && (
-          <PasswordForm busy={start.isPending} error={start.error?.message} submit="Continue" onSubmit={(p) => start.mutate(p)} onCancel={onClose} />
+          <PasswordForm busy={start.isPending} error={start.error?.message} submit={t`Continue`} onSubmit={(p) => start.mutate(p)} onCancel={onClose} />
         )}
 
         {setup && !confirmed && (
           <>
             <div className="flex flex-col items-center gap-3">
-              <a href={setup.totpURI} aria-label="Open in your authenticator app">
+              <a href={setup.totpURI} aria-label={t`Open in your authenticator app`}>
                 <QrCode value={setup.totpURI} className="size-48 rounded-box border border-base-content/10 p-2" />
               </a>
               <p className="text-center text-xs text-base-content/70">
-                On this phone? Tap the code to open your authenticator app. Or type this key:
+                <Trans>On this phone? Tap the code to open your authenticator app. Or type this key:</Trans>
                 <br />
                 <code className="mt-1 inline-block break-all font-mono text-sm text-base-content">{secret?.match(/.{1,4}/g)?.join(" ")}</code>
               </p>
             </div>
-            <CodeForm busy={confirm.isPending} error={confirm.error?.message} submit="Turn on" onSubmit={(code) => confirm.mutate(code)} onCancel={onClose} />
+            <CodeForm busy={confirm.isPending} error={confirm.error?.message} submit={t`Turn on`} onSubmit={(code) => confirm.mutate(code)} onCancel={onClose} />
           </>
         )}
 
@@ -254,11 +256,11 @@ function DisableDialog({ onClose }: { onClose: () => void }) {
       <div className="flex flex-col gap-5">
         <div className="space-y-1 text-center">
           <h3 id="two-step-disable-title" className="text-2xl font-semibold text-base-content">
-            Turn off two-step sign-in?
+            <Trans>Turn off two-step sign-in?</Trans>
           </h3>
-          <p className="text-base-content/80">Your password alone will sign you in again. Your backup codes stop working.</p>
+          <p className="text-base-content/80"><Trans>Your password alone will sign you in again. Your backup codes stop working.</Trans></p>
         </div>
-        <PasswordForm busy={disable.isPending} error={disable.error?.message} submit="Turn off" danger onSubmit={(p) => disable.mutate(p)} onCancel={onClose} />
+        <PasswordForm busy={disable.isPending} error={disable.error?.message} submit={t`Turn off`} danger onSubmit={(p) => disable.mutate(p)} onCancel={onClose} />
       </div>
     </Modal>
   );
@@ -273,16 +275,16 @@ function BackupCodesDialog({ onClose }: { onClose: () => void }) {
       <div className="flex flex-col gap-5">
         <div className="space-y-1 text-center">
           <h3 id="two-step-codes-title" className="text-2xl font-semibold text-base-content">
-            New backup codes
+            <Trans>New backup codes</Trans>
           </h3>
           <p className="text-base-content/80">
-            {make.data ? "Your old codes no longer work. Save these somewhere safe." : "This replaces your old codes. Your password first."}
+            {make.data ? t`Your old codes no longer work. Save these somewhere safe.` : t`This replaces your old codes. Your password first.`}
           </p>
         </div>
         {make.data ? (
           <BackupCodes codes={make.data.backupCodes} onDone={onClose} />
         ) : (
-          <PasswordForm busy={make.isPending} error={make.error?.message} submit="Make new codes" onSubmit={(p) => make.mutate(p)} onCancel={onClose} />
+          <PasswordForm busy={make.isPending} error={make.error?.message} submit={t`Make new codes`} onSubmit={(p) => make.mutate(p)} onCancel={onClose} />
         )}
       </div>
     </Modal>
@@ -291,7 +293,7 @@ function BackupCodesDialog({ onClose }: { onClose: () => void }) {
 
 function BackupCodes({ codes, onDone }: { codes: string[]; onDone: () => void }) {
   const [copied, setCopied] = useState(false);
-  const text = `Ferret backup codes (${window.location.host}) — each works once\n\n${codes.join("\n")}\n`;
+  const text = `${t`Ferret backup codes (${ph({ host: window.location.host })}) — each works once`}\n\n${codes.join("\n")}\n`;
   const download = () => {
     const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
     const a = Object.assign(document.createElement("a"), { href: url, download: "ferret-backup-codes.txt" });
@@ -314,14 +316,14 @@ function BackupCodes({ codes, onDone }: { codes: string[]; onDone: () => void })
           onClick={() => void navigator.clipboard.writeText(text).then(() => setCopied(true))}
         >
           <span className={`${copied ? "icon-[tabler--check]" : "icon-[tabler--copy]"} size-4`} />
-          {copied ? "Copied" : "Copy"}
+          {copied ? t`Copied` : t`Copy`}
         </button>
         <button type="button" className="btn btn-soft btn-secondary btn-sm" onClick={download}>
           <span className="icon-[tabler--download] size-4" />
-          Download
+          <Trans>Download</Trans>
         </button>
         <button type="button" className="btn btn-primary" onClick={onDone}>
-          I've saved them
+          <Trans>I've saved them</Trans>
         </button>
       </div>
     </>
@@ -342,11 +344,11 @@ function PasswordForm(props: {
   }
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
-      <input name="password" type="password" className="input" placeholder="Password" autoComplete="current-password" required autoFocus />
+      <input name="password" type="password" className="input" placeholder={t`Password`} autoComplete="current-password" required autoFocus />
       {props.error && <div className="alert alert-soft alert-error text-sm">{props.error}</div>}
       <div className="flex justify-end gap-3">
         <button type="button" className="btn btn-secondary btn-soft" onClick={props.onCancel}>
-          Cancel
+          <Trans>Cancel</Trans>
         </button>
         <button type="submit" className={`btn ${props.danger ? "btn-error" : "btn-primary"}`} disabled={props.busy}>
           {props.busy && <span className="loading loading-spinner loading-sm" />}
@@ -379,18 +381,18 @@ export function CodeForm(props: {
         inputMode="numeric"
         autoComplete="one-time-code"
         pattern="\s*\d{3}\s*\d{3}\s*"
-        title="The 6-digit code from your authenticator app"
+        title={t`The 6-digit code from your authenticator app`}
         maxLength={8}
         required
         autoFocus
-        aria-label="Code from your authenticator app"
+        aria-label={t`Code from your authenticator app`}
       />
       {props.children}
       {props.error && <div className="alert alert-soft alert-error text-sm">{props.error}</div>}
       <div className="flex justify-end gap-3">
         {props.onCancel && (
           <button type="button" className="btn btn-secondary btn-soft" onClick={props.onCancel}>
-            Cancel
+            <Trans>Cancel</Trans>
           </button>
         )}
         <button type="submit" className="btn btn-primary grow sm:grow-0" disabled={props.busy}>
@@ -412,7 +414,7 @@ function Sessions() {
   const others = sessions.data?.data.filter((s) => !s.current).length ?? 0;
 
   function signOutOthers() {
-    if (window.confirm(`Sign out ${others === 1 ? "your other session" : `all ${others} other sessions`}? They'll need your password to get back in.`)) {
+    if (window.confirm(plural(others, { one: "Sign out your other session? They'll need your password to get back in.", other: "Sign out all # other sessions? They'll need your password to get back in." }))) {
       revokeOthers.mutate();
     }
   }
@@ -423,17 +425,17 @@ function Sessions() {
         <div className="space-y-1">
           <h2 id="sessions-title" className="card-title flex items-center gap-2">
             <span className="icon-[tabler--devices] size-5 text-primary" />
-            Where you're signed in
+            <Trans>Where you're signed in</Trans>
             {sessions.data && <span className="badge badge-soft badge-primary badge-sm">{sessions.data.data.length}</span>}
           </h2>
-          <p className="text-sm text-base-content/70">Each browser or phone you've signed in on. Don't recognise one? Sign it out.</p>
+          <p className="text-sm text-base-content/70"><Trans>Each browser or phone you've signed in on. Don't recognise one? Sign it out.</Trans></p>
         </div>
         {sessions.isPending && <span className="loading loading-spinner text-primary" />}
         {sessions.isError && <div className="alert alert-soft alert-error">{sessions.error.message}</div>}
         {revokeOthers.isError && <div className="alert alert-soft alert-error">{revokeOthers.error.message}</div>}
         {revokeOthers.data && (
           <div className="alert alert-soft alert-success text-sm">
-            Signed out {revokeOthers.data.signedOut} {revokeOthers.data.signedOut === 1 ? "session" : "sessions"}.
+            {plural(revokeOthers.data.signedOut, { one: "Signed out # session.", other: "Signed out # sessions." })}
           </div>
         )}
         {sessions.data && (
@@ -446,10 +448,10 @@ function Sessions() {
         {others > 0 && (
           <button type="button" className="btn btn-soft btn-error btn-sm self-start max-sm:w-full" disabled={revokeOthers.isPending} onClick={signOutOthers}>
             {revokeOthers.isPending ? <span className="loading loading-spinner loading-xs" /> : <span className="icon-[tabler--logout] size-4" />}
-            Sign out everywhere else
+            <Trans>Sign out everywhere else</Trans>
           </button>
         )}
-        <p className="text-xs text-base-content/70">API keys (Claude, scripts) aren't sessions — revoke those under Claude &amp; API.</p>
+        <p className="text-xs text-base-content/70"><Trans>API keys (Claude, scripts) aren't sessions — revoke those under Claude &amp; API.</Trans></p>
       </div>
     </section>
   );
@@ -468,11 +470,11 @@ function SessionRow({ session, onChanged }: { session: SessionSummary; onChanged
       <div className="min-w-0 flex-1">
         <h3 className="flex flex-wrap items-center gap-2 font-medium text-base-content">
           {device.label}
-          {session.current && <span className="badge badge-soft badge-success badge-sm">This device</span>}
+          {session.current && <span className="badge badge-soft badge-success badge-sm"><Trans>This device</Trans></span>}
         </h3>
         <p className="text-sm break-words text-base-content/70">
-          {describeNetwork(session.ipAddress)} · signed in {formatWhen(session.signedInAt)}
-          {!session.current && ` · active ${formatWhen(session.lastActiveAt)}`}
+          <Trans>{ph({ describeNetwork: describeNetwork(session.ipAddress) })} · signed in {ph({ formatWhen: formatWhen(session.signedInAt) })}</Trans>
+          {!session.current && t` · active ${ph({ formatWhen: formatWhen(session.lastActiveAt) })}`}
         </p>
         {revoke.isError && <p className="text-sm text-error">{revoke.error.message}</p>}
       </div>
@@ -482,9 +484,9 @@ function SessionRow({ session, onChanged }: { session: SessionSummary; onChanged
           className="btn btn-text btn-sm btn-error shrink-0"
           disabled={revoke.isPending}
           onClick={() => revoke.mutate()}
-          aria-label={`Sign out ${device.label}`}
+          aria-label={t`Sign out ${ph({ label: device.label })}`}
         >
-          Sign out
+          <Trans>Sign out</Trans>
         </button>
       )}
     </li>
@@ -512,17 +514,17 @@ function SignIns() {
         <div className="space-y-1">
           <h2 id="sign-ins-title" className="card-title flex items-center gap-2">
             <span className="icon-[tabler--history] size-5 text-primary" />
-            Recent sign-ins
+            <Trans>Recent sign-ins</Trans>
           </h2>
           <p className="text-sm text-base-content/70">
-            Your last dozen, and wrong passwords: when, from which network, and on what. After a few wrong passwords Ferret
-            slows down that address and asks every browser for a quick automatic check.
+            <Trans>Your last dozen, and wrong passwords: when, from which network, and on what. After a few wrong passwords Ferret
+            slows down that address and asks every browser for a quick automatic check.</Trans>
           </p>
         </div>
         {signIns.isPending && <span className="loading loading-spinner text-primary" />}
         {signIns.isError && <div className="alert alert-soft alert-error">{signIns.error.message}</div>}
         {signIns.data && signIns.data.data.length === 0 && (
-          <p className="text-sm text-base-content/70">None recorded yet — sign-ins are kept from now on.</p>
+          <p className="text-sm text-base-content/70"><Trans>None recorded yet — sign-ins are kept from now on.</Trans></p>
         )}
         {signIns.data && signIns.data.data.length > 0 && (
           <ul className="divide-y divide-base-content/10">
