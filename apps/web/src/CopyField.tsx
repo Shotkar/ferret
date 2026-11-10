@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { t } from "@lingui/core/macro";
+import { copyText } from "./lib/secure-context";
 
 /** A read-only field with a copy button (FlyonUI "copy from input group"). */
 export function CopyField({ label, value, icon }: { label: string; value: string; icon: string }) {
   const [copied, setCopied] = useState(false);
   async function copy() {
-    await navigator.clipboard.writeText(value);
+    await copyText(value);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }

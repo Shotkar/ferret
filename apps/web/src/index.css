@@ -140,3 +140,56 @@
     break-after: page;
   }
 }
+
+/* The war dance (WarDance.tsx, lib/dook.ts): in from the right, a dance on the spot with a couple of turns, off to the left. */
+.war-dance {
+  position: fixed;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  left: 100%;
+  z-index: 100;
+  width: 9rem;
+  pointer-events: none;
+  animation: war-dance-cross 5s linear forwards;
+}
+.war-dance-turn {
+  animation: war-dance-turn 5s steps(1, end) forwards;
+}
+.war-dance-hop {
+  width: 100%;
+  height: auto;
+  transform-origin: 50% 100%;
+  animation: war-dance-hop 0.32s ease-out infinite alternate;
+}
+@keyframes war-dance-cross {
+  0% { left: 100%; }
+  30% { left: calc(50% - 4.5rem); }
+  70% { left: calc(50% - 4.5rem); }
+  100% { left: -10rem; }
+}
+@keyframes war-dance-turn {
+  0%, 38%, 50%, 62% { transform: scaleX(1); }
+  44%, 56% { transform: scaleX(-1); }
+}
+@keyframes war-dance-hop {
+  from { transform: translateY(0) rotate(-6deg); }
+  to { transform: translateY(-2.5rem) rotate(8deg); }
+}
+@keyframes war-dance-fade {
+  0%, 100% { opacity: 0; }
+  15%, 85% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .war-dance {
+    left: calc(50% - 4.5rem);
+    animation: war-dance-fade 3s linear forwards;
+  }
+  .war-dance-turn,
+  .war-dance-hop {
+    animation: none;
+  }
+}
+@media print {
+  .war-dance {
+    display: none;
+  }
+}

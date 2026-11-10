@@ -7,6 +7,8 @@ import "./index.css";
 import { i18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
 import { startLanguage } from "./lib/i18n";
+import { greetConsole } from "./lib/dook";
+import { WarDance } from "./WarDance";
 
 const queryClient = new QueryClient({
   // Once more after a failure — but not when the server said no (not found, not allowed): asking again won't change it.
@@ -34,12 +36,14 @@ if ("serviceWorker" in navigator) {
 
 // The language first (lib/i18n.ts), so the first screen is already in it.
 await startLanguage();
+greetConsole();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <I18nProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
+        <WarDance />
       </QueryClientProvider>
     </I18nProvider>
   </StrictMode>,

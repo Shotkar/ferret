@@ -17,6 +17,7 @@ import { navigateTo } from "./lib/navigate";
 import { t, ph, plural, msg } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { MessageDescriptor } from "@lingui/core";
+import { copyText } from "./lib/secure-context";
 
 export function Server() {
   // The demo has no backups of its own: it's planted afresh every night.
@@ -132,7 +133,7 @@ function ServiceErrors() {
 function CopyDetails({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   async function copy() {
-    await navigator.clipboard.writeText(text);
+    await copyText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }

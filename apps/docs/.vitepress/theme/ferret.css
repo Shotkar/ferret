@@ -228,3 +228,15 @@ html:not(.dark) .vp-doc img.dark-only {
 .api-lead {
   color: var(--vp-c-text-2);
 }
+
+/* The 404 page's stash: a QR code that says DOOK (public/dook.svg). Ferret's scanner knows what to do with it. */
+.NotFound::after {
+  content: "";
+  display: block;
+  width: 7rem;
+  height: 7rem;
+  margin: 2.5rem auto 0;
+  border-radius: 0.5rem;
+  background: url("/dook.svg") center / contain no-repeat;
+  opacity: 0.85;
+}

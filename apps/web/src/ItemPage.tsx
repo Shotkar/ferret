@@ -52,6 +52,7 @@ import { PhotoCrop } from "./PhotoCrop";
 import { t, ph, plural } from "@lingui/core/macro";
 import { conditionPhrase } from "./lib/words";
 import { Trans } from "@lingui/react/macro";
+import { randomId } from "./lib/secure-context";
 
 /**
  * Types offered by the pickers. HEIC is left out on purpose: iPhone Safari then
@@ -138,7 +139,7 @@ export function ItemPage({ itemId, householdId }: { itemId: string; householdId:
 
   function addFiles(files: Iterable<File>, kind?: AttachmentKind) {
     const added = [...files].map((file) => ({
-      key: crypto.randomUUID(),
+      key: randomId(),
       file,
       // Dropped/picked files: PDFs are documents, images are photos unless the caller says otherwise.
       kind: kind ?? (file.type === "application/pdf" ? "document" : "photo"),

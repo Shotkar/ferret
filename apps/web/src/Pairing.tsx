@@ -13,6 +13,7 @@ import { api } from "./lib/api";
 import { Scanner } from "./Scanner";
 import { t, ph } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
+import { copyText } from "./lib/secure-context";
 
 const KIND = { homekit: "HomeKit", matter: "Matter" } as const;
 
@@ -75,7 +76,7 @@ function CodeRow({ itemId, code, canEdit, queryKey }: { itemId: string; code: Pa
 
   async function copy() {
     if (!shown) return;
-    await navigator.clipboard.writeText(shown.code.replace(/-/g, ""));
+    await copyText(shown.code.replace(/-/g, ""));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }

@@ -414,7 +414,7 @@ export function Sidebar(props: { route: Route["name"]; householdName: string; ho
     >
       <div className={`flex h-16 shrink-0 items-center ${folded ? "justify-center" : "px-5"}`}>
         <a href={HOME_HREF} aria-label={t`Ferret home`} className="text-primary">
-          {folded ? <PawMark className="size-7" /> : <Logo className="text-lg" />}
+          {folded ? <PawMark className="size-7" taps /> : <Logo className="text-lg" />}
         </a>
       </div>
       <div className={`pb-2 [&>*]:inline-flex ${folded ? "flex justify-center" : "px-4"}`}>

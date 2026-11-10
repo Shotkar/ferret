@@ -16,6 +16,7 @@ import { DialogActions, Modal } from "./Modal";
 import { NotInPlan, usePlanFeature } from "./PlanUsage";
 import { t, ph, plural } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
+import { copyText } from "./lib/secure-context";
 
 type Target = Pick<ShareInput, "kind" | "propertyId" | "tag" | "categoryId">;
 
@@ -139,7 +140,7 @@ function LinkField({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
   const canShare = typeof navigator.share === "function";
   async function copy() {
-    await navigator.clipboard.writeText(url);
+    await copyText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -253,7 +254,7 @@ function CopyButton({ url }: { url: string }) {
       type="button"
       className="btn btn-soft btn-sm"
       onClick={() =>
-        void navigator.clipboard.writeText(url).then(() => {
+        void copyText(url).then(() => {
           setCopied(true);
           setTimeout(() => setCopied(false), 2000);
         })

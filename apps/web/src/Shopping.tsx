@@ -15,6 +15,7 @@ import { itemHref } from "./lib/route";
 import { money } from "./lib/money";
 import { t, ph, plural } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
+import { copyText } from "./lib/secure-context";
 
 export function Shopping({ householdId }: { householdId: string }) {
   const list = useQuery({ queryKey: ["shopping", householdId], queryFn: api.shopping });
@@ -51,7 +52,7 @@ export function Shopping({ householdId }: { householdId: string }) {
 
   async function copy() {
     if (!list.data) return;
-    await navigator.clipboard.writeText(list.data.text);
+    await copyText(list.data.text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }

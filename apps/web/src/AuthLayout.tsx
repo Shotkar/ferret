@@ -4,26 +4,45 @@
  * what Ferret is — FlyonUI's "Login 2" layout. On a phone, just the form.
  */
 import type { ReactNode } from "react";
+import { isFerretDay, tapLogo } from "./lib/dook";
 import { Trans } from "@lingui/react/macro";
 import { t, msg } from "@lingui/core/macro";
 
 export function Logo({ className = "" }: { className?: string }) {
+  const party = isFerretDay();
   return (
-    <span className={`inline-flex items-center gap-2 font-bold tracking-tight ${className}`}>
-      <PawMark className="size-[1.4em] shrink-0" /> <Trans>Ferret</Trans>
+    <span
+      className={`inline-flex items-center gap-2 font-bold tracking-tight ${className}`}
+      onClick={tapLogo}
+      // not translated
+      title={party ? "Happy National Ferret Day!" : undefined}
+    >
+      <PawMark className="size-[1.4em] shrink-0" party={party} /> <Trans>Ferret</Trans>
     </span>
   );
 }
 
-/** The paw from the app icon (public/favicon.svg), drawn in the text colour — the same on every platform, unlike 🐾. */
-export function PawMark({ className }: { className?: string }) {
+/**
+ * The paw from the app icon (public/favicon.svg), drawn in the text colour — the same on every platform, unlike 🐾.
+ * On National Ferret Day (April 2, lib/dook.ts) it wears a party hat; `taps` counts taps towards the war dance where
+ * it stands alone (the folded sidebar).
+ */
+export function PawMark({ className, party = isFerretDay(), taps }: { className?: string; party?: boolean; taps?: boolean }) {
   return (
-    <svg viewBox="8 9 48 44" className={className} fill="currentColor" aria-hidden>
+    <svg viewBox="8 9 48 44" className={`overflow-visible ${className ?? ""}`} fill="currentColor" aria-hidden onClick={taps ? tapLogo : undefined}>
       <ellipse cx="32" cy="42.5" rx="12.5" ry="10" />
       <ellipse cx="16.5" cy="29.5" rx="4.6" ry="6.2" transform="rotate(-22 16.5 29.5)" />
       <ellipse cx="26" cy="19.5" rx="5" ry="6.6" transform="rotate(-8 26 19.5)" />
       <ellipse cx="38" cy="19.5" rx="5" ry="6.6" transform="rotate(8 38 19.5)" />
       <ellipse cx="47.5" cy="29.5" rx="4.6" ry="6.2" transform="rotate(22 47.5 29.5)" />
+      {party && (
+        <g transform="rotate(14 32 6)">
+          <path d="M23 13 L41 13 L33 -9 Z" className="fill-warning" />
+          <path d="M26.3 4 L37.7 4 L36.6 1 L27.4 1 Z" className="fill-error" />
+          <path d="M23 13 L41 13 L40 10.3 L24 10.3 Z" className="fill-info" />
+          <circle cx="33" cy="-9.5" r="3" className="fill-error" />
+        </g>
+      )}
     </svg>
   );
 }

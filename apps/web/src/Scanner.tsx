@@ -11,6 +11,7 @@
  */
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { readBarcode } from "./lib/barcode";
+import { dance, isDook } from "./lib/dook";
 import { t, ph } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 
@@ -80,7 +81,8 @@ export function Scanner({
           const now = Date.now();
           if (code && !stopped && !(code === last.current.code && now - last.current.at < REPEAT_MS)) {
             last.current = { code, at: now };
-            if (!(await onResultRef.current(code))) return stop(); // camera off before anything else happens
+            if (isDook(code)) dance(); // ferrets dance for this one (lib/dook.ts); keep scanning
+            else if (!(await onResultRef.current(code))) return stop(); // camera off before anything else happens
           } else if (code) {
             last.current.at = now; // still in view: keep ignoring it
           }
@@ -116,7 +118,8 @@ export function Scanner({
     setBusy(true);
     try {
       const code = await readBarcode(await createImageBitmap(file));
-      if (code) {
+      if (code && isDook(code)) dance();
+      else if (code) {
         if (!(await onResultRef.current(code))) stopCamera.current();
       } else setError(t`No barcode found in that photo. Try again, closer and in good light.`);
     } catch (err) {

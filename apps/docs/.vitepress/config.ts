@@ -49,6 +49,12 @@ export default defineConfig({
   themeConfig: {
     logo: { src: "/favicon.svg", alt: "" },
     siteTitle: "Ferret help",
+    // A ferret's stash (the QR code under it, ferret.css, starts something in the app's scanner: lib/dook.ts).
+    notFound: {
+      title: "THIS PAGE WANDERED OFF",
+      quote: "A ferret probably stashed it somewhere. They do that. While you're here, try showing the code below to Ferret's scanner.",
+      linkText: "Back to the help",
+    },
     nav: [
       { text: "Using Ferret", link: "/guide/getting-started", activeMatch: "/guide/" },
       { text: "Running Ferret", link: "/hosting/install", activeMatch: "/hosting/" },

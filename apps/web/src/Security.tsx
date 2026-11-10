@@ -16,6 +16,7 @@ import { Modal } from "./Modal";
 import { DeleteAccount } from "./DeleteForGood";
 import { t, ph, plural } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
+import { copyText } from "./lib/secure-context";
 
 export function Security() {
   return (
@@ -313,7 +314,7 @@ function BackupCodes({ codes, onDone }: { codes: string[]; onDone: () => void })
         <button
           type="button"
           className="btn btn-soft btn-secondary btn-sm"
-          onClick={() => void navigator.clipboard.writeText(text).then(() => setCopied(true))}
+          onClick={() => void copyText(text).then(() => setCopied(true))}
         >
           <span className={`${copied ? "icon-[tabler--check]" : "icon-[tabler--copy]"} size-4`} />
           {copied ? t`Copied` : t`Copy`}

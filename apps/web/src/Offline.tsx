@@ -27,6 +27,7 @@ import { navigateTo } from "./lib/navigate";
 import { t, ph, plural, msg } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { MessageDescriptor } from "@lingui/core";
+import { randomId } from "./lib/secure-context";
 
 /** The captures waiting on this device for a household, kept up to date. */
 export function useCaptures(householdId: string) {
@@ -93,7 +94,7 @@ export function OfflineCapture({ home }: { home: OfflineHome }) {
   async function addPhotos(list: FileList | null) {
     for (const f of Array.from(list ?? [])) {
       await addCapture({
-        id: crypto.randomUUID(),
+        id: randomId(),
         householdId: home.householdId,
         createdAt: Date.now(),
         kind: "photo",
@@ -109,7 +110,7 @@ export function OfflineCapture({ home }: { home: OfflineHome }) {
   async function addRoomScan(list: FileList | null) {
     const blobs = Array.from(list ?? []).slice(0, 5);
     if (!blobs.length || !locationId) return;
-    await addCapture({ id: crypto.randomUUID(), householdId: home.householdId, createdAt: Date.now(), kind: "roomscan", blobs, locationId });
+    await addCapture({ id: randomId(), householdId: home.householdId, createdAt: Date.now(), kind: "roomscan", blobs, locationId });
     setSaved(t`Room scan saved`);
   }
 
@@ -242,7 +243,7 @@ export function OfflineCapture({ home }: { home: OfflineHome }) {
         <Scanner
           onClose={() => setScanning(false)}
           onResult={async (code) => {
-            await addCapture({ id: crypto.randomUUID(), householdId: home.householdId, createdAt: Date.now(), kind: "scan", code, mode });
+            await addCapture({ id: randomId(), householdId: home.householdId, createdAt: Date.now(), kind: "scan", code, mode });
             beep();
             return true; // keep scanning
           }}

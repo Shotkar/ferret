@@ -13,6 +13,8 @@ import { useCategories, useTags } from "./Catalog";
 import { CategoryDonut, WorthOverTime } from "./Charts";
 import { CLAIM_STATUS } from "./Claims";
 import { SetupChecklist } from "./Setup";
+import { dance, isFerretDay } from "./lib/dook";
+import side from "./assets/mascot/side.webp";
 import { BY_VALUE_HREF, CATEGORIES_HREF, COLLECTIONS_HREF, categoryHref, collectionHref, ITEMS_HREF, REPORT_HREF, SHOPPING_HREF, WARRANTIES_HREF, itemHref, MAINTENANCE_HREF, missingHref, placeHref, tagHref } from "./lib/route";
 import { useCollections } from "./Collections";
 import { t, ph, plural, msg } from "@lingui/core/macro";
@@ -33,6 +35,21 @@ export const MISSING_LABELS: Record<MissingDetail, { label: MessageDescriptor; f
  * The dashboard's sections, under the search box on the home screen: `places`
  * (the property cards) goes right after the stat cards.
  */
+/** April 2 only (lib/dook.ts). English for everyone, on purpose: translating it would give it away. */
+function FerretDay() {
+  return (
+    <button type="button" onClick={dance} className="alert alert-soft alert-warning flex w-full flex-row items-center gap-3 text-start">
+      <img src={side} alt="" width={325} height={400} className="h-14 w-auto shrink-0" />
+      <span>
+        {/* not translated */}
+        <span className="font-semibold">{"Happy National Ferret Day!"}</span>{" "}
+        {/* not translated */}
+        {"Ferrets celebrate with a war dance. Tap here, or tap the paw seven times."}
+      </span>
+    </button>
+  );
+}
+
 export function OverviewSections({ householdId, places }: { householdId: string; places?: React.ReactNode }) {
   const overview = useQuery({ queryKey: ["overview", householdId], queryFn: api.overview });
   const categories = useCategories(householdId);
@@ -42,6 +59,7 @@ export function OverviewSections({ householdId, places }: { householdId: string;
   const soon = o.warranties.filter((w) => w.status === "expiring").length;
   return (
     <>
+      {isFerretDay() && <FerretDay />}
       <SetupChecklist householdId={householdId} o={o} />
       {/* Two tiles a row (four on a wide screen), one when large text makes them too narrow (the query is in rem, so it follows text size). */}
       <div className="@container">

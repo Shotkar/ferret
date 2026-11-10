@@ -11,6 +11,7 @@ import { deviceTimeZone } from "./TimeZone";
 import { currencyForLocale } from "@ferret/shared/utils";
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
+import { randomId } from "./lib/secure-context";
 
 /** The longest household name the server takes (HOUSEHOLD_NAME_MAX in auth.ts). */
 export const HOUSEHOLD_NAME_MAX = 100;
@@ -22,7 +23,7 @@ export const HOUSEHOLD_NAME_MAX = 100;
  * server's reason — e.g. a hosted plan's "one free household".
  */
 export async function createHousehold(name: string) {
-  const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${crypto.randomUUID().slice(0, 6)}`;
+  const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${randomId().slice(0, 6)}`;
   const result = await authClient.organization.create({ name, slug });
   if (result.error || !result.data) throw new Error(result.error?.message || t`Could not create the household`);
   await api.setHouseholdSettings({ timeZone: deviceTimeZone(), currency: currencyForLocale(navigator.language) }, result.data.id).catch(() => {});
