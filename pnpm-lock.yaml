@@ -142,6 +142,9 @@ importers:
         specifier: 3.1.6
         version: 3.1.6(@types/emscripten@1.41.6)
     devDependencies:
+      '@babel/parser':
+        specifier: 7.29.12
+        version: 7.29.12
       '@iconify-json/tabler':
         specifier: 1.2.43
         version: 1.2.43

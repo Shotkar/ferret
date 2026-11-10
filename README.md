@@ -192,8 +192,9 @@ Ferret is written in English, and English is the only language kept up in this r
 by the people who use Ferret, on [Weblate](https://hosted.weblate.org/projects/ferret/) and in
 [ferret-translations](https://github.com/ferret-project/ferret-translations), and every build includes them. Anything not translated yet shows in English.
 
-To make text translatable, wrap it with Lingui's macros: `` t`Add to cart` `` or `<Trans>Add to cart</Trans>`
-(`@lingui/react/macro`). Write the English only. CI sends the new text to the translations repository by itself.
+To make text translatable, wrap it with Lingui's macros: `` t`Add to cart` `` (`@lingui/core/macro`) or
+`<Trans>Add to cart</Trans>` (`@lingui/react/macro`). Write the English only; `pnpm test` fails on text that isn't
+wrapped, and CI sends the new text to the translations repository by itself. More in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
