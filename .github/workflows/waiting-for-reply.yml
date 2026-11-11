@@ -1,6 +1,7 @@
 # Issues and pull requests waiting on their author: label one "waiting-for-reply" when we've asked a question.
 # With no activity for 21 days it gets a reminder (and the "stale" label); 7 days after that it's closed. Any comment
-# resets the clock, and a reply from the author takes the label off. Nothing without the label is ever touched.
+# resets the clock, and a reply from the author takes the label off. Nothing without the label is ever touched, and
+# nothing labelled "keep-open" is ever closed.
 name: Waiting for reply
 
 on:
@@ -22,6 +23,9 @@ jobs:
       - uses: actions/stale@v11
         with:
           only-labels: waiting-for-reply
+          # Never closed, whatever else it's labelled.
+          exempt-issue-labels: keep-open
+          exempt-pr-labels: keep-open
           days-before-stale: 21
           days-before-close: 7
           stale-issue-label: stale
