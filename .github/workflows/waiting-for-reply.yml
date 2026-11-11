@@ -1,0 +1,58 @@
+# Issues and pull requests waiting on their author: label one "waiting-for-reply" when we've asked a question.
+# With no activity for 21 days it gets a reminder (and the "stale" label); 7 days after that it's closed. Any comment
+# resets the clock, and a reply from the author takes the label off. Nothing without the label is ever touched.
+name: Waiting for reply
+
+on:
+  schedule:
+    - cron: "30 7 * * *"
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    if: github.event_name != 'issue_comment'
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/stale@v11
+        with:
+          only-labels: waiting-for-reply
+          days-before-stale: 21
+          days-before-close: 7
+          stale-issue-label: stale
+          stale-pr-label: stale
+          stale-issue-message: >-
+            We haven't heard back here for three weeks. If this is still something you'd like to see, just reply;
+            otherwise it'll be closed in a week. Thanks!
+          stale-pr-message: >-
+            We haven't heard back here for three weeks. If you'd still like to carry this on, just reply; otherwise
+            it'll be closed in a week. Thanks for the work you put into it!
+          close-issue-message: >-
+            Closing, as there's been no reply. If it's still a problem, comment and we'll reopen it, or open a new
+            issue any time.
+          close-pr-message: >-
+            Closing, as there's been no reply. You're welcome to reopen it or start a new one whenever you like.
+          close-issue-reason: not_planned
+          labels-to-remove-when-unstale: stale
+
+  author-replied:
+    # The author answered: they're no longer the one we're waiting on.
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.comment.user.login == github.event.issue.user.login &&
+      contains(github.event.issue.labels.*.name, 'waiting-for-reply')
+    runs-on: ubuntu-26.04
+    steps:
+      # The labels API treats pull requests as issues; "stale" may not be there (404), which is fine.
+      - run: |
+          gh api -X DELETE "repos/$REPO/issues/$NUMBER/labels/waiting-for-reply"
+          gh api -X DELETE "repos/$REPO/issues/$NUMBER/labels/stale" || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
