@@ -1402,7 +1402,7 @@ function AskFerret({ question }: { question: string }) {
         )}
         {ask.data && (
           <>
-            <p className={ask.data.found ? "text-base-content" : "text-base-content/70"}>{ask.data.answer}</p>
+            <p className={`whitespace-pre-line ${ask.data.found ? "text-base-content" : "text-base-content/70"}`}>{ask.data.answer}</p>
             {ask.data.citations.length > 0 && (
               <ul className="flex flex-wrap gap-2">
                 {ask.data.citations.map((c) => (
@@ -1414,6 +1414,7 @@ function AskFerret({ question }: { question: string }) {
                     >
                       <span className={`${c.attachmentId ? "icon-[tabler--file-text]" : "icon-[tabler--box]"} size-3.5`} />
                       {c.attachmentId ? c.filename : c.itemName}
+                      {c.sections?.length ? ` — ${c.sections.join("; ")}` : ""}
                     </a>
                   </li>
                 ))}
