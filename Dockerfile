@@ -1,6 +1,8 @@
+ARG NODE_IMAGE=node:26-bookworm-slim
+
 # ── Build ────────────────────────────────────────────────────────────────────
 # The bundles are the same on every platform, so this stage runs on the builder's own (no emulation for arm64).
-FROM --platform=$BUILDPLATFORM node:26-bookworm-slim AS build
+FROM --platform=$BUILDPLATFORM ${NODE_IMAGE} AS build
 WORKDIR /src
 # Node 25+ no longer bundles Corepack; it still picks the pnpm in package.json's packageManager.
 RUN npm install -g --no-audit --no-fund corepack && corepack enable
@@ -16,7 +18,7 @@ RUN pnpm build
 # What the bundled server keeps outside it (the native bits — libSQL, sharp, the canvas PDFs are drawn on — and pdf.js,
 # whose worker and fonts come from its own package): the server's production dependencies, at exactly the versions in
 # the lockfile, as a plain node_modules for this platform.
-FROM node:26-bookworm-slim AS runtime-deps
+FROM ${NODE_IMAGE} AS runtime-deps
 WORKDIR /deps
 RUN npm install -g --no-audit --no-fund corepack && corepack enable
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
@@ -28,7 +30,7 @@ RUN pnpm install --frozen-lockfile --prod --filter @ferret/server --ignore-scrip
  && node /tmp/runtime-deps.mjs node_modules
 
 # ── Runtime ──────────────────────────────────────────────────────────────────
-FROM node:26-bookworm-slim
+FROM ${NODE_IMAGE}
 # Which Ferret this is (scripts/version.sh): CI passes it; Settings → Server shows it.
 ARG FERRET_VERSION=dev
 ENV FERRET_VERSION=$FERRET_VERSION \

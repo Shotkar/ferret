@@ -592,6 +592,8 @@ export interface AskCitation {
   /** Set when the answer came from inside a document. */
   attachmentId?: string;
   filename?: string;
+  /** Headings from the extracted text; no inferred PDF page numbers. */
+  sections?: string[];
 }
 
 export interface AskAnswer {

@@ -90,6 +90,7 @@ and check **Settings → Server → Keys** says "From the settings". The copy in
 |---|---|
 | `OLLAMA_URL`, `VISION_MODEL`, `EMBED_MODEL` | Reading photos; embeddings for smart search. |
 | `CHAT_URL`, `CHAT_MODEL`, `CHAT_REASONING` | A stronger text model for Ask Ferret and documents (OpenAI-compatible). `CHAT_REASONING` (default `low`) is sent as `reasoning_effort`; set it empty for a model that doesn't take one. |
+| `ASK_CONTEXT_TOKENS` | Ask's input and reply budget, default `4096`. Set no higher than the answering model's actual context. Token estimates and procedural limits are described in [AI features](./ai). |
 | `DOCLING_URL`, `DOCLING_VLM_URL`, `DOCLING_OPTIONS` | Reading PDFs and scanned documents; `DOCLING_VLM_URL` reads pages with granite-docling (an OpenAI-compatible endpoint) instead of docling's standard pipeline. |
 | `QDRANT_URL`, `QDRANT_API_KEY`, `QDRANT_COLLECTION` | Smart search's vector store. |
 | `RERANK_URL`, `RERANK_MODEL` | Better ordering of search results. |

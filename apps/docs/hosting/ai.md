@@ -16,3 +16,18 @@ applied by itself**: it becomes suggestions a person taps to accept.
 
 Changing `EMBED_MODEL` needs a new `QDRANT_COLLECTION` (the vectors are a different size). Use a separate collection
 for each Ferret (e.g. one for testing).
+
+Ask Ferret selects relevant sections from stored document text, retaining numbered instructions and safety notes.
+Short receipts remain whole. Citations link to the original attachment and include section headings when available;
+PDF page numbers are only meaningful when extraction provides page mapping (the current Markdown extraction does not).
+Missing diagrams or button symbols require checking the original PDF. An excerpt that exceeds the budget is explicitly
+incomplete, and Ask refuses to present it as a complete procedure.
+Explicitly labelled warnings are retained verbatim if the generated answer omits them. Numbered-step counts and
+document citation coverage provide structural checks; they cannot prove that every paraphrase is faithful.
+
+`ASK_CONTEXT_TOKENS` defaults to **4096** for the input and reply together. Set it no higher than the answering model's
+actual context setting; this variable does not change Ollama or load a different model. How-to replies reserve 37.5%
+of that budget, capped at 3072 output tokens; factual replies use at most 512. A 256-token reserve covers API overhead.
+Input tokens are estimated from text, not counted with a model-specific tokenizer. Check actual model usage during
+staging; complex tokenization or reasoning can still exhaust context. Increasing the budget requires a model server
+configured to support it. Ordinary factual answers stay concise.

@@ -6,3 +6,7 @@ data
 .env
 .env.*
 !.env.example
+.local-tools/
+.pnpm-store/
+staging/
+.staging/

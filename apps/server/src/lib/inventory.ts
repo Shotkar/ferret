@@ -34,6 +34,7 @@ import { INDEX_JOB } from "../jobs/index-item";
 import type { Db, Deps } from "../ports";
 import { countEvent } from "./analytics";
 import { ASK_ITEMS, askInventory } from "./ask";
+import { documentSearchQuestion } from "./document-passages";
 import { categoryInfo, setItemTags, tagsOf } from "./catalog";
 import { listClaims } from "./claims";
 import { queueProductLookup, rememberBarcode } from "./products";
@@ -54,6 +55,8 @@ export interface Caller {
   userId: string;
   /** The household's time zone: what "today" is (lib/household-time.ts). */
   timeZone: string;
+  /** Ask's input/reply budget, passed by both REST and MCP. */
+  askContextTokens?: number;
   via: "web" | "api" | "mcp";
   /** The API key's name, when it came with one (recorded as where things it adds came from). */
   keyName?: string | null;
@@ -550,10 +553,10 @@ export async function ask(v: Caller, question: string) {
   if (!model) throw new HTTPException(409, { message: "Ask Ferret needs an AI model (CHAT_URL or OLLAMA_URL)" });
   const plan = await requireAllowed(v, "ai.ask"); // in the plan, and within its AI actions (lib/plan.ts)
   countEvent(v.deps, "ask");
-  const results = await searchItems(v, question, {}, ASK_ITEMS);
+  const results = await searchItems(v, documentSearchQuestion(question), {}, ASK_ITEMS);
   try {
     const onModel = () => recordUsage(v, "ai.ask", 1, plan); // counted only when the model is asked
-    return await askInventory({ db: v.db, model, timeZone: v.timeZone, onModel }, v.householdId, question, results);
+    return await askInventory({ db: v.db, model, timeZone: v.timeZone, contextTokens: v.askContextTokens, onModel }, v.householdId, question, results);
   } catch (err) {
     console.warn(`Ask Ferret failed: ${String(err)}`);
     throw new HTTPException(503, { message: "Ferret couldn't answer right now — try again in a moment" });

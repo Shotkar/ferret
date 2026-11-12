@@ -9,6 +9,9 @@ data/
 *.db-shm
 .DS_Store
 coverage/
+.local-tools/
+.pnpm-store/
+.staging/
 
 # Playwright MCP screenshots/snapshots
 .playwright-mcp/
