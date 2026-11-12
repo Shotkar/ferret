@@ -17,7 +17,7 @@ source; the running production image has not been independently inspected.
 | `origin` | Personal `https://github.com/Shotkar/ferret.git`, full history |
 | `origin/main` | Fork integration branch; retains the upstream snapshot rather than being reset to the older supplied release |
 | `origin/upstream-snapshot/2026-11-11` | Preserved fork starting point, `5f234a1862a678bc0a4cd5f6bb3cb17d31980109` |
-| `release/manual-retrieval-2026.11.10` | Tested patch on the supplied release, commit `03765b8d19d484b38169fa638ca419e97073641a`; use this for a test that must avoid an upstream upgrade |
+| `release/manual-retrieval-2026.11.10` | Published commit `ba912a2683efc20812769b52474628dbdca5b97b`, with the identical tree to locally tested `03765b8`; use this to avoid an upstream upgrade |
 | `fix/manual-retrieval` | PR integration branch, rebased onto the fork's unchanged `main` at `5f234a1` after the release-based patch was tested |
 
 The release branch includes initialization commit
@@ -80,3 +80,8 @@ migration changes before making that claim for a release.
 Four compatibility conflicts in ask/context/inventory/MCP code were resolved on
 the unpublished PR branch. Review those areas and CI workflows on future updates.
 The Linux container and real-manual acceptance runs remain outstanding.
+
+Linux source validation passed in [PR CI run 43196296588](https://github.com/Shotkar/ferret/actions/runs/43196296588):
+frozen install, type checks, full tests (474 passed, 1 skipped) and build. Image
+and translation publication jobs were skipped. This validates source builds,
+not a Docker runtime or the private De'Longhi manual.

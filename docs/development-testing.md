@@ -11,7 +11,8 @@ d951fe9197b7ebe0e3054eebdc1f94377f745fa1cb99470356855b010cb62700
 ```
 
 The release-based fix is preserved as `release/manual-retrieval-2026.11.10` at
-`03765b8d19d484b38169fa638ca419e97073641a`. The PR branch was subsequently
+published commit `ba912a2683efc20812769b52474628dbdca5b97b`. Its tree matches
+locally tested commit `03765b8d19d484b38169fa638ca419e97073641a` exactly. The PR branch was subsequently
 rebased onto the unchanged fork `main` (`5f234a1`) for a separate compatibility
 check. That upstream revision already has a different lockfile; the PR does not
 change it relative to its base:
@@ -80,6 +81,15 @@ store is `.pnpm-store/`. On this Windows checkout, put
 directory for comparable checks. The exact records are in
 `.local-tools/baseline/toolchain.json` and `summary.json`; those local paths are
 not required on other machines.
+
+### Linux integration CI
+
+[Run 43196296588](https://github.com/Shotkar/ferret/actions/runs/43196296588)
+passed on the PR integration: Node 26.13.1, frozen dependency installation,
+type checks, full tests and build. The server suite reports **474 passed,
+1 skipped** across 81 files. Image and translation-publishing jobs were skipped.
+The Windows-specific file/path failures therefore do not reproduce in that
+Linux source check. Docker runtime and private-manual acceptance are separate.
 
 ## Build an isolated test image
 
