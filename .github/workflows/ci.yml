@@ -37,7 +37,8 @@ jobs:
   translations:
     name: Send the English text to the translations
     needs: check
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Forks do not publish source catalogs or use upstream deploy credentials.
+    if: github.repository == 'ferret-project/ferret' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
@@ -66,7 +67,8 @@ jobs:
   image:
     name: Build & push image
     needs: check
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    # Personal forks run checks only. Publishing a custom image is a separate, explicitly approved action.
+    if: github.repository == 'ferret-project/ferret' && github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-26.04
     permissions:
       contents: read

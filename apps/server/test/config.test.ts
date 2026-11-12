@@ -3,6 +3,14 @@ import { doclingOptions, loadConfig, vapidSubject, vapidSubjectProblem } from ".
 
 const base = { NODE_ENV: "test", AUTH_SECRET: "test-secret-test-secret-test-secret-123", FILES_KEY: btoa(String.fromCharCode(...new Uint8Array(32).fill(9))) };
 
+describe("answer context budget", () => {
+  it("defaults to 4096 and validates an explicitly configured model context", () => {
+    expect(loadConfig(base).ASK_CONTEXT_TOKENS).toBe(4096);
+    expect(loadConfig({ ...base, ASK_CONTEXT_TOKENS: "8192" }).ASK_CONTEXT_TOKENS).toBe(8192);
+    for (const value of ["1024", "4096.5", "infinite"]) expect(() => loadConfig({ ...base, ASK_CONTEXT_TOKENS: value })).toThrow(/ASK_CONTEXT_TOKENS/);
+  });
+});
+
 describe("docling options", () => {
   it("are docling's own defaults unless a VLM endpoint or options are given", () => {
     expect(doclingOptions(loadConfig(base))).toEqual({});

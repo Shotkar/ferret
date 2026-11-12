@@ -131,6 +131,7 @@ export const callerOf = (c: Context<AppEnv>): Caller => ({
   userId: c.var.user.id,
   timeZone: c.var.timeZone,
   currency: c.var.currency,
+  askContextTokens: c.var.config.ASK_CONTEXT_TOKENS,
   via: c.var.apiKey ? "api" : "web",
   keyName: c.var.apiKey?.name ?? null,
 });

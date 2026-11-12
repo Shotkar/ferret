@@ -50,6 +50,7 @@ mcp.all("/", sizeLimit, async (c) => {
     householdId: holder.key.householdId,
     userId: holder.user.id,
     ...(await householdLocale(c.var.db, holder.key.householdId)),
+    askContextTokens: c.var.config.ASK_CONTEXT_TOKENS,
     via: "mcp" as const,
     keyName: holder.key.name,
     readOnly: holder.key.readOnly || role === "viewer",
